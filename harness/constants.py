@@ -43,10 +43,5 @@ def raw_final_cap():
 
 DIFF_CAP = 4000               # FINAL DIFF 段截断
 
-# ---- memory 插件通用 ----
-STORE_FIFO_CHARS = 30000      # 注入库 FIFO 截断(保最近)
-FACTS_INPUT_CAP_DEFAULT = 23000
-DISTILL_CAP_DEFAULT = 18000
-WRITER_MAXTOK_DEFAULT = 900
-NOTE_CAP_DEFAULT = 1500
-STRUCTMEM_BUDGET_DEFAULT = 12000
+# memory 插件的截断/预算常数以各插件内 env 默认值为准(RSM_FACTS_INPUT_CAP 等),
+# 不在此重复定义,避免"改这里不生效"的陷阱(rev2-P4)。

@@ -5,8 +5,6 @@ import json, os, re
 
 from ..base import MemoryLayer, WrapResult, register
 
-_KEY_CAP = {"rawdiff": 300, "rawcmd": 300, "rawprose": 300}
-
 
 # ---------- 确定性成分拆分 ----------
 
@@ -175,13 +173,15 @@ def pack_structmem(items, question, current_paths, budget):
 
 
 def _repomap_block(env):
-    """确定性结构摘要:文件树(截断)+ 核心 .py 的 def/class 骨架。零记忆,每任务现算。"""
+    """确定性结构摘要:文件树(截断)+ 核心 .py 的 def/class 骨架。零记忆,每任务现算。
+    返回 (整块文本, 裸载荷字符数)——map_chars 统一按裸载荷计,与 structmem 同基数(rev2-P5)。"""
     tree = env.raw("git ls-files | head -200")["output"]
     skel = env.raw(
         "for f in $(git ls-files '*.py' | xargs -r wc -l 2>/dev/null | sort -rn | head -12 | awk '{print $2}' | grep -v total); do "
         "echo \"== $f\"; grep -nE '^(class |def |    def )' $f 2>/dev/null | head -20; done")["output"]
-    return (f"<memory_context>\nRepository structure map (computed fresh, no cross-session memory):\n"
-            f"FILES:\n{tree[:4000]}\nKEY SYMBOLS:\n{skel[:8000]}\n</memory_context>\n\n")
+    blk = (f"<memory_context>\nRepository structure map (computed fresh, no cross-session memory):\n"
+           f"FILES:\n{tree[:4000]}\nKEY SYMBOLS:\n{skel[:8000]}\n</memory_context>\n\n")
+    return blk, len(tree[:4000]) + len(skel[:8000])
 
 
 # ---------- 插件注册 ----------
@@ -231,6 +231,7 @@ class RawDiff(_Component):
 class FactsAll(MemoryLayer):
     """mem0 抽取后全量注入(无筛选;抽取=官方双分支并集)。"""
     name = "factsall"
+    llm_writer = True
 
     def write(self, spec, material, delta, env):
         facts = extract_facts_mem0style(material)
@@ -244,6 +245,7 @@ class FactsAll(MemoryLayer):
 @register
 class StateNote(MemoryLayer):
     name = "statenote"
+    llm_writer = True
 
     def write(self, spec, material, delta, env):
         notes = distill_state_notes(material)
@@ -260,8 +262,8 @@ class RepoMap(MemoryLayer):
     name = "repomap"
 
     def wrap(self, question, env):
-        blk = _repomap_block(env)
-        return WrapResult(blk + question, map_chars=len(blk))
+        blk, payload = _repomap_block(env)
+        return WrapResult(blk + question, map_chars=payload)
 
     def write(self, spec, material, delta, env):
         return 0
@@ -273,10 +275,10 @@ class MapDiff(MemoryLayer):
     name = "mapdiff"
 
     def wrap(self, question, env):
-        blk = _repomap_block(env)
+        blk, payload = _repomap_block(env)
         inner = self.store.wrap(question)
         return WrapResult(blk + inner.text, injected_chars=inner.injected_chars,
-                          injected=inner.injected, map_chars=len(blk))
+                          injected=inner.injected, map_chars=payload)
 
     def write(self, spec, material, delta, env):
         comp = split_components(material)["rawdiff"]

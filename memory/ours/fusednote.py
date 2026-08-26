@@ -11,16 +11,18 @@ def distill_fused_note(raw_text):
     """按融合模板蒸馏便签。默认 actor 端点(RSM_API_BASE);设 RSM_WRITER_API/RSM_WRITER_MODEL
     时用独立 writer 端点。RSM_WRITER_PROMPT 换模板;RSM_DISTILL_CAP/RSM_WRITER_MAXTOK/
     RSM_NOTE_CAP 供全量输入与 free 模板消融放大。"""
+    # env/模板/上限解析放 try 之外:配置错误(缺 RSM_API_BASE、模板名拼错、cap 非整数)
+    # 必须上抛进 mem_write_error 落账,不得静默退化成零写入(rev2-P1)
+    api = os.environ.get("RSM_WRITER_API", os.environ["RSM_API_BASE"]).rstrip("/") + "/chat/completions"
+    sysp = (PROMPTS / os.environ.get("RSM_WRITER_PROMPT", "fused_writer_prompt.txt")).read_text()
+    dc = int(os.environ.get("RSM_DISTILL_CAP", "18000"))
+    h = dc // 2
+    m = raw_text if len(raw_text) <= dc else raw_text[:h] + "\n...[middle truncated]...\n" + raw_text[-h:]
+    body = {"model": os.environ.get("RSM_WRITER_MODEL", "coder-next"), "temperature": 0.0,
+            "max_tokens": int(os.environ.get("RSM_WRITER_MAXTOK", "900")),
+            "chat_template_kwargs": {"enable_thinking": False},
+            "messages": [{"role": "system", "content": sysp}, {"role": "user", "content": m}]}
     try:
-        api = os.environ.get("RSM_WRITER_API", os.environ["RSM_API_BASE"]).rstrip("/") + "/chat/completions"
-        sysp = (PROMPTS / os.environ.get("RSM_WRITER_PROMPT", "fused_writer_prompt.txt")).read_text()
-        dc = int(os.environ.get("RSM_DISTILL_CAP", "18000"))
-        h = dc // 2
-        m = raw_text if len(raw_text) <= dc else raw_text[:h] + "\n...[middle truncated]...\n" + raw_text[-h:]
-        body = {"model": os.environ.get("RSM_WRITER_MODEL", "coder-next"), "temperature": 0.0,
-                "max_tokens": int(os.environ.get("RSM_WRITER_MAXTOK", "900")),
-                "chat_template_kwargs": {"enable_thinking": False},
-                "messages": [{"role": "system", "content": sysp}, {"role": "user", "content": m}]}
         req = urllib.request.Request(api, json.dumps(body).encode(), {"Content-Type": "application/json"})
         r = json.load(urllib.request.urlopen(req, timeout=300))
         txt = r["choices"][0]["message"]["content"].split("</think>")[-1].strip()
@@ -33,6 +35,7 @@ def distill_fused_note(raw_text):
 @register
 class FusedNote(MemoryLayer):
     name = "fusednote"
+    llm_writer = True   # runner 据此启用连续零写入哨兵(F9 补)
 
     def write(self, spec, material, delta, env):
         note = distill_fused_note(material)

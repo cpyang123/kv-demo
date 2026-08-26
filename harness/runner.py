@@ -13,12 +13,13 @@ from harness import config as C, constants as K, grading as G          # noqa: E
 from harness.env import RepoEnv                                         # noqa: E402
 from minisweagent.agents.default import DefaultAgent                    # noqa: E402
 from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel  # noqa: E402
+import memory                                                           # noqa: E402 (import 即注册全部插件)
 from memory import base as mem_base                                     # noqa: E402
-from memory.attribution import probes as _p                             # noqa: F401,E402 (注册)
-from memory.ours import fusednote as _f                                 # noqa: F401,E402 (注册)
 
 INFRA_EXC = ("Timeout", "Connection", "ServiceUnavailable", "InternalServer",
-             "APIError", "RateLimit", "BadGateway")
+             "APIError", "RateLimit", "BadGateway",
+             "Authentication", "NotFound", "PermissionDenied", "BadRequest")  # 配置型故障也中止,不固化
+TASK_ERRORS = ("ContextWindow",)   # 确定性任务级失败:计入完成,不触发重跑(大注入臂的真实结局)
 
 
 class ChainAbort(Exception):
@@ -28,14 +29,21 @@ class ChainAbort(Exception):
 # ---------- 认领锁(F11/F12):所有臂共用 ----------
 
 def results_complete(rf, n_tasks):
-    """完成判定 = 行数达标且逐行 JSON 有效含 order(F8)。"""
+    """完成判定 = 行数达标 + 逐行 JSON 有效含 order + 无未定性崩溃行(F8+P1)。
+    crashed 行只有确定性任务级失败(TASK_ERRORS)才算数——auth 错/基建崩不固化,留待重跑。"""
     if not rf.exists():
         return False
     lines = [l for l in rf.read_text().splitlines() if l.strip()]
     if len(lines) != n_tasks:
         return False
     try:
-        return all("order" in json.loads(l) for l in lines)
+        for l in lines:
+            r = json.loads(l)
+            if "order" not in r:
+                return False
+            if r.get("crashed") and not any(t in str(r.get("exit", "")) for t in TASK_ERRORS):
+                return False
+        return True
     except Exception:
         return False
 
@@ -54,7 +62,9 @@ def claim_chain(out):
         try:
             if time.time() - claim.stat().st_mtime < K.CLAIM_STALE_SECS:
                 return False
-            os.rename(claim, claim.with_name(f".claim.stale.{os.getpid()}"))   # 原子夺取
+            stale = claim.with_name(f".claim.stale.{os.getpid()}")
+            os.rename(claim, stale)   # 原子夺取
+            stale.unlink(missing_ok=True)
         except (FileNotFoundError, OSError):
             return False
         try:
@@ -75,7 +85,8 @@ class Heartbeat:
     def _run(self):
         while not self._stop.wait(K.CLAIM_HEARTBEAT):
             try:
-                self.claim.touch()
+                if self.claim.exists():   # touch 会重建已删文件;完成路径 unlink 后不复活
+                    self.claim.touch()
             except OSError:
                 pass
 
@@ -112,7 +123,10 @@ class ChainRunner:
 
     # -- 基线臂工作区协议 --
     def reset_workspace(self):
-        self.env.raw("git checkout -q -- . && git clean -fdq")
+        # reset --hard 能清 unmerged 条目(3way apply 残留),checkout -- . 不能(P2);不动 HEAD
+        r = self.env.raw("git reset -q --hard && git clean -fdq")
+        if r["returncode"] != 0:
+            raise ChainAbort(f"reset_workspace failed: {r['output'][-200:]}")
 
     def apply_golds(self, upto):
         for b in self.tasks[:upto]:
@@ -127,7 +141,8 @@ class ChainRunner:
 
     def _guard_commits(self, base_head, rec):
         head = self._head()
-        if head and base_head and head != base_head:
+        # 两侧都必须是合法 oid 才比对,防 rev-parse 报错文本触发伪 reset
+        if len(head) == 40 and len(base_head) == 40 and head != base_head:
             rec["agent_committed"] = True
             self.env.raw(f"git reset --soft {base_head}")
         return rec
@@ -142,12 +157,14 @@ class ChainRunner:
             elif r == "user" and parts and isinstance(c, str):
                 parts.append("OBSERVATION:\n" + c[:mc])
         raw = "\n\n".join(parts)
-        return (raw[:tc] + "\n\nFINAL DIFF:\n" + delta[:K.DIFF_CAP])[:fc]
+        # FINAL DIFF 锚永不被终截断吃掉(P5):raw 部分先给 diff 段留位,env 覆盖不成套也安全
+        head = raw[:min(tc, max(0, fc - K.DIFF_CAP - 16))]
+        return (head + "\n\nFINAL DIFF:\n" + delta[:K.DIFF_CAP])[:fc]
 
     def run(self, ep_file):
         recs = []
         base_head = self._head()
-        prev_tree = G.tree_snapshot(self.env)
+        mem_zero_streak = 0
         try:
             for idx, spec in enumerate(self.tasks, 1):
                 if self.mode == "indep":
@@ -158,7 +175,10 @@ class ChainRunner:
                     if not ok:
                         recs.append(self._blank_rec(idx, spec, error="oracle setup: " + err))
                         atomic_results(self.out, recs)
+                        self.reset_workspace()   # 清掉 3way 失败残留,别让污染级联到下一题(P2)
                         continue
+                # P4:任务前快照放在 setup(reset/apply_golds)之后,indep/oracle 的 delta 语义才正确
+                pre_tree = G.tree_snapshot(self.env)
                 t_wrap0 = time.time()
                 if self.mem:
                     w = self.mem.wrap(spec["problem_statement"], self.env)
@@ -193,20 +213,27 @@ class ChainRunner:
                        "map_chars": w.map_chars,
                        "error": err, "crashed": bool(err)}             # F7:崩溃行显式标记
                 self._guard_commits(base_head, rec)                    # F5
-                rec.update(G.grade(self.host, self.sif, self.repo_path, self.prefix,
-                                   self.tasks, idx, self.out.name, run_tag=self.run_tag))
-                # session 边界:真增量 diff(F1)→ 写记忆
+                g = G.grade(self.host, self.sif, self.repo_path, self.prefix,
+                            self.tasks, idx, self.out.name, run_tag=self.run_tag)
+                # F7 补:agent 错误不被判分结果的 error=None 覆盖,两侧都有则拼接
+                g["error"] = "; ".join(x for x in (rec.get("error"), g.get("error")) if x) or None
+                rec.update(g)
+                # session 边界:真增量 diff(F1/P4)→ 写记忆
                 t_add0 = time.time()
                 try:
                     cur_tree = G.tree_snapshot(self.env)
-                    delta = G.tree_delta(self.env, prev_tree, cur_tree)
-                    prev_tree = cur_tree
+                    delta = G.tree_delta(self.env, pre_tree, cur_tree)
                     if self.mem:
                         rec["mem_nodes"] = self.mem.write(spec, self._material(agent, delta),
                                                           delta, self.env)
                         rec["mem_write_secs"] = round(time.time() - t_add0, 1)
                 except Exception as e:
                     rec["mem_write_error"] = str(e)[:150]
+                # F9 补:LLM writer 臂连续零写入 = writer 端点疑似挂了,中止而非静默退化成 seq
+                if self.mem and getattr(self.mem, "llm_writer", False):
+                    mem_zero_streak = mem_zero_streak + 1 if not rec.get("mem_nodes") else 0
+                    if mem_zero_streak >= 3:
+                        raise ChainAbort("memory writer produced 0 nodes 3x in a row (endpoint down?)")
                 recs.append(rec)
                 atomic_results(self.out, recs)
                 print(f"  [{self.c['continuous_id']}|{self.arm}] pos{idx} "
@@ -219,10 +246,11 @@ class ChainRunner:
             shutil.rmtree(self.host_root, ignore_errors=True)
 
     def _blank_rec(self, idx, spec, error):
+        # crashed=False:oracle setup 失败是确定性结局(金补丁与基座冲突),计入完成、不触发重跑
         return {"order": idx, "instance": spec["swebench_instance_id"], "arm": self.arm,
                 "exit": "setup_error", "secs": 0.0, "wrap_secs": 0.0, "n_steps": 0,
                 "n_assistant_msgs": 0, "injected_chars": 0, "injected": False, "map_chars": 0,
-                "error": error, "crashed": True, "resolved": None, "gradable": True,
+                "error": error, "crashed": False, "resolved": None, "gradable": None,
                 "f2p": {}, "p2p_failed": [], "p2p_missing": [], "p2p_unscoped": [],
                 "collection_errors": [], "error_stage": "setup"}
 
@@ -269,11 +297,16 @@ def main():
         try:
             ChainRunner(c, arm, mode, out, model_name, mk, a.step_limit, a.run_id).run(ep_file)
             done += 1
+            hb.stop()
             (out / ".claim").unlink(missing_ok=True)
         except ChainAbort as e:
             print(f"CHAIN_ABORT {cid} (infra, will retry later): {e}", flush=True)
+            hb.stop()
+            (out / ".claim").unlink(missing_ok=True)   # 立即放锁,其他 lane 可重试
         except Exception as e:
             print(f"CHAIN_ERROR {cid}: {type(e).__name__}: {str(e)[:200]}", flush=True)
+            hb.stop()
+            (out / ".claim").unlink(missing_ok=True)   # 不留 4h 路障(P3)
         finally:
             hb.stop()
     print(f"DONE: {done} ran, {skipped} already complete", flush=True)
