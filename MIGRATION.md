@@ -48,5 +48,5 @@ chainswe/
 - ② data/+prompts/ ✅(make_link_flags 新址复跑对账一致;flags v2=204 槽)
 - ③ harness/ ✅ 初版(constants/config/env/grading/runner,F1-F13 全落;yaml 模板钉版)
 - ④ memory/ ✅ 初版(base 合同 v2 + 9 探针冻结移植 + fusednote/trainednote;split/route/pack 对旧实现 29 份真实原料逐字节等价 ✅;mem0_official 骨架留同学)
-- 对抗验证工作流已发(F1-F13 覆盖核对 + 双找茬视角),结论待回
-- ⑤ 等价性验证 lane(3 链 × seq/fusednote 新旧对比)待排;⑥⑦ 等在跑臂清空
+- 对抗验证已回并修补(commit 2acf98c):F1-F13 判定 11 完整/2 部分→已补;harness 侧 P1(固化白名单)/P2(硬重置)/P3(锁即时释放)/P4(快照位置)/P5(截断保锚)、memory 侧配置错误上抛/注册闭环/死代码清理/map_chars 基数统一,全部落地;parity 回归 29 份原料 ALL PASS
+- ⑤ 等价性 lane 已排队(v2equiv:3 pilot 链 × seq/fusednote,产出后与旧 pilot_q38 同链逐字段对比);⑥⑦ 等在跑臂清空
