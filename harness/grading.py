@@ -141,12 +141,12 @@ def grade(host_repo, sif, repo_path, prefix, tasks, k, out_name, run_tag="", bas
         p2p = spec.get("PASS_TO_PASS") or []
         p2p = json.loads(p2p) if isinstance(p2p, str) else p2p
         rec["f2p"] = {t: res.get(t, "MISSING") for t in f2p}
-        # F4:P2P 逐测试核对。蒸发判定限定在"被执行过的文件"内 —— 文件出过任何结果行或
-        # 收集错误却缺某个 P2P = 蒸发(判失败);test_cmds 本就不覆盖的文件单列 unscoped 不计入,
-        # 保持与既有 179 槽数据的判分范围一致。
-        exercised = {t.split("::")[0] for t in res if "::" in t} | set(rec["collection_errors"])
-        rec["p2p_missing"] = [t for t in p2p if t not in res and t.split("::")[0] in exercised]
-        rec["p2p_unscoped"] = [t for t in p2p if t not in res and t.split("::")[0] not in exercised]
+        # F4:P2P 蒸发判定只认"收集错误文件"(import 崩了整文件测试蒸发=假阳性温床,判失败)。
+        # 文件正常出结果但某 P2P 未出现 = test_cmds 选择性执行(逐测试点名很常见),归 unscoped
+        # 不计入 —— 首链实测曾把 130 个未点名 P2P 误判失踪,过严错杀 resolve(2026-08-27 修)。
+        cerr = set(rec["collection_errors"])
+        rec["p2p_missing"] = [t for t in p2p if t not in res and t.split("::")[0] in cerr]
+        rec["p2p_unscoped"] = [t for t in p2p if t not in res and t.split("::")[0] not in cerr]
         rec["p2p_failed"] = [t for t in p2p if res.get(t) not in (None, "PASSED")]
         rec["resolved"] = (bool(rec["f2p"])
                            and all(v == "PASSED" for v in rec["f2p"].values())
