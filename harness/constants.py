@@ -16,7 +16,7 @@ OBS_HEAD = 2000               # 截断保留头
 OBS_TAIL = 2000               # 截断保留尾
 
 # ---- 判分(grading.py) ----
-GRADE_TIMEOUT = 1200          # 判分 pytest 超时(F13:必须被捕获)
+GRADE_TIMEOUT = _env_int("RSM_GRADE_TIMEOUT", 1200)   # 判分 pytest 超时(F13:必须被捕获;大套件仓库经 env 放宽)
 APPLY_TAIL = 300              # patch apply 失败时保留的输出尾
 SIF_MIN_BYTES = 100_000_000   # SIF 完整性下限("下载了一半"经验检测)
 

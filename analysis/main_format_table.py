@@ -4,7 +4,7 @@
 tok=prefix-cached(chars/4,每 token 只付一次);单元格 mean(median)。
 自检:seq/fusednote/factsall 三行必须复现 tab:main 已核实数字,否则 FAIL 拒绝出表。
 输出 chainswe/analysis/main_format_table.txt + _rows.tex(LaTeX 行,\\input 用)。"""
-import json, pathlib, re, statistics
+import json, os, pathlib, re, statistics
 
 RSM = pathlib.Path("/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory")
 W1, C = RSM / "w1", RSM / "chainswe"
@@ -75,7 +75,15 @@ def main():
     n_bad2 = sum(1 for (c, p) in bad if p >= 2 and f"{c}|{p}" in LINK)
     print(f"no-op slots total={len(bad)}, pos>=2 within flags={n_bad2} (expect 190-179=11)")
     # 分母 = v2 标注全集 ∩ 有 seq 结果的 93 链,减 no-op → L 102 / U 77(=179);缺跑/崩溃按未解决计
-    chains = set(p.name.split("__s0__")[0] for p in R.glob("*__s0__seq"))
+    chains = set()
+    for d in R.glob("*__s0__seq"):
+        f = d / "results.jsonl"
+        if f.exists() and any(l.strip() for l in f.read_text().splitlines()):
+            chains.add(d.name.split("__s0__")[0])
+    ff = os.environ.get("RSM_FRAME_CHAINS")   # 可选框架过滤(自检用 93 链复现)
+    if ff:
+        chains &= {l.strip() for l in open(ff) if l.strip()}
+    print(f"frame chains: {len(chains)}")
     slots = {}
     for key, v in LINK.items():
         c, p = key.rsplit("|", 1)
