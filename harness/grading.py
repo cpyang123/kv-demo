@@ -85,13 +85,38 @@ def tree_delta(env, prev_tree, cur_tree):
     return env.raw(f"git diff {prev_tree} {cur_tree}")["output"]
 
 
-# ---------- F2:不可判分元数据 ----------
+# ---------- F2:不可判分元数据(F15 修复后仅剩 F2P 为空的理论情形) ----------
+
+def _cmds_str(spec):
+    cmds = spec.get("test_cmds") or ""
+    return " ".join(cmds) if isinstance(cmds, list) else str(cmds)
+
+
+def _f2p_p2p(spec):
+    f2p = spec.get("FAIL_TO_PASS") or []
+    f2p = json.loads(f2p) if isinstance(f2p, str) else f2p
+    p2p = spec.get("PASS_TO_PASS") or []
+    p2p = json.loads(p2p) if isinstance(p2p, str) else p2p
+    return f2p, p2p
+
+
+def test_command(spec):
+    """返回 (命令, 是否合成)。F15:16 个任务的官方 test_cmds 是 `&& true` 占位符
+    (上游挖掘残缺),但 F2P/P2P 测试 ID 齐全 —— 按官方 ID 所在文件合成 pytest 命令
+    (与 train_rollout 对 SWE-rebench 的成熟做法一致),救活 16 槽/5 条死链。"""
+    cmds = _cmds_str(spec)
+    if "pytest" in cmds:
+        return cmds, False
+    f2p, p2p = _f2p_p2p(spec)
+    files = sorted({t.split("::")[0] for t in f2p + p2p if t})
+    if not files:
+        return "", False
+    return ("python -m pytest --no-header -rA -p no:cacheprovider "
+            + " ".join(files)), True
+
 
 def is_gradable(spec):
-    """test_cmds 无 pytest 的任务(16 个)不可判分:全臂恒 False,硬跑纯烧时间。"""
-    cmds = spec.get("test_cmds") or ""
-    cmds = " ".join(cmds) if isinstance(cmds, list) else str(cmds)
-    return "pytest" in cmds
+    return bool(test_command(spec)[0])
 
 
 # ---------- 判分主体 ----------
@@ -129,7 +154,9 @@ def grade(host_repo, sif, repo_path, prefix, tasks, k, out_name, run_tag="", bas
             if not ok:
                 rec.update(error=f"test_patch {b['order']} apply failed: {err}", error_stage="apply")
                 return rec
-        r = genv.raw(spec["test_cmds"], timeout=K.GRADE_TIMEOUT)
+        cmd, synth = test_command(spec)
+        rec["synth_cmds"] = synth   # F15 透明度:该槽判分命令为官方 ID 合成
+        r = genv.raw(cmd, timeout=K.GRADE_TIMEOUT)
         res = parse_pytest(r["output"])
         if not res:
             rec.update(error=f"no tests parsed (pytest rc={r['returncode']})", error_stage="no_tests_parsed")
