@@ -118,8 +118,12 @@ def grade(host_repo, sif, repo_path, prefix, tasks, k, out_name, run_tag=""):
             tfiles += patch_file_list(b["test_patch"])
         for f in sorted(set(tfiles)):
             genv.raw(f"if git cat-file -e HEAD:'{f}' 2>/dev/null; then git checkout -q HEAD -- '{f}'; else rm -f '{f}'; fi")
-        # 累积应用 test_patch 1..k(3way 容错)
+        # 累积应用 test_patch 1..k(3way 容错)。F14:空 test_patch = 该任务无测试变更
+        # (64/304 任务如此,F2P 测试已在仓库里),跳过而非报错——旧管线把它当 apply 失败,
+        # 全臂堵死 81 个 pos>=2 判分槽位(L38/U43)。
         for b in tasks[:k]:
+            if not (b.get("test_patch") or "").strip():
+                continue
             ok, err = apply_patch(genv, b["test_patch"], f"tp{b['order']}")
             if not ok:
                 rec.update(error=f"test_patch {b['order']} apply failed: {err}", error_stage="apply")
