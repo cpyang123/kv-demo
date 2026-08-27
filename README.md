@@ -31,7 +31,6 @@ python -m harness.runner --memory-system fusednote --chains-file data/chains/q38
   oracle-indep 重置/守卫全部锚定链首 base oid;本题增量 diff = 相邻 commit 之差(F1 天然精确);
 
 - **steps = api_calls**(`n_steps` 键,旧 assistant 计数保留在 `n_assistant_msgs`);
-- **任务增量 diff = git write-tree 影子快照对 diff**,不动 HEAD,判分重置语义不变(修 F1);
 - **agent commit 守卫**:模板禁令 + 每任务后 HEAD 漂移检测回滚,`agent_committed` 落行(修 F5);
 - **判分**:一次性拷贝、逐文件测试重置、P2P 蒸发检测(`p2p_missing` 判失败,`p2p_unscoped` 不计)、
   no-op 任务 `gradable=false` 不硬跑、超时收敛为 error 行(修 F2/F3/F4/F13);
