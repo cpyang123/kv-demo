@@ -156,7 +156,8 @@ def grade(host_repo, sif, repo_path, prefix, tasks, k, out_name, run_tag="", bas
         rec.update(error=f"grade timeout >{K.GRADE_TIMEOUT}s", error_stage="timeout")
         return rec
     except Exception as e:
-        rec.update(error=f"{type(e).__name__}: {str(e)[:200]}", error_stage="grade_infra")
+        # 判分基建故障(如 /tmp 满)标 crashed:阻止链固化,留待重跑(P2-6);超时除外(确定性慢,计入完成)
+        rec.update(error=f"{type(e).__name__}: {str(e)[:200]}", error_stage="grade_infra", crashed=True)
         return rec
     finally:
         shutil.rmtree(gdir, ignore_errors=True)

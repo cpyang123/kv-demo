@@ -17,13 +17,19 @@ import memory                                                           # noqa: 
 from memory import base as mem_base                                     # noqa: E402
 
 INFRA_EXC = ("Timeout", "Connection", "ServiceUnavailable", "InternalServer",
-             "APIError", "RateLimit", "BadGateway",
-             "Authentication", "NotFound", "PermissionDenied", "BadRequest")  # 配置型故障也中止,不固化
-TASK_ERRORS = ("ContextWindow",)   # 确定性任务级失败:计入完成,不触发重跑(大注入臂的真实结局)
+             "APIError", "RateLimit", "BadGateway")   # 真基建故障:中止链留待重跑
+CONFIG_EXC = ("Authentication", "NotFound", "PermissionDenied")   # 配置错:FATAL 杀整个 lane,人必须看见(P0-2b)
+CTX_PHRASES = ("context length", "longer than the maximum model length", "too long",
+               "maximum context")   # 裸 BadRequest 版上下文溢出的报文特征(P1-3)
+TASK_ERRORS = ("ContextWindow", "harness_commit_failed")   # 确定性任务级失败:计入完成,不触发重跑
 
 
 class ChainAbort(Exception):
     """基建故障:中止本链、不写满 results(F9:留待重跑而非固化为已完成失败链)。"""
+
+
+class CommitFailed(Exception):
+    """harness commit 确定性失败(agent 毁 repo 等):补满失败行收链,不走重跑(P0-2a)。"""
 
 
 # ---------- 认领锁(F11/F12):所有臂共用 ----------
@@ -137,7 +143,9 @@ class ChainRunner:
 
     # -- F5:commit 守卫(agent 禁 commit;harness 每题一 commit 是官方对齐协议,见 _commit_task) --
     def _head(self):
-        return self.env.raw("git rev-parse HEAD")["output"].strip()
+        import re as _re
+        m = _re.findall(r"\b[0-9a-f]{40}\b", self.env.raw("git rev-parse HEAD")["output"])
+        return m[-1] if m else ""
 
     def _guard_commits(self, task_base, rec):
         head = self._head()
@@ -149,11 +157,16 @@ class ChainRunner:
 
     def _commit_task(self, idx):
         """官方 ChainSWE Seq 对齐:每题结束由 harness 提交本题改动(agent 仍禁 commit)。
-        --allow-empty:本题可能零改动;-c 提供容器内缺失的 git 身份。"""
-        r = self.env.raw("git add -A && git -c user.name=rsm -c user.email=rsm@local "
-                         f"commit -q --allow-empty -m 'rsm: task {idx}'")
+        失败先自救(锁文件/权限)重试一次;仍败=agent 毁 repo 的确定性结局,抛 CommitFailed
+        由调用方补满失败行收链,不走 ChainAbort 重跑循环(P0-2a)。"""
+        cmd = ("git add -A && git -c user.name=rsm -c user.email=rsm@local "
+               f"commit -q --allow-empty -m 'rsm: task {idx}'")
+        r = self.env.raw(cmd)
         if r["returncode"] != 0:
-            raise ChainAbort(f"harness commit failed at task {idx}: {r['output'][-200:]}")
+            self.env.raw("rm -f .git/index.lock; chmod -R u+rw . 2>/dev/null; true")
+            r = self.env.raw(cmd)
+            if r["returncode"] != 0:
+                raise CommitFailed(f"task {idx}: {r['output'][-200:]}")
         return self._head()
 
     def _material(self, agent, delta):
@@ -172,11 +185,11 @@ class ChainRunner:
 
     def run(self, ep_file):
         recs = []
-        self.base_oid = self._head()             # 链首 base:判分/重置的不动锚
-        if len(self.base_oid) != 40:
-            raise ChainAbort(f"cannot resolve base oid: {self.base_oid[:80]}")
         mem_zero_streak = 0
         try:
+            self.base_oid = self._head()         # 链首 base:判分/重置的不动锚
+            if len(self.base_oid) != 40:
+                raise ChainAbort(f"cannot resolve base oid: {self.base_oid[:80]}")
             for idx, spec in enumerate(self.tasks, 1):
                 if self.mode == "indep":
                     self.reset_workspace()
@@ -211,11 +224,19 @@ class ChainRunner:
                     agent.run(task=w.text)
                     exit_s = agent.messages[-1].get("extra", {}).get("exit_status", "?")
                 except Exception as e:
-                    exit_s = f"error:{type(e).__name__}"
-                    err = f"{type(e).__name__}: {str(e)[:200]}"
-                    if any(t in type(e).__name__ for t in INFRA_EXC):
-                        raise ChainAbort(err) from e          # F9:基建故障不固化
+                    name = type(e).__name__
+                    err = f"{name}: {str(e)[:200]}"
+                    if "ContextWindow" in name or any(p in str(e)[:500] for p in CTX_PHRASES):
+                        exit_s = "error:ContextWindowExceededError"   # 任务级结局,计入完成(P1-3)
+                    elif any(t in name for t in CONFIG_EXC):
+                        print(f"FATAL config error, killing lane: {err}", flush=True)
+                        raise SystemExit(2)                    # 配置错必须人看见(P0-2b)
+                    elif any(t in name for t in INFRA_EXC):
+                        raise ChainAbort(err) from e           # F9:基建故障不固化
+                    else:
+                        exit_s = f"error:{name}"
                 rec = {"order": idx, "instance": spec["swebench_instance_id"], "arm": self.arm,
+                       "proto": K.PROTO_TAG,
                        "exit": exit_s, "secs": round(time.time() - t0, 1), "wrap_secs": wrap_secs,
                        "n_steps": agent.n_calls,                       # F6:api_calls 口径
                        "n_assistant_msgs": sum(1 for m in agent.messages if m.get("role") == "assistant"),
@@ -224,8 +245,20 @@ class ChainRunner:
                        "error": err, "crashed": bool(err)}             # F7:崩溃行显式标记
                 self._guard_commits(task_base, rec)                    # F5
                 # 官方对齐:seq 系(含 memory 臂)每题 harness commit;indep/oracle 每题重置,无需 commit
-                if self.mode not in ("indep", "oracle"):
-                    self._commit_task(idx)
+                try:
+                    if self.mode not in ("indep", "oracle"):
+                        self._commit_task(idx)
+                except CommitFailed as ce:
+                    # agent 毁 repo 的确定性结局:本题+余题全记失败行,收链不重跑(P0-2a)
+                    rec.update(exit="harness_commit_failed", error=str(ce)[:200], crashed=False,
+                               resolved=False, gradable=None, proto=K.PROTO_TAG)
+                    recs.append(rec)
+                    for j in range(idx + 1, len(self.tasks) + 1):
+                        recs.append(self._blank_rec(j, self.tasks[j - 1],
+                                                    error=f"chain dead after harness_commit_failed@{idx}"))
+                    atomic_results(self.out, recs)
+                    print(f"  [{self.c['continuous_id']}|{self.arm}] chain closed: commit failed@{idx}", flush=True)
+                    return recs
                 g = G.grade(self.host, self.sif, self.repo_path, self.prefix,
                             self.tasks, idx, self.out.name, run_tag=self.run_tag,
                             base_oid=self.base_oid)
@@ -243,11 +276,12 @@ class ChainRunner:
                         rec["mem_write_secs"] = round(time.time() - t_add0, 1)
                 except Exception as e:
                     rec["mem_write_error"] = str(e)[:150]
-                # F9 补:LLM writer 臂连续零写入 = writer 端点疑似挂了,中止而非静默退化成 seq
+                # F9 补(P1-4 收窄):哨兵只认"写入异常"连击——合法空 session 的 0 节点不计,
+                # 否则难链连空手会假 ChainAbort 死循环
                 if self.mem and getattr(self.mem, "llm_writer", False):
-                    mem_zero_streak = mem_zero_streak + 1 if not rec.get("mem_nodes") else 0
+                    mem_zero_streak = mem_zero_streak + 1 if rec.get("mem_write_error") else 0
                     if mem_zero_streak >= 3:
-                        raise ChainAbort("memory writer produced 0 nodes 3x in a row (endpoint down?)")
+                        raise ChainAbort("memory writer errored 3x in a row (endpoint down?)")
                 recs.append(rec)
                 atomic_results(self.out, recs)
                 print(f"  [{self.c['continuous_id']}|{self.arm}] pos{idx} "

@@ -27,6 +27,8 @@ def distill_fused_note(raw_text):
         r = json.load(urllib.request.urlopen(req, timeout=300))
         txt = r["choices"][0]["message"]["content"].split("</think>")[-1].strip()
         return txt.strip("`\n ").removeprefix("```").strip()[: int(os.environ.get("RSM_NOTE_CAP", "1500"))]
+    except OSError:
+        raise   # 连接类故障上抛→runner 记 mem_write_error→零写入哨兵可见(P1-4 配套)
     except Exception as e:
         print(f"FUSED_DISTILL_ERROR: {type(e).__name__}: {str(e)[:100]}", flush=True)
         return ""
