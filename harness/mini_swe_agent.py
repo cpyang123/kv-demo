@@ -49,6 +49,8 @@ def results_complete(rf, n_tasks):
                 return False
             if r.get("crashed") and not any(t in str(r.get("exit", "")) for t in TASK_ERRORS):
                 return False
+            if r.get("mem_write_error"):   # F17:记忆臂写侧失败=链前提破坏,不固化
+                return False
         return True
     except Exception:
         return False
@@ -274,6 +276,9 @@ class ChainRunner:
                         rec["mem_nodes"] = self.mem.write(spec, self._material(agent, delta),
                                                           delta, self.env)
                         rec["mem_write_secs"] = round(time.time() - t_add0, 1)
+                except (ImportError, ModuleNotFoundError) as e:
+                    print(f"FATAL memory-layer config error, killing lane: {e}", flush=True)
+                    raise SystemExit(2)   # F17:缺包=配置错,人必须看见,不得静默退化成 seq
                 except Exception as e:
                     rec["mem_write_error"] = str(e)[:150]
                 # F9 补(P1-4 收窄):哨兵只认"写入异常"连击——合法空 session 的 0 节点不计,

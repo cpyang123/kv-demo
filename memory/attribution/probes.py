@@ -67,8 +67,9 @@ def _log_usage(model, usage):
 
 def extract_facts_mem0style(raw_text):
     """mem0 官方两条抽取分支的并集(个人+agent prompt,均为 mem0 原装,零自定义)。
-    单用任一支对编码轨迹都欠抽取,故并集(默认口径,见预实验记录)。"""
-    from mem0.memory.utils import get_fact_retrieval_messages
+    单用任一支对编码轨迹都欠抽取,故并集(默认口径,见预实验记录)。
+    prompts 为逐字 vendor(评测环境不装 mem0;曾因缺包整臂静默退化,F17)。"""
+    from .mem0_prompts import get_fact_retrieval_messages
     client, model = _facts_client()
     facts, seen = [], set()
     cap = int(os.environ.get("RSM_FACTS_INPUT_CAP", "23000"))
