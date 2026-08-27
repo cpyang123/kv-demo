@@ -123,8 +123,8 @@ class ChainRunner:
 
     # -- 基线臂工作区协议 --
     def reset_workspace(self):
-        # reset --hard 能清 unmerged 条目(3way apply 残留),checkout -- . 不能(P2);不动 HEAD
-        r = self.env.raw("git reset -q --hard && git clean -fdq")
+        # 回 base(官方 oracle/indep 语义);reset --hard 顺带清 unmerged 条目(P2)
+        r = self.env.raw(f"git reset -q --hard {self.base_oid} && git clean -fdq")
         if r["returncode"] != 0:
             raise ChainAbort(f"reset_workspace failed: {r['output'][-200:]}")
 
@@ -135,17 +135,26 @@ class ChainRunner:
                 return False, err
         return True, ""
 
-    # -- F5:commit 守卫 --
+    # -- F5:commit 守卫(agent 禁 commit;harness 每题一 commit 是官方对齐协议,见 _commit_task) --
     def _head(self):
         return self.env.raw("git rev-parse HEAD")["output"].strip()
 
-    def _guard_commits(self, base_head, rec):
+    def _guard_commits(self, task_base, rec):
         head = self._head()
         # 两侧都必须是合法 oid 才比对,防 rev-parse 报错文本触发伪 reset
-        if len(head) == 40 and len(base_head) == 40 and head != base_head:
+        if len(head) == 40 and len(task_base) == 40 and head != task_base:
             rec["agent_committed"] = True
-            self.env.raw(f"git reset --soft {base_head}")
+            self.env.raw(f"git reset --soft {task_base}")
         return rec
+
+    def _commit_task(self, idx):
+        """官方 ChainSWE Seq 对齐:每题结束由 harness 提交本题改动(agent 仍禁 commit)。
+        --allow-empty:本题可能零改动;-c 提供容器内缺失的 git 身份。"""
+        r = self.env.raw("git add -A && git -c user.name=rsm -c user.email=rsm@local "
+                         f"commit -q --allow-empty -m 'rsm: task {idx}'")
+        if r["returncode"] != 0:
+            raise ChainAbort(f"harness commit failed at task {idx}: {r['output'][-200:]}")
+        return self._head()
 
     def _material(self, agent, delta):
         mc, tc, fc = K.raw_msg_cap(), K.raw_total_cap(), K.raw_final_cap()
@@ -163,7 +172,9 @@ class ChainRunner:
 
     def run(self, ep_file):
         recs = []
-        base_head = self._head()
+        self.base_oid = self._head()             # 链首 base:判分/重置的不动锚
+        if len(self.base_oid) != 40:
+            raise ChainAbort(f"cannot resolve base oid: {self.base_oid[:80]}")
         mem_zero_streak = 0
         try:
             for idx, spec in enumerate(self.tasks, 1):
@@ -177,8 +188,7 @@ class ChainRunner:
                         atomic_results(self.out, recs)
                         self.reset_workspace()   # 清掉 3way 失败残留,别让污染级联到下一题(P2)
                         continue
-                # P4:任务前快照放在 setup(reset/apply_golds)之后,indep/oracle 的 delta 语义才正确
-                pre_tree = G.tree_snapshot(self.env)
+                task_base = self._head()         # 本题起点(=base+前题 harness commits)
                 t_wrap0 = time.time()
                 if self.mem:
                     w = self.mem.wrap(spec["problem_statement"], self.env)
@@ -212,17 +222,21 @@ class ChainRunner:
                        "injected_chars": w.injected_chars, "injected": w.injected,   # F10 分账
                        "map_chars": w.map_chars,
                        "error": err, "crashed": bool(err)}             # F7:崩溃行显式标记
-                self._guard_commits(base_head, rec)                    # F5
+                self._guard_commits(task_base, rec)                    # F5
+                # 官方对齐:seq 系(含 memory 臂)每题 harness commit;indep/oracle 每题重置,无需 commit
+                if self.mode not in ("indep", "oracle"):
+                    self._commit_task(idx)
                 g = G.grade(self.host, self.sif, self.repo_path, self.prefix,
-                            self.tasks, idx, self.out.name, run_tag=self.run_tag)
+                            self.tasks, idx, self.out.name, run_tag=self.run_tag,
+                            base_oid=self.base_oid)
                 # F7 补:agent 错误不被判分结果的 error=None 覆盖,两侧都有则拼接
                 g["error"] = "; ".join(x for x in (rec.get("error"), g.get("error")) if x) or None
                 rec.update(g)
-                # session 边界:真增量 diff(F1/P4)→ 写记忆
+                # session 边界:本题真增量 diff = 两个 commit 之差(F1;commit 协议下天然精确)→ 写记忆
                 t_add0 = time.time()
                 try:
-                    cur_tree = G.tree_snapshot(self.env)
-                    delta = G.tree_delta(self.env, pre_tree, cur_tree)
+                    delta = self.env.raw(f"git diff {task_base} HEAD")["output"] \
+                        if self.mode not in ("indep", "oracle") else ""
                     if self.mem:
                         rec["mem_nodes"] = self.mem.write(spec, self._material(agent, delta),
                                                           delta, self.env)

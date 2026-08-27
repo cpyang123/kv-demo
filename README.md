@@ -26,6 +26,10 @@ python -m harness.runner --memory-system fusednote --chains-file data/chains/q38
 
 ## 关键语义(与旧管线的差异)
 
+- **官方对齐 commit 协议(2026-08-27)**:与 ChainSWE 论文 Seq 模式一致,每题结束由 harness
+  提交本题改动(`rsm: task k`);agent 仍禁止 commit(模板禁令+守卫回滚)。判分测试重置/
+  oracle-indep 重置/守卫全部锚定链首 base oid;本题增量 diff = 相邻 commit 之差(F1 天然精确);
+
 - **steps = api_calls**(`n_steps` 键,旧 assistant 计数保留在 `n_assistant_msgs`);
 - **任务增量 diff = git write-tree 影子快照对 diff**,不动 HEAD,判分重置语义不变(修 F1);
 - **agent commit 守卫**:模板禁令 + 每任务后 HEAD 漂移检测回滚,`agent_committed` 落行(修 F5);
