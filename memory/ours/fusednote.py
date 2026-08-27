@@ -22,11 +22,28 @@ def distill_fused_note(raw_text):
             "max_tokens": int(os.environ.get("RSM_WRITER_MAXTOK", "900")),
             "chat_template_kwargs": {"enable_thinking": False},
             "messages": [{"role": "system", "content": sysp}, {"role": "user", "content": m}]}
+    def _valid(t):
+        """结构校验:防 writer 被轨迹格式带跑续写(实测 14% 废品率的根因)。"""
+        t = t.strip()
+        return (t.startswith(("DID:", "CONTEXT:", "VERIFY:", "LESSON:"))
+                and "mswea_bash_command" not in t and "```" not in t)
+
     try:
-        req = urllib.request.Request(api, json.dumps(body).encode(), {"Content-Type": "application/json"})
-        r = json.load(urllib.request.urlopen(req, timeout=300))
-        txt = r["choices"][0]["message"]["content"].split("</think>")[-1].strip()
-        return txt.strip("`\n ").removeprefix("```").strip()[: int(os.environ.get("RSM_NOTE_CAP", "1500"))]
+        cap = int(os.environ.get("RSM_NOTE_CAP", "1500"))
+        for attempt in range(2):
+            req = urllib.request.Request(api, json.dumps(body).encode(), {"Content-Type": "application/json"})
+            r = json.load(urllib.request.urlopen(req, timeout=300))
+            txt = r["choices"][0]["message"]["content"].split("</think>")[-1].strip()
+            txt = txt.strip("`\n ").removeprefix("```").strip()
+            if _valid(txt):
+                return txt[:cap]
+            # 一次矫正重试:显式点名违规(结构保证,不赌 prompt 自觉)
+            body["messages"] = body["messages"][:2] + [
+                {"role": "assistant", "content": txt[:500]},
+                {"role": "user", "content": "INVALID OUTPUT. Do not continue the transcript or emit "
+                 "commands/code fences. Output ONLY note lines, first line starting with 'DID:'."}]
+        print(f"FUSED_DISTILL_INVALID after retry: {txt[:80]!r}", flush=True)
+        return ""
     except OSError:
         raise   # 连接类故障上抛→runner 记 mem_write_error→零写入哨兵可见(P1-4 配套)
     except Exception as e:
