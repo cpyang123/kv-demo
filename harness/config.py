@@ -45,7 +45,9 @@ COMMIT_BAN = (
 
 
 def system_template(step_limit):
-    return CFG["system_template"] + TERMINATION_ADDENDUM.format(limit=step_limit) + COMMIT_BAN
+    # 官方对齐(2026-08-27):步数上限外部强制,不进 prompt(TERMINATION_ADDENDUM 为 v1 遗物,弃用);
+    # 预算播报会与记忆注入交互(压力放大验证收益),去除后测的是自然行为
+    return CFG["system_template"] + COMMIT_BAN
 
 
 def instance_template(repo_path):

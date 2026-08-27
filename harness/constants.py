@@ -21,7 +21,7 @@ APPLY_TAIL = 300              # patch apply 失败时保留的输出尾
 SIF_MIN_BYTES = 100_000_000   # SIF 完整性下限("下载了一半"经验检测)
 
 # ---- 主循环(runner.py) ----
-STEP_LIMIT_DEFAULT = 50
+STEP_LIMIT_DEFAULT = 100   # 官方 ChainSWE 对齐(100 turns;外部强制,不播报)
 LOCAL_MAX_TOKENS = 3500       # 本地 vLLM actor
 API_MAX_TOKENS = 6000         # API actor
 CLAIM_STALE_SECS = 4 * 3600   # 认领锁陈旧阈值;心跳线程每 CLAIM_HEARTBEAT 秒刷新
