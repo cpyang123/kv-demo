@@ -7,7 +7,8 @@
 
 ```
 data/       chainswe_data.jsonl(100 链)· task_link_flags_v2.json(204 槽)· chains/ 分片 · make_link_flags.py
-harness/    constants(全部魔数)· config(路径/模板/臂名单点)· env(RepoEnv)· grading(判分单一来源)· runner(统一入口)
+harness/    constants(全部魔数)· config(路径/模板/臂名单点)· env(RepoEnv)· grading(判分单一来源)
+            mini_swe_agent.py(mini-SWE-agent 管线入口;新 scaffold=平级新文件,如 swe_edit.py)
 memory/     base.py(插件合同)· attribution/(9 个归因探针,冻结)· ours/(fusednote/trainednote+prompts)· baselines/(同学接入点)
 analysis/   main_format_table.py(统一口径出数器,自检复现 tab:main 后出表)
 ```
@@ -16,10 +17,10 @@ analysis/   main_format_table.py(统一口径出数器,自检复现 tab:main 后
 
 ```bash
 # 基线臂
-python -m harness.runner --arm seq --chains-file data/chains/q38_chains_s0.txt --run-id v2pilot
+python harness/mini_swe_agent.py --arm seq --chains-file data/chains/q38_chains_s0.txt --run-id v2pilot
 # memory 臂(本地 vLLM 经 RSM_API_BASE 或 endpoint 文件)
 RSM_API_BASE=http://127.0.0.1:8470/v1 \
-python -m harness.runner --memory-system fusednote --chains-file data/chains/q38_chains_s0.txt --run-id v2pilot
+python harness/mini_swe_agent.py --memory-system fusednote --chains-file data/chains/q38_chains_s0.txt --run-id v2pilot
 ```
 
 结果落 `runs/<run-id>/<chain>__s0__<arm>/results.jsonl`(原子写,行含统一 schema)。
