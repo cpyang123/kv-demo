@@ -8,10 +8,12 @@ import json, os, pathlib, re, statistics
 
 RSM = pathlib.Path("/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory")
 W1, C = RSM / "w1", RSM / "chainswe"
-R = W1 / "runs/chainswe/pilot_q38"
+R = pathlib.Path(os.environ["RSM_RUN_DIR"]) if os.environ.get("RSM_RUN_DIR") else W1 / "runs/chainswe/pilot_q38"
+CUSTOM = bool(os.environ.get("RSM_RUN_DIR"))   # 自定义 run:跳自检,memory-side 常数(旧协议实测)不适用
 LINK = json.load(open(C / "data/task_link_flags_v2.json"))
-ARMS = ["seq", "mem_rawcat", "mem_rawprose", "mem_rawcmd", "mem_structmem", "mem_repomap",
-        "mem_factsall", "mem_statenote", "mem_fusednote", "mem_trainednote"]
+ARMS = (os.environ["RSM_ARMS"].split(",") if os.environ.get("RSM_ARMS")
+        else ["seq", "mem_rawcat", "mem_rawprose", "mem_rawcmd", "mem_structmem", "mem_repomap",
+              "mem_factsall", "mem_statenote", "mem_fusednote", "mem_trainednote"])
 LABEL = {"seq": "No memory (seq)", "mem_rawcat": "Raw concat (ceiling)", "mem_rawprose": "Raw prose",
          "mem_rawcmd": "Raw commands", "mem_structmem": "Struct-routed notes", "mem_repomap": "Repo map",
          "mem_factsall": "Mem0$^\\dagger$ (extraction union)", "mem_statenote": "State notes",
@@ -101,17 +103,23 @@ def main():
             nc = [toks[k][1] for k in ks if k in toks]
             cell[tag] = (len(ks), res, mm(st), mm(tk), len(st), mm(nc))
         ij = [v for v in (inj(rows[k]) for k in rows if k[1] >= 2) if v is not None]
-        wcol = f"{WRITER[arm]:.1f}" if arm in WRITER else ("--" if arm == "seq" else "0")
-        ncol = f"{NOTE[arm]:.2f}" if arm in NOTE else "--"
+        wcol = "--" if CUSTOM else (f"{WRITER[arm]:.1f}" if arm in WRITER else ("--" if arm == "seq" else "0"))
+        ncol = "--" if CUSTOM else (f"{NOTE[arm]:.2f}" if arm in NOTE else "--")
         icol = mm(ij) if ij else "--"
         L, U = cell["L"], cell["U"]
-        txt.append(f"{LABEL[arm]:34s} L(n={L[0]:3d},cov={L[4]:3d}) {L[1]:5.1f}% {L[2]:>12s} {L[3]:>12s} | "
+        lbl = LABEL.get(arm, arm)
+        txt.append(f"{lbl:34s} L(n={L[0]:3d},cov={L[4]:3d}) {L[1]:5.1f}% {L[2]:>12s} {L[3]:>12s} | "
                    f"U(n={U[0]:3d},cov={U[4]:3d}) {U[1]:5.1f}% {U[2]:>12s} {U[3]:>12s} | W {wcol:>5s} N {ncol:>5s} I {icol:>11s}")
-        tex.append(f"{LABEL[arm]} & {L[1]:.1f} & {L[2]} & {L[3]} & {U[1]:.1f} & {U[2]} & {U[3]} & {wcol} & {ncol} & {icol} \\\\")
-        tex.append(f"%APP {LABEL[arm]} & {L[1]:.1f} & {L[2]} & {L[3]} & {L[5]} & {U[1]:.1f} & {U[2]} & {U[3]} & {U[5]} & {wcol} & {ncol} & {icol} \\\\")
+        tex.append(f"{lbl} & {L[1]:.1f} & {L[2]} & {L[3]} & {U[1]:.1f} & {U[2]} & {U[3]} & {wcol} & {ncol} & {icol} \\\\")
+        tex.append(f"%APP {lbl} & {L[1]:.1f} & {L[2]} & {L[3]} & {L[5]} & {U[1]:.1f} & {U[2]} & {U[3]} & {U[5]} & {wcol} & {ncol} & {icol} \\\\")
         if arm in ("seq", "mem_fusednote", "mem_factsall"):
             chk.append((arm, L[1], L[2], L[3], U[1]))
     print("\n".join(txt))
+    if CUSTOM:
+        (C / "analysis/main_format_table.txt").write_text("\n".join(txt))
+        (C / "analysis/main_format_rows.tex").write_text("\n".join(tex))
+        print("SELFCHECK skipped(自定义 RSM_RUN_DIR;旧表复现自检不适用)")
+        return
     # ---- 自检 vs tab:main 已核实值 ----
     want = {"seq": (14.7, "31.6 (30.0)", "25.2 (24.5)", 18.2),
             "mem_fusednote": (18.6, "30.1 (29.0)", "25.5 (23.9)", 19.5),
