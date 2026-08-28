@@ -22,12 +22,12 @@ SIF_MIN_BYTES = 100_000_000   # SIF 完整性下限("下载了一半"经验检�
 
 # ---- 主循环(runner.py) ----
 STEP_LIMIT_DEFAULT = 100   # 官方 ChainSWE 对齐(100 turns;外部强制,不播报)
-LOCAL_MAX_TOKENS = 3500       # 本地 vLLM actor
+LOCAL_MAX_TOKENS = _env_int("RSM_LOCAL_MAX_TOKENS", 3500)       # 本地 vLLM actor
 API_MAX_TOKENS = 6000         # API actor
 CLAIM_STALE_SECS = 4 * 3600   # 认领锁陈旧阈值;心跳线程每 CLAIM_HEARTBEAT 秒刷新
 CLAIM_HEARTBEAT = 300
 COST_LIMIT = 10 ** 9          # 刻意禁用 mini-swe-agent 成本刹车
-PROTO_TAG = "v2.1"            # 协议版本戳(P3-7):commit对齐+100步不播报+F4收窄;协议级改动必须递增
+PROTO_TAG = os.environ.get("RSM_PROTO_TAG", "v2.1")            # 协议版本戳(P3-7):commit对齐+100步不播报+F4收窄;协议级改动必须递增
 
 # ---- writer 原料(raw trajectory;全量输入臂经 env 拉满,如 RSM_RAW_MSG_CAP=999999) ----
 def raw_msg_cap():
