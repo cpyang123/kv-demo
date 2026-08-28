@@ -1,4 +1,13 @@
 """集群路径、agent 模板(钉版 yaml)、模型 kwargs、臂命名 —— 全部单点定义。
+# F18(2026-08-28 定性,v2main100 内不修——五臂对称,臂间公平;v3 协议修正包一并处理):
+# 本文件只加载 yaml 的 agent: 段,静默丢弃 model: 段两模板 →
+#   ①观测截断(上游 10K head/tail)缺失:agent 吃全量命令输出,token/context 被抬高;
+#   ②finish_reason 感知格式纠错缺失:截断回复收到泛用 EXACTLY-ONE 训斥而非"超 token 请精简"。
+# 叠加:actor thinking 未关未剥(vLLM 无 --reasoning-parser,think 段进解析器计块)+ max_tokens=3500
+# (Qwen 思考模式官方建议 32K+)→ 全臂 ~50% RepeatedFormatError 地板的三个自因。
+# 文献核查:Qwen 官方 SWE-bench=非思考;MemOp/SWE-MeM 全用非思考 Instruct;ChainSWE=API 内部推理;
+# "原始 think 进 content + 小帽 + 逐块解析"在所有被查源中均非标准配置。
+
 import 副作用契约:HF_HOME/MSWEA_* 必须在 import minisweagent 之前设置,本模块顶部完成。"""
 import json, os, pathlib, sys
 
