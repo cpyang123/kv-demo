@@ -213,7 +213,8 @@ class ChainRunner:
                 mk = dict(self.model_kwargs)
                 if ep_file:
                     mk["api_base"] = G.wait_endpoint(ep_file)
-                model = LitellmTextbasedModel(model_name=self.model_name, model_kwargs=mk)
+                model = LitellmTextbasedModel(model_name=self.model_name, model_kwargs=mk,
+                                              **C.model_template_kwargs())
                 agent = DefaultAgent(
                     model, self.env,
                     system_template=C.system_template(self.step_limit),

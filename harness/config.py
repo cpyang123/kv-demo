@@ -38,7 +38,17 @@ SIF_DIR = pathlib.Path(os.environ.get("RSM_SIF_DIR", _SIF_DEF))
 RUNS = pathlib.Path(os.environ.get("RSM_RUNS_DIR", _RUNS_DEF))
 
 # ---- agent 模板:钉版 yaml(不再依赖安装包内文件),取 ["agent"] 段 ----
-CFG = yaml.safe_load((HERE / "swebench_backticks.yaml").read_text())["agent"]
+_YAML = yaml.safe_load((HERE / "swebench_backticks.yaml").read_text())
+CFG = _YAML["agent"]
+
+
+def model_template_kwargs():
+    """F18 修复(env 门控,默认关——v2main100 保持原行为):RSM_MODEL_TPL=1 时把钉版 yaml
+    model: 段的观测截断模板与 finish_reason 感知纠错模板传给模型类(回归上游语义)。"""
+    if os.environ.get("RSM_MODEL_TPL") != "1":
+        return {}
+    m = _YAML.get("model", {})
+    return {k: m[k] for k in ("observation_template", "format_error_template") if k in m}
 
 TERMINATION_ADDENDUM = (
     "\n\nIMPORTANT BUDGET RULE: you have a hard limit of {limit} commands. "
@@ -73,6 +83,10 @@ def model_config(model=None, api_key_config=None, served_name="coder-next", endp
               "reasoning_effort": "low", "num_retries": 10}
         return model, mk, None
     mk = {"api_key": "EMPTY", "temperature": 0.0, "max_tokens": K.LOCAL_MAX_TOKENS}
+    if os.environ.get("RSM_ACTOR_NOTHINK") == "1":
+        # v3 修正包(env 门控,默认关):actor 关思考,对齐 Qwen 官方 SWE-bench 非思考口径
+        # 与 MemOp/SWE-MeM 的非思考 Instruct actor;经 extra_body 直达 vLLM,litellm 不剥
+        mk["extra_body"] = {"chat_template_kwargs": {"enable_thinking": False}}
     return f"openai/{served_name}", mk, endpoint_file
 
 
