@@ -46,7 +46,10 @@ def distill_memop_guidance(prev, raw_text):
             r = json.load(urllib.request.urlopen(req, timeout=300))
             txt = r["choices"][0]["message"]["content"].split("</think>")[-1].strip()
             if _valid(txt):
-                return SNIP_RE.search(txt).group(1).strip()[:cap]
+                g = SNIP_RE.search(txt).group(1).strip()
+                # smoke 实测:writer 常无视"从###起头"自带 H2 标题,与注入壳的标题重复 → 剥掉
+                g = re.sub(r"^##\s*Task Guidance\s*\n", "", g).strip()
+                return g[:cap]
             body["messages"] = body["messages"][:2] + [
                 {"role": "assistant", "content": txt[:500]},
                 {"role": "user", "content": "INVALID OUTPUT. Do not continue the trajectory. Provide "
