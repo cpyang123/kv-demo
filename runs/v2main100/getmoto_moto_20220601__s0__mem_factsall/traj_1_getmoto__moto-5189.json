@@ -2,7 +2,7 @@
   "info": {
     "model_stats": {
       "instance_cost": 0.0,
-      "api_calls": 41
+      "api_calls": 48
     },
     "config": {
       "agent": {
@@ -52,8 +52,8 @@
       "environment_type": "harness.env.RepoEnv"
     },
     "mini_version": "2.4.5",
-    "exit_status": "",
-    "submission": ""
+    "exit_status": "Submitted",
+    "submission": "diff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n"
   },
   "messages": [
     {
@@ -3014,6 +3014,508 @@
         "returncode": 1,
         "timestamp": 1787891579.5216768,
         "exception_info": ""
+      }
+    },
+    {
+      "content": "The `mypy_boto3_dynamodb` module is not available. Let me modify the reproduction script to not use it.\n</think>\n\nThe `mypy_boto3_dynamodb` module isn't available. Let me modify the reproduction script to not use it.\n\n```mswea_bash_command\ncd /testbed && cat > /tmp/repro_pr.py << 'EOF'\nfrom typing import Optional\nfrom uuid import uuid4\n\nimport boto3\nfrom moto import mock_dynamodb\n\nGOOD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2\"\nBAD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2,\"  # Note the trailing comma!\n\n\ndef setup_table(endpoint: Optional[str]):\n    resource = boto3.resource(\n        service_name=\"dynamodb\",\n        aws_access_key_id=\"my_access_key\",\n        aws_secret_access_key=\"my_secret_key\",\n        endpoint_url=endpoint,\n    )\n    table = resource.create_table(\n        TableName=str(uuid4()),\n        KeySchema=[{\"AttributeName\": \"pk\", \"KeyType\": \"HASH\"}],\n        AttributeDefinitions=[{\"AttributeName\": \"pk\", \"AttributeType\": \"S\"}],\n        ProvisionedThroughput={\"ReadCapacityUnits\": 1, \"WriteCapacityUnits\": 1},\n    )\n    table.put_item(Item={\"pk\": \"key\", \"attr1\": 1, \"attr2\": 2})\n    return table\n\n\ndef update_with_expression(table, expr: str) -> None:\n    key = {\"pk\": \"key\"}\n    names = {\"#attr1\": \"attr1\", \"#attr2\": \"attr2\"}\n    values = {\":val1\": 3, \":val2\": 4}\n    table.update_item(\n        Key=key,\n        UpdateExpression=expr,\n        ExpressionAttributeNames=names,\n        ExpressionAttributeValues=values,\n    )\n\n\ndef test_update_expressions():\n    with mock_dynamodb():\n        table = setup_table(None)\n        update_with_expression(table, GOOD_EXPR)  # Passes\n        print(\"GOOD_EXPR: PASSED (as expected)\")\n        try:\n            update_with_expression(table, BAD_EXPR)  # Should now FAIL\n            print(\"BAD_EXPR: PASSED (BAD! - trailing comma accepted)\")\n        except Exception as e:\n            print(f\"BAD_EXPR: FAILED (GOOD! - trailing comma rejected): {type(e).__name__}: {e}\")\n\ntest_update_expressions()\nEOF\npython /tmp/repro_pr.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && cat > /tmp/repro_pr.py << 'EOF'\nfrom typing import Optional\nfrom uuid import uuid4\n\nimport boto3\nfrom moto import mock_dynamodb\n\nGOOD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2\"\nBAD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2,\"  # Note the trailing comma!\n\n\ndef setup_table(endpoint: Optional[str]):\n    resource = boto3.resource(\n        service_name=\"dynamodb\",\n        aws_access_key_id=\"my_access_key\",\n        aws_secret_access_key=\"my_secret_key\",\n        endpoint_url=endpoint,\n    )\n    table = resource.create_table(\n        TableName=str(uuid4()),\n        KeySchema=[{\"AttributeName\": \"pk\", \"KeyType\": \"HASH\"}],\n        AttributeDefinitions=[{\"AttributeName\": \"pk\", \"AttributeType\": \"S\"}],\n        ProvisionedThroughput={\"ReadCapacityUnits\": 1, \"WriteCapacityUnits\": 1},\n    )\n    table.put_item(Item={\"pk\": \"key\", \"attr1\": 1, \"attr2\": 2})\n    return table\n\n\ndef update_with_expression(table, expr: str) -> None:\n    key = {\"pk\": \"key\"}\n    names = {\"#attr1\": \"attr1\", \"#attr2\": \"attr2\"}\n    values = {\":val1\": 3, \":val2\": 4}\n    table.update_item(\n        Key=key,\n        UpdateExpression=expr,\n        ExpressionAttributeNames=names,\n        ExpressionAttributeValues=values,\n    )\n\n\ndef test_update_expressions():\n    with mock_dynamodb():\n        table = setup_table(None)\n        update_with_expression(table, GOOD_EXPR)  # Passes\n        print(\"GOOD_EXPR: PASSED (as expected)\")\n        try:\n            update_with_expression(table, BAD_EXPR)  # Should now FAIL\n            print(\"BAD_EXPR: PASSED (BAD! - trailing comma accepted)\")\n        except Exception as e:\n            print(f\"BAD_EXPR: FAILED (GOOD! - trailing comma rejected): {type(e).__name__}: {e}\")\n\ntest_update_expressions()\nEOF\npython /tmp/repro_pr.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b44ede4e19ec73c0",
+          "created": 1787891579,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "The `mypy_boto3_dynamodb` module is not available. Let me modify the reproduction script to not use it.\n</think>\n\nThe `mypy_boto3_dynamodb` module isn't available. Let me modify the reproduction script to not use it.\n\n```mswea_bash_command\ncd /testbed && cat > /tmp/repro_pr.py << 'EOF'\nfrom typing import Optional\nfrom uuid import uuid4\n\nimport boto3\nfrom moto import mock_dynamodb\n\nGOOD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2\"\nBAD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2,\"  # Note the trailing comma!\n\n\ndef setup_table(endpoint: Optional[str]):\n    resource = boto3.resource(\n        service_name=\"dynamodb\",\n        aws_access_key_id=\"my_access_key\",\n        aws_secret_access_key=\"my_secret_key\",\n        endpoint_url=endpoint,\n    )\n    table = resource.create_table(\n        TableName=str(uuid4()),\n        KeySchema=[{\"AttributeName\": \"pk\", \"KeyType\": \"HASH\"}],\n        AttributeDefinitions=[{\"AttributeName\": \"pk\", \"AttributeType\": \"S\"}],\n        ProvisionedThroughput={\"ReadCapacityUnits\": 1, \"WriteCapacityUnits\": 1},\n    )\n    table.put_item(Item={\"pk\": \"key\", \"attr1\": 1, \"attr2\": 2})\n    return table\n\n\ndef update_with_expression(table, expr: str) -> None:\n    key = {\"pk\": \"key\"}\n    names = {\"#attr1\": \"attr1\", \"#attr2\": \"attr2\"}\n    values = {\":val1\": 3, \":val2\": 4}\n    table.update_item(\n        Key=key,\n        UpdateExpression=expr,\n        ExpressionAttributeNames=names,\n        ExpressionAttributeValues=values,\n    )\n\n\ndef test_update_expressions():\n    with mock_dynamodb():\n        table = setup_table(None)\n        update_with_expression(table, GOOD_EXPR)  # Passes\n        print(\"GOOD_EXPR: PASSED (as expected)\")\n        try:\n            update_with_expression(table, BAD_EXPR)  # Should now FAIL\n            print(\"BAD_EXPR: PASSED (BAD! - trailing comma accepted)\")\n        except Exception as e:\n            print(f\"BAD_EXPR: FAILED (GOOD! - trailing comma rejected): {type(e).__name__}: {e}\")\n\ntest_update_expressions()\nEOF\npython /tmp/repro_pr.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 557,
+            "prompt_tokens": 40287,
+            "total_tokens": 40844,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787891589.6310966
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>1</returncode>\n<output>\nTraceback (most recent call last):\n  File \"/tmp/repro_pr.py\", line 51, in <module>\n    test_update_expressions()\n  File \"/tmp/repro_pr.py\", line 42, in test_update_expressions\n    table = setup_table(None)\n            ^^^^^^^^^^^^^^^^^\n  File \"/tmp/repro_pr.py\", line 12, in setup_table\n    resource = boto3.resource(\n               ^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/boto3-1.35.9-py3.12.egg/boto3/__init__.py\", line 101, in resource\n    return _get_default_session().resource(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/boto3-1.35.9-py3.12.egg/boto3/session.py\", line 444, in resource\n    client = self.client(\n             ^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/boto3-1.35.9-py3.12.egg/boto3/session.py\", line 297, in client\n    return self._session.create_client(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/session.py\", line 997, in create_client\n    client = client_creator.create_client(\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/client.py\", line 165, in create_client\n    client_args = self._get_client_args(\n                  ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/client.py\", line 524, in _get_client_args\n    return args_creator.get_client_args(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/args.py\", line 101, in get_client_args\n    final_args = self.compute_client_args(\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/args.py\", line 220, in compute_client_args\n    endpoint_config = self._compute_endpoint_config(\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/args.py\", line 373, in _compute_endpoint_config\n    return self._resolve_endpoint(**resolve_endpoint_kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/args.py\", line 478, in _resolve_endpoint\n    return endpoint_bridge.resolve(\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/client.py\", line 629, in resolve\n    resolved = self.endpoint_resolver.construct_endpoint(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/regions.py\", line 230, in construct_endpoint\n    result = self._endpoint_for_partition(\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/regions.py\", line 278, in _endpoint_for_partition\n    raise NoRegionError()\nbotocore.exceptions.NoRegionError: You must specify a region.\n</output>",
+      "extra": {
+        "raw_output": "Traceback (most recent call last):\n  File \"/tmp/repro_pr.py\", line 51, in <module>\n    test_update_expressions()\n  File \"/tmp/repro_pr.py\", line 42, in test_update_expressions\n    table = setup_table(None)\n            ^^^^^^^^^^^^^^^^^\n  File \"/tmp/repro_pr.py\", line 12, in setup_table\n    resource = boto3.resource(\n               ^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/boto3-1.35.9-py3.12.egg/boto3/__init__.py\", line 101, in resource\n    return _get_default_session().resource(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/boto3-1.35.9-py3.12.egg/boto3/session.py\", line 444, in resource\n    client = self.client(\n             ^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/boto3-1.35.9-py3.12.egg/boto3/session.py\", line 297, in client\n    return self._session.create_client(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/session.py\", line 997, in create_client\n    client = client_creator.create_client(\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/client.py\", line 165, in create_client\n    client_args = self._get_client_args(\n                  ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/client.py\", line 524, in _get_client_args\n    return args_creator.get_client_args(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/args.py\", line 101, in get_client_args\n    final_args = self.compute_client_args(\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/args.py\", line 220, in compute_client_args\n    endpoint_config = self._compute_endpoint_config(\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/args.py\", line 373, in _compute_endpoint_config\n    return self._resolve_endpoint(**resolve_endpoint_kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/args.py\", line 478, in _resolve_endpoint\n    return endpoint_bridge.resolve(\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/client.py\", line 629, in resolve\n    resolved = self.endpoint_resolver.construct_endpoint(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/regions.py\", line 230, in construct_endpoint\n    result = self._endpoint_for_partition(\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/miniconda3/envs/testbed/lib/python3.12/site-packages/botocore-1.35.9-py3.12.egg/botocore/regions.py\", line 278, in _endpoint_for_partition\n    raise NoRegionError()\nbotocore.exceptions.NoRegionError: You must specify a region.\n",
+        "returncode": 1,
+        "timestamp": 1787891590.8185396,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "I need to specify a region. Let me add a region to the boto3 resource.\n</think>\n\nI need to specify a region. Let me fix the reproduction script.\n\n```mswea_bash_command\ncd /testbed && cat > /tmp/repro_pr.py << 'EOF'\nfrom typing import Optional\nfrom uuid import uuid4\n\nimport boto3\nfrom moto import mock_dynamodb\n\nGOOD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2\"\nBAD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2,\"  # Note the trailing comma!\n\n\ndef setup_table(endpoint: Optional[str]):\n    resource = boto3.resource(\n        service_name=\"dynamodb\",\n        region_name=\"us-east-1\",\n        aws_access_key_id=\"my_access_key\",\n        aws_secret_access_key=\"my_secret_key\",\n        endpoint_url=endpoint,\n    )\n    table = resource.create_table(\n        TableName=str(uuid4()),\n        KeySchema=[{\"AttributeName\": \"pk\", \"KeyType\": \"HASH\"}],\n        AttributeDefinitions=[{\"AttributeName\": \"pk\", \"AttributeType\": \"S\"}],\n        ProvisionedThroughput={\"ReadCapacityUnits\": 1, \"WriteCapacityUnits\": 1},\n    )\n    table.put_item(Item={\"pk\": \"key\", \"attr1\": 1, \"attr2\": 2})\n    return table\n\n\ndef update_with_expression(table, expr: str) -> None:\n    key = {\"pk\": \"key\"}\n    names = {\"#attr1\": \"attr1\", \"#attr2\": \"attr2\"}\n    values = {\":val1\": 3, \":val2\": 4}\n    table.update_item(\n        Key=key,\n        UpdateExpression=expr,\n        ExpressionAttributeNames=names,\n        ExpressionAttributeValues=values,\n    )\n\n\ndef test_update_expressions():\n    with mock_dynamodb():\n        table = setup_table(None)\n        update_with_expression(table, GOOD_EXPR)  # Passes\n        print(\"GOOD_EXPR: PASSED (as expected)\")\n        try:\n            update_with_expression(table, BAD_EXPR)  # Should now FAIL\n            print(\"BAD_EXPR: PASSED (BAD! - trailing comma accepted)\")\n        except Exception as e:\n            print(f\"BAD_EXPR: FAILED (GOOD! - trailing comma rejected): {type(e).__name__}: {e}\")\n\ntest_update_expressions()\nEOF\npython /tmp/repro_pr.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && cat > /tmp/repro_pr.py << 'EOF'\nfrom typing import Optional\nfrom uuid import uuid4\n\nimport boto3\nfrom moto import mock_dynamodb\n\nGOOD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2\"\nBAD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2,\"  # Note the trailing comma!\n\n\ndef setup_table(endpoint: Optional[str]):\n    resource = boto3.resource(\n        service_name=\"dynamodb\",\n        region_name=\"us-east-1\",\n        aws_access_key_id=\"my_access_key\",\n        aws_secret_access_key=\"my_secret_key\",\n        endpoint_url=endpoint,\n    )\n    table = resource.create_table(\n        TableName=str(uuid4()),\n        KeySchema=[{\"AttributeName\": \"pk\", \"KeyType\": \"HASH\"}],\n        AttributeDefinitions=[{\"AttributeName\": \"pk\", \"AttributeType\": \"S\"}],\n        ProvisionedThroughput={\"ReadCapacityUnits\": 1, \"WriteCapacityUnits\": 1},\n    )\n    table.put_item(Item={\"pk\": \"key\", \"attr1\": 1, \"attr2\": 2})\n    return table\n\n\ndef update_with_expression(table, expr: str) -> None:\n    key = {\"pk\": \"key\"}\n    names = {\"#attr1\": \"attr1\", \"#attr2\": \"attr2\"}\n    values = {\":val1\": 3, \":val2\": 4}\n    table.update_item(\n        Key=key,\n        UpdateExpression=expr,\n        ExpressionAttributeNames=names,\n        ExpressionAttributeValues=values,\n    )\n\n\ndef test_update_expressions():\n    with mock_dynamodb():\n        table = setup_table(None)\n        update_with_expression(table, GOOD_EXPR)  # Passes\n        print(\"GOOD_EXPR: PASSED (as expected)\")\n        try:\n            update_with_expression(table, BAD_EXPR)  # Should now FAIL\n            print(\"BAD_EXPR: PASSED (BAD! - trailing comma accepted)\")\n        except Exception as e:\n            print(f\"BAD_EXPR: FAILED (GOOD! - trailing comma rejected): {type(e).__name__}: {e}\")\n\ntest_update_expressions()\nEOF\npython /tmp/repro_pr.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b56cc4412a8095cc",
+          "created": 1787891590,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "I need to specify a region. Let me add a region to the boto3 resource.\n</think>\n\nI need to specify a region. Let me fix the reproduction script.\n\n```mswea_bash_command\ncd /testbed && cat > /tmp/repro_pr.py << 'EOF'\nfrom typing import Optional\nfrom uuid import uuid4\n\nimport boto3\nfrom moto import mock_dynamodb\n\nGOOD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2\"\nBAD_EXPR = \"SET #attr1 = :val1, #attr2 = :val2,\"  # Note the trailing comma!\n\n\ndef setup_table(endpoint: Optional[str]):\n    resource = boto3.resource(\n        service_name=\"dynamodb\",\n        region_name=\"us-east-1\",\n        aws_access_key_id=\"my_access_key\",\n        aws_secret_access_key=\"my_secret_key\",\n        endpoint_url=endpoint,\n    )\n    table = resource.create_table(\n        TableName=str(uuid4()),\n        KeySchema=[{\"AttributeName\": \"pk\", \"KeyType\": \"HASH\"}],\n        AttributeDefinitions=[{\"AttributeName\": \"pk\", \"AttributeType\": \"S\"}],\n        ProvisionedThroughput={\"ReadCapacityUnits\": 1, \"WriteCapacityUnits\": 1},\n    )\n    table.put_item(Item={\"pk\": \"key\", \"attr1\": 1, \"attr2\": 2})\n    return table\n\n\ndef update_with_expression(table, expr: str) -> None:\n    key = {\"pk\": \"key\"}\n    names = {\"#attr1\": \"attr1\", \"#attr2\": \"attr2\"}\n    values = {\":val1\": 3, \":val2\": 4}\n    table.update_item(\n        Key=key,\n        UpdateExpression=expr,\n        ExpressionAttributeNames=names,\n        ExpressionAttributeValues=values,\n    )\n\n\ndef test_update_expressions():\n    with mock_dynamodb():\n        table = setup_table(None)\n        update_with_expression(table, GOOD_EXPR)  # Passes\n        print(\"GOOD_EXPR: PASSED (as expected)\")\n        try:\n            update_with_expression(table, BAD_EXPR)  # Should now FAIL\n            print(\"BAD_EXPR: PASSED (BAD! - trailing comma accepted)\")\n        except Exception as e:\n            print(f\"BAD_EXPR: FAILED (GOOD! - trailing comma rejected): {type(e).__name__}: {e}\")\n\ntest_update_expressions()\nEOF\npython /tmp/repro_pr.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 547,
+            "prompt_tokens": 41986,
+            "total_tokens": 42533,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787891600.9957306
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nGOOD_EXPR: PASSED (as expected)\nBAD_EXPR: FAILED (GOOD! - trailing comma rejected): ClientError: An error occurred (ValidationException) when calling the UpdateItem operation: Invalid UpdateExpression: Syntax error; token: \"<EOF>\", near: \",\"\n</output>",
+      "extra": {
+        "raw_output": "GOOD_EXPR: PASSED (as expected)\nBAD_EXPR: FAILED (GOOD! - trailing comma rejected): ClientError: An error occurred (ValidationException) when calling the UpdateItem operation: Invalid UpdateExpression: Syntax error; token: \"<EOF>\", near: \",\"\n",
+        "returncode": 0,
+        "timestamp": 1787891602.176554,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "The fix works end-to-end. The GOOD_EXPR passes and the BAD_EXPR (with trailing comma) now fails with a ValidationException, which is the expected behavior matching real DynamoDB.\n\nNow let me reconsider my fix once more. I want to make sure it's robust and handles all edge cases correctly.\n\nLet me think about the case where the comma is followed by a valid action of the same type but the action itself is invalid. For example:\n- `SET a=:v1, =:v2` - the second action is invalid (no path)\n\nWith my fix:\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`=`)\n4. Check `is_possible_start(=)` -> False (because `=` is not an ATTRIBUTE or ATTRIBUTE_NAME)\n5. Raise error\n\nGood, this is correct.\n\nLet me also think about the case where the comma is followed by a valid path but the value is missing:\n- `SET a=:v1, b` - the second action is missing a value\n\nWith my fix:\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`b`)\n4. Check `is_possible_start(b)` -> True\n5. No error, loop continues\n6. Parse `b` as a path\n7. Expect `=` but find `<EOF>`, raise error\n\nGood, this is correct.\n\nNow let me think about whether my fix is the best approach. Let me reconsider.\n\nActually, I realize there might be a subtle issue with my fix. Let me reconsider the case where the comma is followed by a keyword like `ADD`, `DELETE`, or `SET`.\n\nFor example: `SET a=:v1, ADD b :v2`\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`ADD`)\n4. Check `is_possible_start(ADD)` -> True (because `ADD` is an ATTRIBUTE token and not \"REMOVE\")\n5. No error, loop continues\n6. Try to parse `ADD` as a path.\n\nNow, the path parser would parse `ADD` as an attribute. Then it would check if the next token is a DOT or SELECTOR. The next token is `b`, which is not a DOT or SELECTOR. So the path is just `ADD`.\n\nThen the SetAction parser expects `=`. But the next token is `b`, not `=`. So it would raise an error.\n\nWait, let me check. The `UpdateExpressionSetActionParser._parse`:\n```python\ndef _parse(self):\n    \"\"\"\n    UpdateExpressionSetActionParser only gets called when expecting a SetAction. So we should be aggressive on\n    raising invalid Tokens.\n    \"\"\"\n    ...\n```\n\nLet me look at the full method.\n\nActually, let me just test this case.\n</think>\n\nThe fix works end-to-end. The GOOD_EXPR passes and the BAD_EXPR (with trailing comma) now fails with a ValidationException, matching real DynamoDB behavior.\n\nLet me test a few more edge cases to ensure robustness, particularly with keywords after commas.\n\n```mswea_bash_command\ncd /testbed && cat > /tmp/repro_edge.py << 'EOF'\nfrom moto.dynamodb.parsing.expressions import UpdateExpressionParser\nfrom moto.dynamodb.exceptions import InvalidTokenException\n\nexprs = [\n    # valid cases\n    \"SET a=:v1, b=:v2\",\n    \"SET a=:v1, b=:v2 REMOVE c\",\n    \"SET a=:v1 REMOVE b\",\n    \"ADD a :v1, b :v2\",\n    \"REMOVE a, b\",\n    \"SET a = :v1 , b = :v2\",  # spaces around comma\n    # invalid cases (should raise)\n    \"SET a=:v1, b=:v2,\",      # trailing comma\n    \"SET a=:v1,\",             # trailing comma single\n    \"SET a=:v1, REMOVE b\",    # comma between clauses\n    \"ADD a :v1, b :v2,\",      # trailing comma add\n    \"REMOVE a, b,\",           # trailing comma remove\n    \"SET a=:v1, ADD b :v2\",   # comma followed by ADD keyword\n    \"SET a=:v1, DELETE b\",    # comma followed by DELETE keyword\n    \"SET a=:v1, SET b=:v2\",   # comma followed by SET keyword\n]\n\nfor expr in exprs:\n    try:\n        UpdateExpressionParser.make(expr)\n        print(f\"PARSED OK: {expr!r}\")\n    except InvalidTokenException as e:\n        print(f\"RAISED: {expr!r} -> token={e.token!r} near={e.near!r}\")\n    except Exception as e:\n        print(f\"OTHER ERROR: {expr!r} -> {type(e).__name__}: {e}\")\nEOF\npython /tmp/repro_edge.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && cat > /tmp/repro_edge.py << 'EOF'\nfrom moto.dynamodb.parsing.expressions import UpdateExpressionParser\nfrom moto.dynamodb.exceptions import InvalidTokenException\n\nexprs = [\n    # valid cases\n    \"SET a=:v1, b=:v2\",\n    \"SET a=:v1, b=:v2 REMOVE c\",\n    \"SET a=:v1 REMOVE b\",\n    \"ADD a :v1, b :v2\",\n    \"REMOVE a, b\",\n    \"SET a = :v1 , b = :v2\",  # spaces around comma\n    # invalid cases (should raise)\n    \"SET a=:v1, b=:v2,\",      # trailing comma\n    \"SET a=:v1,\",             # trailing comma single\n    \"SET a=:v1, REMOVE b\",    # comma between clauses\n    \"ADD a :v1, b :v2,\",      # trailing comma add\n    \"REMOVE a, b,\",           # trailing comma remove\n    \"SET a=:v1, ADD b :v2\",   # comma followed by ADD keyword\n    \"SET a=:v1, DELETE b\",    # comma followed by DELETE keyword\n    \"SET a=:v1, SET b=:v2\",   # comma followed by SET keyword\n]\n\nfor expr in exprs:\n    try:\n        UpdateExpressionParser.make(expr)\n        print(f\"PARSED OK: {expr!r}\")\n    except InvalidTokenException as e:\n        print(f\"RAISED: {expr!r} -> token={e.token!r} near={e.near!r}\")\n    except Exception as e:\n        print(f\"OTHER ERROR: {expr!r} -> {type(e).__name__}: {e}\")\nEOF\npython /tmp/repro_edge.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-89e00ca6a25cc88d",
+          "created": 1787891602,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "The fix works end-to-end. The GOOD_EXPR passes and the BAD_EXPR (with trailing comma) now fails with a ValidationException, which is the expected behavior matching real DynamoDB.\n\nNow let me reconsider my fix once more. I want to make sure it's robust and handles all edge cases correctly.\n\nLet me think about the case where the comma is followed by a valid action of the same type but the action itself is invalid. For example:\n- `SET a=:v1, =:v2` - the second action is invalid (no path)\n\nWith my fix:\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`=`)\n4. Check `is_possible_start(=)` -> False (because `=` is not an ATTRIBUTE or ATTRIBUTE_NAME)\n5. Raise error\n\nGood, this is correct.\n\nLet me also think about the case where the comma is followed by a valid path but the value is missing:\n- `SET a=:v1, b` - the second action is missing a value\n\nWith my fix:\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`b`)\n4. Check `is_possible_start(b)` -> True\n5. No error, loop continues\n6. Parse `b` as a path\n7. Expect `=` but find `<EOF>`, raise error\n\nGood, this is correct.\n\nNow let me think about whether my fix is the best approach. Let me reconsider.\n\nActually, I realize there might be a subtle issue with my fix. Let me reconsider the case where the comma is followed by a keyword like `ADD`, `DELETE`, or `SET`.\n\nFor example: `SET a=:v1, ADD b :v2`\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`ADD`)\n4. Check `is_possible_start(ADD)` -> True (because `ADD` is an ATTRIBUTE token and not \"REMOVE\")\n5. No error, loop continues\n6. Try to parse `ADD` as a path.\n\nNow, the path parser would parse `ADD` as an attribute. Then it would check if the next token is a DOT or SELECTOR. The next token is `b`, which is not a DOT or SELECTOR. So the path is just `ADD`.\n\nThen the SetAction parser expects `=`. But the next token is `b`, not `=`. So it would raise an error.\n\nWait, let me check. The `UpdateExpressionSetActionParser._parse`:\n```python\ndef _parse(self):\n    \"\"\"\n    UpdateExpressionSetActionParser only gets called when expecting a SetAction. So we should be aggressive on\n    raising invalid Tokens.\n    \"\"\"\n    ...\n```\n\nLet me look at the full method.\n\nActually, let me just test this case.\n</think>\n\nThe fix works end-to-end. The GOOD_EXPR passes and the BAD_EXPR (with trailing comma) now fails with a ValidationException, matching real DynamoDB behavior.\n\nLet me test a few more edge cases to ensure robustness, particularly with keywords after commas.\n\n```mswea_bash_command\ncd /testbed && cat > /tmp/repro_edge.py << 'EOF'\nfrom moto.dynamodb.parsing.expressions import UpdateExpressionParser\nfrom moto.dynamodb.exceptions import InvalidTokenException\n\nexprs = [\n    # valid cases\n    \"SET a=:v1, b=:v2\",\n    \"SET a=:v1, b=:v2 REMOVE c\",\n    \"SET a=:v1 REMOVE b\",\n    \"ADD a :v1, b :v2\",\n    \"REMOVE a, b\",\n    \"SET a = :v1 , b = :v2\",  # spaces around comma\n    # invalid cases (should raise)\n    \"SET a=:v1, b=:v2,\",      # trailing comma\n    \"SET a=:v1,\",             # trailing comma single\n    \"SET a=:v1, REMOVE b\",    # comma between clauses\n    \"ADD a :v1, b :v2,\",      # trailing comma add\n    \"REMOVE a, b,\",           # trailing comma remove\n    \"SET a=:v1, ADD b :v2\",   # comma followed by ADD keyword\n    \"SET a=:v1, DELETE b\",    # comma followed by DELETE keyword\n    \"SET a=:v1, SET b=:v2\",   # comma followed by SET keyword\n]\n\nfor expr in exprs:\n    try:\n        UpdateExpressionParser.make(expr)\n        print(f\"PARSED OK: {expr!r}\")\n    except InvalidTokenException as e:\n        print(f\"RAISED: {expr!r} -> token={e.token!r} near={e.near!r}\")\n    except Exception as e:\n        print(f\"OTHER ERROR: {expr!r} -> {type(e).__name__}: {e}\")\nEOF\npython /tmp/repro_edge.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 1107,
+            "prompt_tokens": 42618,
+            "total_tokens": 43725,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787891619.6879272
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nPARSED OK: 'SET a=:v1, b=:v2'\nPARSED OK: 'SET a=:v1, b=:v2 REMOVE c'\nPARSED OK: 'SET a=:v1 REMOVE b'\nPARSED OK: 'ADD a :v1, b :v2'\nPARSED OK: 'REMOVE a, b'\nPARSED OK: 'SET a = :v1 , b = :v2'\nRAISED: 'SET a=:v1, b=:v2,' -> token='<EOF>' near=','\nRAISED: 'SET a=:v1,' -> token='<EOF>' near=','\nRAISED: 'SET a=:v1, REMOVE b' -> token='REMOVE' near=', REMOVE b'\nRAISED: 'ADD a :v1, b :v2,' -> token='<EOF>' near=','\nRAISED: 'REMOVE a, b,' -> token='<EOF>' near=','\nRAISED: 'SET a=:v1, ADD b :v2' -> token='b' near='ADD b :v2'\nRAISED: 'SET a=:v1, DELETE b' -> token='b' near='DELETE b'\nRAISED: 'SET a=:v1, SET b=:v2' -> token='b' near='SET b='\n</output>",
+      "extra": {
+        "raw_output": "PARSED OK: 'SET a=:v1, b=:v2'\nPARSED OK: 'SET a=:v1, b=:v2 REMOVE c'\nPARSED OK: 'SET a=:v1 REMOVE b'\nPARSED OK: 'ADD a :v1, b :v2'\nPARSED OK: 'REMOVE a, b'\nPARSED OK: 'SET a = :v1 , b = :v2'\nRAISED: 'SET a=:v1, b=:v2,' -> token='<EOF>' near=','\nRAISED: 'SET a=:v1,' -> token='<EOF>' near=','\nRAISED: 'SET a=:v1, REMOVE b' -> token='REMOVE' near=', REMOVE b'\nRAISED: 'ADD a :v1, b :v2,' -> token='<EOF>' near=','\nRAISED: 'REMOVE a, b,' -> token='<EOF>' near=','\nRAISED: 'SET a=:v1, ADD b :v2' -> token='b' near='ADD b :v2'\nRAISED: 'SET a=:v1, DELETE b' -> token='b' near='DELETE b'\nRAISED: 'SET a=:v1, SET b=:v2' -> token='b' near='SET b='\n",
+        "returncode": 0,
+        "timestamp": 1787891620.766532,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "All the edge cases are handled correctly:\n- Valid cases parse OK\n- Trailing commas raise errors\n- Commas between clauses raise errors\n- Commas followed by keywords (ADD, DELETE, SET) raise errors (because the keyword is parsed as a path, then the parser expects `=` but finds the next token)\n\nWait, let me look at the `SET a=:v1, ADD b :v2` case more carefully. The error is `token='b' near='ADD b :v2'`. This means the parser parsed `ADD` as a path, then expected `=` but found `b`. So it raised an error. Good.\n\nBut wait, is this the correct error? In real DynamoDB, `SET a=:v1, ADD b :v2` would be rejected because `ADD` is a keyword, not a valid attribute name. But the error message might be different.\n\nActually, the error message doesn't need to match exactly. The important thing is that the expression is rejected.\n\nLet me now think about whether my fix is the best approach. Let me reconsider.\n\nActually, I realize that my fix is correct and handles all the edge cases properly. Let me now run the full test suite one more time to make sure everything is good.\n\nActually, wait. Let me reconsider the case `SET a=:v1, ADD b :v2`. With my fix:\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`ADD`)\n4. Check `is_possible_start(ADD)` -> True (because `ADD` is an ATTRIBUTE token and not \"REMOVE\")\n5. No error, loop continues\n6. Try to parse `ADD` as a path. The path parser parses `ADD` as an attribute.\n7. The SetAction parser expects `=` but finds `b`, so it raises an error.\n\nSo the error is raised, but it's not because of my fix. It's because the parser can't parse `ADD b :v2` as a valid SetAction.\n\nThis is correct behavior. The expression is rejected.\n\nBut wait, I'm now wondering if my fix is even necessary for this case. Without my fix, would `SET a=:v1, ADD b :v2` be rejected?\n\nLet me check. Without my fix:\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`ADD`)\n4. Loop back, `is_possible_start(ADD)` -> True, enter loop\n5. Try to parse `ADD` as a path. The path parser parses `ADD` as an attribute.\n6. The SetAction parser expects `=` but finds `b`, so it raises an error.\n\nSo even without my fix, `SET a=:v1, ADD b :v2` would be rejected. My fix doesn't change this behavior.\n\nOK so my fix is correct and handles all the edge cases properly.\n\nLet me now run the full test suite one more time to make sure everything is good.\n\nActually, I already ran the full test suite and all tests passed. Let me just double-check by running the expression tests one more time.\n\nActually, let me reconsider the approach once more. I want to make sure my fix is the minimal and correct change.\n\nThe issue is: the trailing comma is accepted. My fix rejects the trailing comma.\n\nMy fix is:\n```python\nif self.get_next_token_type() == Token.COMMA:\n    self.goto_next_significant_token()\n    if not self._nested_expression_parser_class().is_possible_start(\n        self.get_next_token()\n    ):\n        self.raise_unexpected_token()\nelse:\n    break\n```\n\nThis is a clean and minimal change. It checks if the next token after the comma is a valid start of an action. If not, it raises an error.\n\nI'm confident that my fix is correct.\n\nLet me now create the patch and submit it.\n\nWait, actually, let me reconsider once more. I want to make sure that the error message is reasonable.\n\nFor the trailing comma case `SET a=:v1, b=:v2,`:\n- The error is `token='<EOF>' near=','`\n\nThis is a reasonable error message. It indicates that the parser found an unexpected end of expression after a comma.\n\nFor the comma between clauses case `SET a=:v1, REMOVE b`:\n- The error is `token='REMOVE' near=', REMOVE b'`\n\nThis is also a reasonable error message. It indicates that the parser found an unexpected `REMOVE` token after a comma.\n\nOK, I'm confident that my fix is correct. Let me now create the patch and submit it.\n\nActually, wait. Let me reconsider the approach once more. I want to make sure that my fix doesn't break any valid expressions.\n\nLet me think about all the valid expressions:\n1. `SET a=:v1` - single action, no comma. My fix doesn't affect this.\n2. `SET a=:v1, b=:v2` - two actions, comma between them. My fix checks `is_possible_start(b)` after the comma, which is True. So no error.\n3. `SET a=:v1, b=:v2 REMOVE c` - two SET actions and one REMOVE action. My fix checks `is_possible_start(b)` after the comma, which is True. So no error.\n4. `SET a=:v1 REMOVE b` - one SET action and one REMOVE action, no comma. My fix doesn't affect this.\n5. `ADD a :v1, b :v2` - two ADD actions, comma between them. My fix checks `is_possible_start(b)` after the comma, which is True. So no error.\n6. `REMOVE a, b` - two REMOVE actions, comma between them. My fix checks `is_possible_start(b)` after the comma, which is True. So no error.\n\nAll valid expressions are handled correctly.\n\nNow let me think about the invalid expressions:\n1. `SET a=:v1, b=:v2,` - trailing comma. My fix checks `is_possible_start(<EOF>)` after the comma, which is False. So it raises an error.\n2. `SET a=:v1,` - trailing comma single. My fix checks `is_possible_start(<EOF>)` after the comma, which is False. So it raises an error.\n3. `SET a=:v1, REMOVE b` - comma between clauses. My fix checks `is_possible_start(REMOVE)` after the comma, which is False. So it raises an error.\n4. `ADD a :v1, b :v2,` - trailing comma add. My fix checks `is_possible_start(<EOF>)` after the comma, which is False. So it raises an error.\n5. `REMOVE a, b,` - trailing comma remove. My fix checks `is_possible_start(<EOF>)` after the comma, which is False. So it raises an error.\n\nAll invalid expressions are handled correctly.\n\nI'm confident that my fix is correct. Let me now create the patch and submit it.\n\nActually, let me reconsider once more. I want to make sure that the fix is consistent with the codebase style.\n\nLooking at the code, the fix uses `self.raise_unexpected_token()` which is the standard way to raise an error in this codebase. The fix also uses `self._nested_expression_parser_class().is_possible_start(self.get_next_token())` which is consistent with the while loop condition.\n\nSo the fix is consistent with the codebase style.\n\nLet me now create the patch and submit it.\n\nWait, actually, I want to reconsider the approach once more. Let me think about whether there's a cleaner way to implement the fix.\n\nActually, I think my fix is the cleanest and most minimal change. It directly addresses the issue by checking if the next token after the comma is a valid start of an action.\n\nLet me now create the patch and submit it.\n\nActually, let me reconsider the error message once more. For the trailing comma case, the error is `token='<EOF>' near=','`. This is a reasonable error message.\n\nBut wait, let me check what the real DynamoDB error message looks like. The PR description says:\n> The real DynamoDB does not allow this expression to contain a trailing comma, but Moto does allow this.\n\nIt doesn't specify the exact error message. So my error message is fine.\n\nOK, I'm confident that my fix is correct. Let me now create the patch and submit it.\n\nLet me first verify the patch.\n</think>\n\nAll edge cases are handled correctly. Let me verify the final state of my change and run the full test suite one more time to confirm everything works.\n\n```mswea_bash_command\ncd /testbed && git diff moto/dynamodb/parsing/expressions.py && echo \"---TESTS---\" && python -m pytest tests/test_dynamodb/test_dynamodb_expressions.py tests/test_dynamodb/test_dynamodb.py tests/test_dynamodb/test_dynamodb_table_without_range_key.py tests/test_dynamodb/test_dynamodb_table_with_range_key.py -q 2>&1 | tail -5\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && git diff moto/dynamodb/parsing/expressions.py && echo \"---TESTS---\" && python -m pytest tests/test_dynamodb/test_dynamodb_expressions.py tests/test_dynamodb/test_dynamodb.py tests/test_dynamodb/test_dynamodb_table_without_range_key.py tests/test_dynamodb/test_dynamodb_table_with_range_key.py -q 2>&1 | tail -5"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b1b98545263626e9",
+          "created": 1787891620,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "All the edge cases are handled correctly:\n- Valid cases parse OK\n- Trailing commas raise errors\n- Commas between clauses raise errors\n- Commas followed by keywords (ADD, DELETE, SET) raise errors (because the keyword is parsed as a path, then the parser expects `=` but finds the next token)\n\nWait, let me look at the `SET a=:v1, ADD b :v2` case more carefully. The error is `token='b' near='ADD b :v2'`. This means the parser parsed `ADD` as a path, then expected `=` but found `b`. So it raised an error. Good.\n\nBut wait, is this the correct error? In real DynamoDB, `SET a=:v1, ADD b :v2` would be rejected because `ADD` is a keyword, not a valid attribute name. But the error message might be different.\n\nActually, the error message doesn't need to match exactly. The important thing is that the expression is rejected.\n\nLet me now think about whether my fix is the best approach. Let me reconsider.\n\nActually, I realize that my fix is correct and handles all the edge cases properly. Let me now run the full test suite one more time to make sure everything is good.\n\nActually, wait. Let me reconsider the case `SET a=:v1, ADD b :v2`. With my fix:\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`ADD`)\n4. Check `is_possible_start(ADD)` -> True (because `ADD` is an ATTRIBUTE token and not \"REMOVE\")\n5. No error, loop continues\n6. Try to parse `ADD` as a path. The path parser parses `ADD` as an attribute.\n7. The SetAction parser expects `=` but finds `b`, so it raises an error.\n\nSo the error is raised, but it's not because of my fix. It's because the parser can't parse `ADD b :v2` as a valid SetAction.\n\nThis is correct behavior. The expression is rejected.\n\nBut wait, I'm now wondering if my fix is even necessary for this case. Without my fix, would `SET a=:v1, ADD b :v2` be rejected?\n\nLet me check. Without my fix:\n1. Parse `SET`\n2. Parse `a=:v1`\n3. See comma, move to next significant token (`ADD`)\n4. Loop back, `is_possible_start(ADD)` -> True, enter loop\n5. Try to parse `ADD` as a path. The path parser parses `ADD` as an attribute.\n6. The SetAction parser expects `=` but finds `b`, so it raises an error.\n\nSo even without my fix, `SET a=:v1, ADD b :v2` would be rejected. My fix doesn't change this behavior.\n\nOK so my fix is correct and handles all the edge cases properly.\n\nLet me now run the full test suite one more time to make sure everything is good.\n\nActually, I already ran the full test suite and all tests passed. Let me just double-check by running the expression tests one more time.\n\nActually, let me reconsider the approach once more. I want to make sure my fix is the minimal and correct change.\n\nThe issue is: the trailing comma is accepted. My fix rejects the trailing comma.\n\nMy fix is:\n```python\nif self.get_next_token_type() == Token.COMMA:\n    self.goto_next_significant_token()\n    if not self._nested_expression_parser_class().is_possible_start(\n        self.get_next_token()\n    ):\n        self.raise_unexpected_token()\nelse:\n    break\n```\n\nThis is a clean and minimal change. It checks if the next token after the comma is a valid start of an action. If not, it raises an error.\n\nI'm confident that my fix is correct.\n\nLet me now create the patch and submit it.\n\nWait, actually, let me reconsider once more. I want to make sure that the error message is reasonable.\n\nFor the trailing comma case `SET a=:v1, b=:v2,`:\n- The error is `token='<EOF>' near=','`\n\nThis is a reasonable error message. It indicates that the parser found an unexpected end of expression after a comma.\n\nFor the comma between clauses case `SET a=:v1, REMOVE b`:\n- The error is `token='REMOVE' near=', REMOVE b'`\n\nThis is also a reasonable error message. It indicates that the parser found an unexpected `REMOVE` token after a comma.\n\nOK, I'm confident that my fix is correct. Let me now create the patch and submit it.\n\nActually, wait. Let me reconsider the approach once more. I want to make sure that my fix doesn't break any valid expressions.\n\nLet me think about all the valid expressions:\n1. `SET a=:v1` - single action, no comma. My fix doesn't affect this.\n2. `SET a=:v1, b=:v2` - two actions, comma between them. My fix checks `is_possible_start(b)` after the comma, which is True. So no error.\n3. `SET a=:v1, b=:v2 REMOVE c` - two SET actions and one REMOVE action. My fix checks `is_possible_start(b)` after the comma, which is True. So no error.\n4. `SET a=:v1 REMOVE b` - one SET action and one REMOVE action, no comma. My fix doesn't affect this.\n5. `ADD a :v1, b :v2` - two ADD actions, comma between them. My fix checks `is_possible_start(b)` after the comma, which is True. So no error.\n6. `REMOVE a, b` - two REMOVE actions, comma between them. My fix checks `is_possible_start(b)` after the comma, which is True. So no error.\n\nAll valid expressions are handled correctly.\n\nNow let me think about the invalid expressions:\n1. `SET a=:v1, b=:v2,` - trailing comma. My fix checks `is_possible_start(<EOF>)` after the comma, which is False. So it raises an error.\n2. `SET a=:v1,` - trailing comma single. My fix checks `is_possible_start(<EOF>)` after the comma, which is False. So it raises an error.\n3. `SET a=:v1, REMOVE b` - comma between clauses. My fix checks `is_possible_start(REMOVE)` after the comma, which is False. So it raises an error.\n4. `ADD a :v1, b :v2,` - trailing comma add. My fix checks `is_possible_start(<EOF>)` after the comma, which is False. So it raises an error.\n5. `REMOVE a, b,` - trailing comma remove. My fix checks `is_possible_start(<EOF>)` after the comma, which is False. So it raises an error.\n\nAll invalid expressions are handled correctly.\n\nI'm confident that my fix is correct. Let me now create the patch and submit it.\n\nActually, let me reconsider once more. I want to make sure that the fix is consistent with the codebase style.\n\nLooking at the code, the fix uses `self.raise_unexpected_token()` which is the standard way to raise an error in this codebase. The fix also uses `self._nested_expression_parser_class().is_possible_start(self.get_next_token())` which is consistent with the while loop condition.\n\nSo the fix is consistent with the codebase style.\n\nLet me now create the patch and submit it.\n\nWait, actually, I want to reconsider the approach once more. Let me think about whether there's a cleaner way to implement the fix.\n\nActually, I think my fix is the cleanest and most minimal change. It directly addresses the issue by checking if the next token after the comma is a valid start of an action.\n\nLet me now create the patch and submit it.\n\nActually, let me reconsider the error message once more. For the trailing comma case, the error is `token='<EOF>' near=','`. This is a reasonable error message.\n\nBut wait, let me check what the real DynamoDB error message looks like. The PR description says:\n> The real DynamoDB does not allow this expression to contain a trailing comma, but Moto does allow this.\n\nIt doesn't specify the exact error message. So my error message is fine.\n\nOK, I'm confident that my fix is correct. Let me now create the patch and submit it.\n\nLet me first verify the patch.\n</think>\n\nAll edge cases are handled correctly. Let me verify the final state of my change and run the full test suite one more time to confirm everything works.\n\n```mswea_bash_command\ncd /testbed && git diff moto/dynamodb/parsing/expressions.py && echo \"---TESTS---\" && python -m pytest tests/test_dynamodb/test_dynamodb_expressions.py tests/test_dynamodb/test_dynamodb.py tests/test_dynamodb/test_dynamodb_table_without_range_key.py tests/test_dynamodb/test_dynamodb_table_with_range_key.py -q 2>&1 | tail -5\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 1987,
+            "prompt_tokens": 44042,
+            "total_tokens": 46029,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787891649.976268
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n---TESTS---\n  /testbed/moto/dynamodb/models/__init__.py:1118: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).\n    self.creation_date_time = datetime.datetime.utcnow()\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n257 passed, 2240 warnings in 17.87s\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n---TESTS---\n  /testbed/moto/dynamodb/models/__init__.py:1118: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).\n    self.creation_date_time = datetime.datetime.utcnow()\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n257 passed, 2240 warnings in 17.87s\n",
+        "returncode": 0,
+        "timestamp": 1787891669.3535511,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "All 257 tests pass. My fix is correct and minimal. Let me now create the patch and submit it.\n\nLet me reconsider the fix once more. The fix is in the `UpdateExpressionActionsParser._parse` method. This method is shared by SET, ADD, REMOVE, and DELETE action parsers.\n\nThe fix checks if the next token after a comma is a valid start of an action. If not, it raises an error. This correctly rejects:\n1. Trailing commas\n2. Commas between different clause types\n\nBoth of these are invalid in real DynamoDB.\n\nI'm confident that my fix is correct. Let me now create the patch and submit it.\n\nLet me create the patch file.\n</think>\n\nAll 257 tests pass. My fix is correct and minimal. Let me now create the patch file.\n\n```mswea_bash_command\ncd /testbed && git diff -- moto/dynamodb/parsing/expressions.py > patch.txt && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && git diff -- moto/dynamodb/parsing/expressions.py > patch.txt && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-9125a85399f04c5a",
+          "created": 1787891669,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "All 257 tests pass. My fix is correct and minimal. Let me now create the patch and submit it.\n\nLet me reconsider the fix once more. The fix is in the `UpdateExpressionActionsParser._parse` method. This method is shared by SET, ADD, REMOVE, and DELETE action parsers.\n\nThe fix checks if the next token after a comma is a valid start of an action. If not, it raises an error. This correctly rejects:\n1. Trailing commas\n2. Commas between different clause types\n\nBoth of these are invalid in real DynamoDB.\n\nI'm confident that my fix is correct. Let me now create the patch and submit it.\n\nLet me create the patch file.\n</think>\n\nAll 257 tests pass. My fix is correct and minimal. Let me now create the patch file.\n\n```mswea_bash_command\ncd /testbed && git diff -- moto/dynamodb/parsing/expressions.py > patch.txt && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 212,
+            "prompt_tokens": 46354,
+            "total_tokens": 46566,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787891675.4503803
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n</output>",
+      "extra": {
+        "raw_output": "diff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n",
+        "returncode": 0,
+        "timestamp": 1787891675.8195274,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "The patch looks good. It only contains the change to `moto/dynamodb/parsing/expressions.py`. Let me verify the patch one more time and then submit it.\n\nThe patch:\n- Only modifies `moto/dynamodb/parsing/expressions.py`\n- The change is in the `UpdateExpressionActionsParser._parse` method\n- It adds a check after consuming a comma to verify that the next token is a valid start of an action\n- If not, it raises an error\n\nThis is a clean and minimal fix that addresses the trailing comma issue.\n\nLet me submit the patch.\n</think>\n\nThe patch looks good. It only contains the change to `moto/dynamodb/parsing/expressions.py`. Let me verify the patch one more time to confirm it only contains my intended change.\n\n```mswea_bash_command\ncd /testbed && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8d3caf5775634bfb",
+          "created": 1787891675,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "The patch looks good. It only contains the change to `moto/dynamodb/parsing/expressions.py`. Let me verify the patch one more time and then submit it.\n\nThe patch:\n- Only modifies `moto/dynamodb/parsing/expressions.py`\n- The change is in the `UpdateExpressionActionsParser._parse` method\n- It adds a check after consuming a comma to verify that the next token is a valid start of an action\n- If not, it raises an error\n\nThis is a clean and minimal fix that addresses the trailing comma issue.\n\nLet me submit the patch.\n</think>\n\nThe patch looks good. It only contains the change to `moto/dynamodb/parsing/expressions.py`. Let me verify the patch one more time to confirm it only contains my intended change.\n\n```mswea_bash_command\ncd /testbed && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 186,
+            "prompt_tokens": 46778,
+            "total_tokens": 46964,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787891681.697138
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n</output>",
+      "extra": {
+        "raw_output": "diff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n",
+        "returncode": 0,
+        "timestamp": 1787891682.0225272,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "The patch is verified. It only contains my intended change to `moto/dynamodb/parsing/expressions.py`. The headers show `--- a/` and `+++ b/` paths correctly.\n\nLet me submit the patch now.\n</think>\n\nThe patch is verified. It only contains my intended change to `moto/dynamodb/parsing/expressions.py` with proper `--- a/` and `+++ b/` headers. \n\nMy fix addresses the issue by adding a check in the `UpdateExpressionActionsParser._parse` method: after consuming a comma, it verifies that the next token is a valid start of an action. If not (e.g., end of expression for a trailing comma, or a different clause keyword), it raises an error. This correctly rejects trailing commas while still allowing valid expressions with commas between actions of the same type.\n\nLet me submit the patch.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8e9d3b84fa7ddcc0",
+          "created": 1787891682,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "The patch is verified. It only contains my intended change to `moto/dynamodb/parsing/expressions.py`. The headers show `--- a/` and `+++ b/` paths correctly.\n\nLet me submit the patch now.\n</think>\n\nThe patch is verified. It only contains my intended change to `moto/dynamodb/parsing/expressions.py` with proper `--- a/` and `+++ b/` headers. \n\nMy fix addresses the issue by adding a check in the `UpdateExpressionActionsParser._parse` method: after consuming a comma, it verifies that the next token is a valid start of an action. If not (e.g., end of expression for a trailing comma, or a different clause keyword), it raises an error. This correctly rejects trailing commas while still allowing valid expressions with commas between actions of the same type.\n\nLet me submit the patch.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 205,
+            "prompt_tokens": 47176,
+            "total_tokens": 47381,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787891688.225865
+      }
+    },
+    {
+      "role": "exit",
+      "content": "diff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n",
+      "extra": {
+        "exit_status": "Submitted",
+        "submission": "diff --git a/moto/dynamodb/parsing/expressions.py b/moto/dynamodb/parsing/expressions.py\nindex 98354438f..ced0d790d 100644\n--- a/moto/dynamodb/parsing/expressions.py\n+++ b/moto/dynamodb/parsing/expressions.py\n@@ -555,6 +555,10 @@ class UpdateExpressionActionsParser(ExpressionParser, NestableExpressionParserMi\n             self.skip_white_space()\n             if self.get_next_token_type() == Token.COMMA:\n                 self.goto_next_significant_token()\n+                if not self._nested_expression_parser_class().is_possible_start(\n+                    self.get_next_token()\n+                ):\n+                    self.raise_unexpected_token()\n             else:\n                 break\n \n"
       }
     }
   ],
