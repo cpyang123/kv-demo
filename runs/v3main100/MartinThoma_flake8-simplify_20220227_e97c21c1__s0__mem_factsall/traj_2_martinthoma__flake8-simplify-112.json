@@ -1,0 +1,792 @@
+{
+  "info": {
+    "model_stats": {
+      "instance_cost": 0.0,
+      "api_calls": 10
+    },
+    "config": {
+      "agent": {
+        "system_template": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history.",
+        "instance_template": "<pr_description>\nConsider the following PR description:\n{{task}}\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /flake8-simplify (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>\n",
+        "step_limit": 100,
+        "cost_limit": 1000000000.0,
+        "wall_time_limit_seconds": 0,
+        "max_consecutive_format_errors": 3,
+        "output_path": "/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory/chainswe/runs/v3main100/MartinThoma_flake8-simplify_20220227_e97c21c1__s0__mem_factsall/traj_2_martinthoma__flake8-simplify-112.json"
+      },
+      "agent_type": "minisweagent.agents.default.DefaultAgent",
+      "model": {
+        "model_name": "openai/coder-next",
+        "model_kwargs": {
+          "api_key": "EMPTY",
+          "temperature": 0.0,
+          "max_tokens": 16384,
+          "extra_body": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "api_base": "http://127.0.0.1:8868/v1"
+        },
+        "litellm_model_registry": null,
+        "set_cache_control": null,
+        "cost_tracking": "ignore_errors",
+        "format_error_template": "{% if finish_reason is defined and finish_reason in [\"length\", \"tool_calls\"] -%}\nYour previous response reached the output token limit (finish_reason={{ finish_reason }}) before you produced a complete action, so it was cut off. Respond more concisely and provide exactly one action in the required format. If you need to think more, do so briefly.\n{%- else -%}\nFormat error:\n\n<error>\n{{error}}\n</error>\n\nHere is general guidance on how to format your response:\n\nPlease always provide EXACTLY ONE action in triple backticks, found {{actions|length}} actions.\n\nPlease format your action in triple backticks as shown in <response_example>.\n\n<response_example>\nHere are some thoughts about why you want to perform the action.\n\n```mswea_bash_command\n<action>\n```\n</response_example>\n\nIf you have completed your assignment, please consult the first message about how to\nsubmit your solution (you will not be able to continue working on this task after that).\n{%- endif %}\n",
+        "observation_template": "{% if output.exception_info -%}\n<exception>{{output.exception_info}}</exception>\n{% endif -%}\n<returncode>{{output.returncode}}</returncode>\n{% if output.output | length < 10000 -%}\n<output>\n{{ output.output -}}\n</output>\n{%- else -%}\n<warning>\nThe output of your last command was too long.\nPlease try a different command that produces less output.\nIf you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.\nIf you're using grep or find and it produced too much output, you can use a more selective search pattern.\nIf you really need to see something from the full command's output, you can redirect output to a file and then search in that file.\n</warning>\n{%- set elided_chars = output.output | length - 10000 -%}\n<output_head>\n{{ output.output[:5000] }}\n</output_head>\n<elided_chars>\n{{ elided_chars }} characters elided\n</elided_chars>\n<output_tail>\n{{ output.output[-5000:] }}\n</output_tail>\n{%- endif -%}\n",
+        "multimodal_regex": "",
+        "action_regex": "```mswea_bash_command\\s*\\n(.*?)\\n```"
+      },
+      "model_type": "minisweagent.models.litellm_textbased_model.LitellmTextbasedModel",
+      "environment": {
+        "image": "/gpfs/radev/scratch/dijk/pl662/chainswe_sifs/swerebenchv2__martinthoma-flake8-simplify__109-e97c21c.sif",
+        "cwd": "/flake8-simplify",
+        "env": {},
+        "forward_env": [],
+        "timeout": 300,
+        "executable": "apptainer",
+        "sandbox_build_retries": 3,
+        "global_args": [
+          "--quiet"
+        ],
+        "exec_args": [
+          "--contain",
+          "--cleanenv",
+          "--fakeroot"
+        ]
+      },
+      "environment_type": "harness.env.RepoEnv"
+    },
+    "mini_version": "2.4.5",
+    "exit_status": "Submitted",
+    "submission": "diff --git a/flake8_simplify/rules/ast_if.py b/flake8_simplify/rules/ast_if.py\nindex 1756458..beaffa9 100644\n--- a/flake8_simplify/rules/ast_if.py\n+++ b/flake8_simplify/rules/ast_if.py\n@@ -7,11 +7,37 @@ from flake8_simplify.constants import AST_CONST_TYPES, BOOL_CONST_TYPES\n from flake8_simplify.utils import get_if_body_pairs, is_body_same, to_source\n \n \n+def is_main_check(node: ast.If) -> bool:\n+    \"\"\"Check if the if-statement is ``if __name__ == \"__main__\":``.\"\"\"\n+    test = node.test\n+    if not isinstance(test, ast.Compare):\n+        return False\n+    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):\n+        return False\n+    if len(test.comparators) != 1:\n+        return False\n+    left = test.left\n+    right = test.comparators[0]\n+    if not (\n+        isinstance(left, ast.Name)\n+        and left.id == \"__name__\"\n+        and isinstance(right, ast.Constant)\n+        and right.value == \"__main__\"\n+    ):\n+        return False\n+    return True\n+\n+\n def get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n     \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n     SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n     errors: List[Tuple[int, int, str]] = []\n \n+    # ``if __name__ == \"__main__\":`` is a special case that should not be\n+    # combined with the nested if-statement.\n+    if is_main_check(node):\n+        return errors\n+\n     # ## Pattern 1\n     # if a: <---\n     #     if b: <---\n"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history."
+    },
+    {
+      "role": "user",
+      "content": "<pr_description>\nConsider the following PR description:\n<memory_context>\nNotes from earlier work sessions on this repository:\n[martinthoma__flake8-simplify-109__f1]\nApproaches coding tasks by first exploring the codebase structure and locating relevant rule implementations before making changes\n\n[martinthoma__flake8-simplify-109__f2]\nPrefers to reproduce issues with standalone scripts before implementing fixes\n\n[martinthoma__flake8-simplify-109__f3]\nPrefers minimal, clean code changes that are consistent with existing codebase style\n\n[martinthoma__flake8-simplify-109__f4]\nRuns existing test suites after making changes to ensure nothing is broken\n\n[martinthoma__flake8-simplify-109__f5]\nDemonstrates knowledge of Python AST manipulation, flake8 plugin development, and the flake8-simplify codebase\n\n[martinthoma__flake8-simplify-109__f6]\nUses bash commands and Python scripts to debug and verify code changes\n\n[martinthoma__flake8-simplify-109__f7]\nConsiders edge cases such as nested loops and while loops when fixing linting rules\n</memory_context>\n\n[Adjust Rule] SIM102: 'if __name__ == \"__main__\"' does not count\n## Desired change\r\n\r\n* **Rule(s)**: SIM102\r\n* **Adjustment**: Ignore `if __name__ == \"__main__\"`\r\n\r\n## Explanation\r\n\r\nthe check `if __name__ == \"__main__\"` is special. People recognize it as a special part of a script. Although one can combine things, I think it's better not to do it.\r\n\r\n## Example\r\n\r\nThe following should not trigger SIM102\r\n\r\n```python\r\nif __name__ == \"__main__\":\r\n    if foo(): ...\r\n```\r\n\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /flake8-simplify (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>"
+    },
+    {
+      "content": "THOUGHT: Let me start by exploring the repository structure to understand the codebase.\n\n```mswea_bash_command\ncd /flake8-simplify && ls -la && find . -name \"*.py\" | grep -i \"102\\|nested\" | head\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && ls -la && find . -name \"*.py\" | grep -i \"102\\|nested\" | head"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-9b8fc8531bbb548f",
+          "created": 1787967073,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me start by exploring the repository structure to understand the codebase.\n\n```mswea_bash_command\ncd /flake8-simplify && ls -la && find . -name \"*.py\" | grep -i \"102\\|nested\" | head\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 62,
+            "prompt_tokens": 1857,
+            "total_tokens": 1919,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967074.2664053
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ntotal 200\ndrwxrwxrwx 9 pl662 dijk   4096 Aug 29 01:31 .\ndrwxr-xr-x 1 pl662 dijk     80 Aug 29 01:31 ..\n-rw-r--r-- 1 pl662 dijk 102400 Aug 29 01:30 .coverage\n-rw-r--r-- 1 pl662 dijk    507 Feb 21  2026 .coveragerc\ndrwxrwxrwx 8 pl662 dijk   4096 Aug 29 01:31 .git\ndrwxrwxrwx 4 pl662 dijk   4096 Feb 21  2026 .github\n-rw-r--r-- 1 pl662 dijk   1911 Feb 21  2026 .gitignore\n-rw-r--r-- 1 pl662 dijk    289 Feb 21  2026 .isort.cfg\n-rw-r--r-- 1 pl662 dijk   1156 Feb 21  2026 .pre-commit-config.yaml\ndrwxr-xr-x 3 pl662 dijk   4096 Aug 29 01:30 .pytest_cache\n-rw-r--r-- 1 pl662 dijk    468 Feb 21  2026 CHANGELOG.md\n-rw-r--r-- 1 pl662 dijk   1069 Feb 21  2026 LICENSE\n-rw-r--r-- 1 pl662 dijk    547 Feb 21  2026 Makefile\n-rw-r--r-- 1 pl662 dijk  13076 Feb 21  2026 README.md\ndrwxrwxrwx 3 pl662 dijk   4096 Feb 21  2026 flake8_simplify\ndrwxr-xr-x 2 pl662 dijk   4096 Feb 21  2026 flake8_simplify.egg-info\n-rwxrwxrwx 1 pl662 dijk     58 Feb 21  2026 mutmut-test.sh\n-rw-r--r-- 1 pl662 dijk    546 Aug 29 01:31 patch.txt\n-rw-r--r-- 1 pl662 dijk     56 Feb 21  2026 pyproject.toml\ndrwxrwxrwx 2 pl662 dijk   4096 Feb 21  2026 requirements\n-rw-r--r-- 1 pl662 dijk   2118 Feb 21  2026 setup.cfg\n-rw-r--r-- 1 pl662 dijk    116 Feb 21  2026 setup.py\ndrwxrwxrwx 3 pl662 dijk   4096 Aug 29 01:30 tests\n-rw-r--r-- 1 pl662 dijk    300 Feb 21  2026 tox.ini\n</output>",
+      "extra": {
+        "raw_output": "total 200\ndrwxrwxrwx 9 pl662 dijk   4096 Aug 29 01:31 .\ndrwxr-xr-x 1 pl662 dijk     80 Aug 29 01:31 ..\n-rw-r--r-- 1 pl662 dijk 102400 Aug 29 01:30 .coverage\n-rw-r--r-- 1 pl662 dijk    507 Feb 21  2026 .coveragerc\ndrwxrwxrwx 8 pl662 dijk   4096 Aug 29 01:31 .git\ndrwxrwxrwx 4 pl662 dijk   4096 Feb 21  2026 .github\n-rw-r--r-- 1 pl662 dijk   1911 Feb 21  2026 .gitignore\n-rw-r--r-- 1 pl662 dijk    289 Feb 21  2026 .isort.cfg\n-rw-r--r-- 1 pl662 dijk   1156 Feb 21  2026 .pre-commit-config.yaml\ndrwxr-xr-x 3 pl662 dijk   4096 Aug 29 01:30 .pytest_cache\n-rw-r--r-- 1 pl662 dijk    468 Feb 21  2026 CHANGELOG.md\n-rw-r--r-- 1 pl662 dijk   1069 Feb 21  2026 LICENSE\n-rw-r--r-- 1 pl662 dijk    547 Feb 21  2026 Makefile\n-rw-r--r-- 1 pl662 dijk  13076 Feb 21  2026 README.md\ndrwxrwxrwx 3 pl662 dijk   4096 Feb 21  2026 flake8_simplify\ndrwxr-xr-x 2 pl662 dijk   4096 Feb 21  2026 flake8_simplify.egg-info\n-rwxrwxrwx 1 pl662 dijk     58 Feb 21  2026 mutmut-test.sh\n-rw-r--r-- 1 pl662 dijk    546 Aug 29 01:31 patch.txt\n-rw-r--r-- 1 pl662 dijk     56 Feb 21  2026 pyproject.toml\ndrwxrwxrwx 2 pl662 dijk   4096 Feb 21  2026 requirements\n-rw-r--r-- 1 pl662 dijk   2118 Feb 21  2026 setup.cfg\n-rw-r--r-- 1 pl662 dijk    116 Feb 21  2026 setup.py\ndrwxrwxrwx 3 pl662 dijk   4096 Aug 29 01:30 tests\n-rw-r--r-- 1 pl662 dijk    300 Feb 21  2026 tox.ini\n",
+        "returncode": 0,
+        "timestamp": 1787967074.4732327,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me look at the flake8_simplify directory and find the SIM102 rule.\n\n```mswea_bash_command\ncd /flake8-simplify && ls flake8_simplify/ && grep -rn \"SIM102\" flake8_simplify/\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && ls flake8_simplify/ && grep -rn \"SIM102\" flake8_simplify/"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-96eb3aaf771de413",
+          "created": 1787967074,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me look at the flake8_simplify directory and find the SIM102 rule.\n\n```mswea_bash_command\ncd /flake8-simplify && ls flake8_simplify/ && grep -rn \"SIM102\" flake8_simplify/\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 66,
+            "prompt_tokens": 2754,
+            "total_tokens": 2820,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967075.4612982
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n__init__.py\nconstants.py\nrules\nutils.py\nflake8_simplify/rules/ast_if.py:12:    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\nflake8_simplify/rules/ast_if.py:34:    errors.append((node.lineno, node.col_offset, SIM102))\n</output>",
+      "extra": {
+        "raw_output": "__init__.py\nconstants.py\nrules\nutils.py\nflake8_simplify/rules/ast_if.py:12:    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\nflake8_simplify/rules/ast_if.py:34:    errors.append((node.lineno, node.col_offset, SIM102))\n",
+        "returncode": 0,
+        "timestamp": 1787967075.644141,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me read the ast_if.py file to understand the SIM102 rule.\n\n```mswea_bash_command\ncd /flake8-simplify && cat flake8_simplify/rules/ast_if.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && cat flake8_simplify/rules/ast_if.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b4bb774aae5d6613",
+          "created": 1787967075,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me read the ast_if.py file to understand the SIM102 rule.\n\n```mswea_bash_command\ncd /flake8-simplify && cat flake8_simplify/rules/ast_if.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 51,
+            "prompt_tokens": 2932,
+            "total_tokens": 2983,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967076.4527206
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n# Core Library\nimport ast\nfrom typing import Any, Dict, List, Optional, Tuple\n\n# First party\nfrom flake8_simplify.constants import AST_CONST_TYPES, BOOL_CONST_TYPES\nfrom flake8_simplify.utils import get_if_body_pairs, is_body_same, to_source\n\n\ndef get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n    errors: List[Tuple[int, int, str]] = []\n\n    # ## Pattern 1\n    # if a: <---\n    #     if b: <---\n    #         c\n    is_pattern_1 = (\n        node.orelse == []\n        and len(node.body) == 1\n        and isinstance(node.body[0], ast.If)\n        and node.body[0].orelse == []\n    )\n    # ## Pattern 2\n    # if a: < irrelvant for here\n    #     pass\n    # elif b:  <--- this is treated like a nested block\n    #     if c: <---\n    #         d\n\n    if not is_pattern_1:\n        return errors\n    errors.append((node.lineno, node.col_offset, SIM102))\n    return errors\n\n\ndef get_sim103(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"\n    Get a list of all calls that wrap a condition to return a bool.\n\n    if cond:\n        return True\n    else:\n        return False\n\n    which is\n\n        If(\n            test=Name(id='cond', ctx=Load()),\n            body=[\n                Return(\n                    value=Constant(value=True, kind=None),\n                ),\n            ],\n            orelse=[\n                Return(\n                    value=Constant(value=False, kind=None),\n                ),\n            ],\n        ),\n\n    \"\"\"\n    SIM103 = \"SIM103 Return the condition {cond} directly\"\n    errors: List[Tuple[int, int, str]] = []\n    if (\n        len(node.body) != 1\n        or not isinstance(node.body[0], ast.Return)\n        or not isinstance(node.body[0].value, BOOL_CONST_TYPES)\n        or not (\n            node.body[0].value.value is True\n            or node.body[0].value.value is False\n        )\n        or len(node.orelse) \n...[output truncated]...\nompare)\n        and len(node.test.ops) == 1\n        and isinstance(node.test.ops[0], ast.NotIn)\n    )\n    if is_pattern_1:\n        assert isinstance(node.test, ast.Compare)\n        assert isinstance(node.body[0], ast.Assign)\n        assert isinstance(node.body[0].value, ast.Subscript)\n        assert isinstance(node.orelse[0], ast.Assign)\n        key = node.test.left\n        if to_source(key) != to_source(node.body[0].value.slice):\n            return errors  # second part of pattern 1\n        assign_to_if_body = node.body[0].targets[0]\n        assign_to_else = node.orelse[0].targets[0]\n        if to_source(assign_to_if_body) != to_source(assign_to_else):\n            return errors\n        dict_name = node.test.comparators[0]\n        default_value = node.orelse[0].value\n        value_node = node.body[0].targets[0]\n        key_str = to_source(key)\n        dict_str = to_source(dict_name)\n        default_str = to_source(default_value)\n        value_str = to_source(value_node)\n    elif is_pattern_2:\n        assert isinstance(node.test, ast.Compare)\n        assert isinstance(node.body[0], ast.Assign)\n        assert isinstance(node.orelse[0], ast.Assign)\n        assert isinstance(node.orelse[0].value, ast.Subscript)\n        key = node.test.left\n        if to_source(key) != to_source(node.orelse[0].value.slice):\n            return errors  # second part of pattern 1\n        dict_name = node.test.comparators[0]\n        default_value = node.body[0].value\n        value_node = node.body[0].targets[0]\n        key_str = to_source(key)\n        dict_str = to_source(dict_name)\n        default_str = to_source(default_value)\n        value_str = to_source(value_node)\n    else:\n        return errors\n    errors.append(\n        (\n            node.lineno,\n            node.col_offset,\n            SIM401.format(\n                key=key_str,\n                dict=dict_str,\n                default_value=default_str,\n                value=value_str,\n            ),\n        )\n    )\n    return errors\n</output>",
+      "extra": {
+        "raw_output": "# Core Library\nimport ast\nfrom typing import Any, Dict, List, Optional, Tuple\n\n# First party\nfrom flake8_simplify.constants import AST_CONST_TYPES, BOOL_CONST_TYPES\nfrom flake8_simplify.utils import get_if_body_pairs, is_body_same, to_source\n\n\ndef get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n    errors: List[Tuple[int, int, str]] = []\n\n    # ## Pattern 1\n    # if a: <---\n    #     if b: <---\n    #         c\n    is_pattern_1 = (\n        node.orelse == []\n        and len(node.body) == 1\n        and isinstance(node.body[0], ast.If)\n        and node.body[0].orelse == []\n    )\n    # ## Pattern 2\n    # if a: < irrelvant for here\n    #     pass\n    # elif b:  <--- this is treated like a nested block\n    #     if c: <---\n    #         d\n\n    if not is_pattern_1:\n        return errors\n    errors.append((node.lineno, node.col_offset, SIM102))\n    return errors\n\n\ndef get_sim103(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"\n    Get a list of all calls that wrap a condition to return a bool.\n\n    if cond:\n        return True\n    else:\n        return False\n\n    which is\n\n        If(\n            test=Name(id='cond', ctx=Load()),\n            body=[\n                Return(\n                    value=Constant(value=True, kind=None),\n                ),\n            ],\n            orelse=[\n                Return(\n                    value=Constant(value=False, kind=None),\n                ),\n            ],\n        ),\n\n    \"\"\"\n    SIM103 = \"SIM103 Return the condition {cond} directly\"\n    errors: List[Tuple[int, int, str]] = []\n    if (\n        len(node.body) != 1\n        or not isinstance(node.body[0], ast.Return)\n        or not isinstance(node.body[0].value, BOOL_CONST_TYPES)\n        or not (\n            node.body[0].value.value is True\n            or node.body[0].value.value is False\n        )\n        or len(node.orelse) \n...[output truncated]...\nompare)\n        and len(node.test.ops) == 1\n        and isinstance(node.test.ops[0], ast.NotIn)\n    )\n    if is_pattern_1:\n        assert isinstance(node.test, ast.Compare)\n        assert isinstance(node.body[0], ast.Assign)\n        assert isinstance(node.body[0].value, ast.Subscript)\n        assert isinstance(node.orelse[0], ast.Assign)\n        key = node.test.left\n        if to_source(key) != to_source(node.body[0].value.slice):\n            return errors  # second part of pattern 1\n        assign_to_if_body = node.body[0].targets[0]\n        assign_to_else = node.orelse[0].targets[0]\n        if to_source(assign_to_if_body) != to_source(assign_to_else):\n            return errors\n        dict_name = node.test.comparators[0]\n        default_value = node.orelse[0].value\n        value_node = node.body[0].targets[0]\n        key_str = to_source(key)\n        dict_str = to_source(dict_name)\n        default_str = to_source(default_value)\n        value_str = to_source(value_node)\n    elif is_pattern_2:\n        assert isinstance(node.test, ast.Compare)\n        assert isinstance(node.body[0], ast.Assign)\n        assert isinstance(node.orelse[0], ast.Assign)\n        assert isinstance(node.orelse[0].value, ast.Subscript)\n        key = node.test.left\n        if to_source(key) != to_source(node.orelse[0].value.slice):\n            return errors  # second part of pattern 1\n        dict_name = node.test.comparators[0]\n        default_value = node.body[0].value\n        value_node = node.body[0].targets[0]\n        key_str = to_source(key)\n        dict_str = to_source(dict_name)\n        default_str = to_source(default_value)\n        value_str = to_source(value_node)\n    else:\n        return errors\n    errors.append(\n        (\n            node.lineno,\n            node.col_offset,\n            SIM401.format(\n                key=key_str,\n                dict=dict_str,\n                default_value=default_str,\n                value=value_str,\n            ),\n        )\n    )\n    return errors\n",
+        "returncode": 0,
+        "timestamp": 1787967076.660179,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now I understand the SIM102 rule. I need to add a check to ignore `if __name__ == \"__main__\":`. Let me look at the utils.py to see if there are existing helpers for detecting such patterns.\n\n```mswea_bash_command\ncd /flake8-simplify && cat flake8_simplify/utils.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && cat flake8_simplify/utils.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8cab14b00a9bea6a",
+          "created": 1787967076,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now I understand the SIM102 rule. I need to add a check to ignore `if __name__ == \"__main__\":`. Let me look at the utils.py to see if there are existing helpers for detecting such patterns.\n\n```mswea_bash_command\ncd /flake8-simplify && cat flake8_simplify/utils.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 79,
+            "prompt_tokens": 4099,
+            "total_tokens": 4178,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967077.8979962
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n# Core Library\nimport ast\nimport itertools\nfrom collections import defaultdict\nfrom typing import DefaultDict, List, Tuple, Union\n\n# Third party\nimport astor\n\n\n# The following types were created to help mypy understand that there is a\n# \"parent\" attribute on the ast.AST nodes.\nclass UnaryOp(ast.UnaryOp):\n    def __init__(self, orig: ast.UnaryOp) -> None:\n        self.op = orig.op\n        self.operand = orig.operand\n        # For all ast.*:\n        self.lineno = orig.lineno\n        self.col_offset = orig.col_offset\n        self.parent: ast.Expr = orig.parent  # type: ignore\n\n\nclass Call(ast.Call):\n    def __init__(self, orig: ast.Call) -> None:\n        self.func = orig.func\n        self.args = orig.args\n        self.keywords = orig.keywords\n        # For all ast.*:\n        self.lineno = orig.lineno\n        self.col_offset = orig.col_offset\n        self.parent: ast.Expr = orig.parent  # type: ignore\n\n\ndef to_source(\n    node: Union[None, ast.expr, ast.Expr, ast.withitem, ast.slice]\n) -> str:\n    if node is None:\n        return \"None\"\n    source: str = astor.to_source(node).strip()\n    source = strip_parenthesis(source)\n    source = strip_triple_quotes(source)\n    source = use_double_quotes(source)\n    return source\n\n\ndef strip_parenthesis(string: str) -> str:\n    if len(string) >= 2 and string[0] == \"(\" and string[-1] == \")\":\n        return string[1:-1]\n    return string\n\n\ndef strip_triple_quotes(string: str) -> str:\n    quotes = '\"\"\"'\n    is_tripple_quoted = string.startswith(quotes) and string.endswith(quotes)\n    if not (\n        is_tripple_quoted and '\"' not in string[len(quotes) : -len(quotes)]\n    ):\n        return string\n    string = string[len(quotes) : -len(quotes)]\n    string = f'\"{string}\"'\n    if len(string) == 0:\n        string = '\"\"'\n    return string\n\n\ndef use_double_quotes(string: str) -> str:\n    quotes = \"'''\"\n    if string.startswith(quotes) and string.endswith(quotes):\n        return f'\"\"\"{string[len(quotes):-len(quotes)]}\"\"\"'\n    if len(string) >=\n...[output truncated]...\n ast.Constant) and expr.value.value == 1)\n        or (isinstance(expr.value, ast.Num) and expr.value.n == 1)\n    )\n\n\ndef is_exception_check(node: ast.If) -> bool:\n    if len(node.body) == 1 and isinstance(node.body[0], ast.Raise):\n        return True\n    return False\n\n\ndef is_same_expression(a: ast.expr, b: ast.expr) -> bool:\n    \"\"\"Check if two expressions are equal to each other.\"\"\"\n    if isinstance(a, ast.Name) and isinstance(b, ast.Name):\n        return a.id == b.id\n    else:\n        return False\n\n\ndef expression_uses_variable(expr: ast.expr, var: str) -> bool:\n    if var in to_source(expr):\n        # This is WAY too broad, but it's better to have false-negatives\n        # than false-positives\n        return True\n    return False\n\n\ndef _get_duplicated_isinstance_call_by_node(node: ast.BoolOp) -> List[str]:\n    \"\"\"\n    Get a list of isinstance arguments which could be shortened.\n\n    This checks SIM101.\n\n    Examples\n    --------\n    >> g = _get_duplicated_isinstance_call_by_node\n    >> g(\"isinstance(a, int) or isinstance(a, float) or isinstance(b, int)\n    ['a']\n    >> g(\"isinstance(a, int) or isinstance(b, float) or isinstance(b, int)\n    ['b']\n    \"\"\"\n    counter: DefaultDict[str, int] = defaultdict(int)\n\n    for call in node.values:\n        # Make sure that this function call is actually a call of the built-in\n        # \"isinstance\"\n        if not isinstance(call, ast.Call) or len(call.args) != 2:\n            continue\n        function_name = to_source(call.func)\n        if function_name != \"isinstance\":\n            continue\n\n        # Collect the name of the argument\n        isinstance_arg0_name = to_source(call.args[0])\n        counter[isinstance_arg0_name] += 1\n    return [arg0_name for arg0_name, count in counter.items() if count > 1]\n\n\ndef body_contains_continue(stmts: List[ast.stmt]) -> bool:\n    return any(\n        isinstance(stmt, ast.Continue)\n        or (isinstance(stmt, ast.If) and body_contains_continue(stmt.body))\n        for stmt in stmts\n    )\n</output>",
+      "extra": {
+        "raw_output": "# Core Library\nimport ast\nimport itertools\nfrom collections import defaultdict\nfrom typing import DefaultDict, List, Tuple, Union\n\n# Third party\nimport astor\n\n\n# The following types were created to help mypy understand that there is a\n# \"parent\" attribute on the ast.AST nodes.\nclass UnaryOp(ast.UnaryOp):\n    def __init__(self, orig: ast.UnaryOp) -> None:\n        self.op = orig.op\n        self.operand = orig.operand\n        # For all ast.*:\n        self.lineno = orig.lineno\n        self.col_offset = orig.col_offset\n        self.parent: ast.Expr = orig.parent  # type: ignore\n\n\nclass Call(ast.Call):\n    def __init__(self, orig: ast.Call) -> None:\n        self.func = orig.func\n        self.args = orig.args\n        self.keywords = orig.keywords\n        # For all ast.*:\n        self.lineno = orig.lineno\n        self.col_offset = orig.col_offset\n        self.parent: ast.Expr = orig.parent  # type: ignore\n\n\ndef to_source(\n    node: Union[None, ast.expr, ast.Expr, ast.withitem, ast.slice]\n) -> str:\n    if node is None:\n        return \"None\"\n    source: str = astor.to_source(node).strip()\n    source = strip_parenthesis(source)\n    source = strip_triple_quotes(source)\n    source = use_double_quotes(source)\n    return source\n\n\ndef strip_parenthesis(string: str) -> str:\n    if len(string) >= 2 and string[0] == \"(\" and string[-1] == \")\":\n        return string[1:-1]\n    return string\n\n\ndef strip_triple_quotes(string: str) -> str:\n    quotes = '\"\"\"'\n    is_tripple_quoted = string.startswith(quotes) and string.endswith(quotes)\n    if not (\n        is_tripple_quoted and '\"' not in string[len(quotes) : -len(quotes)]\n    ):\n        return string\n    string = string[len(quotes) : -len(quotes)]\n    string = f'\"{string}\"'\n    if len(string) == 0:\n        string = '\"\"'\n    return string\n\n\ndef use_double_quotes(string: str) -> str:\n    quotes = \"'''\"\n    if string.startswith(quotes) and string.endswith(quotes):\n        return f'\"\"\"{string[len(quotes):-len(quotes)]}\"\"\"'\n    if len(string) >=\n...[output truncated]...\n ast.Constant) and expr.value.value == 1)\n        or (isinstance(expr.value, ast.Num) and expr.value.n == 1)\n    )\n\n\ndef is_exception_check(node: ast.If) -> bool:\n    if len(node.body) == 1 and isinstance(node.body[0], ast.Raise):\n        return True\n    return False\n\n\ndef is_same_expression(a: ast.expr, b: ast.expr) -> bool:\n    \"\"\"Check if two expressions are equal to each other.\"\"\"\n    if isinstance(a, ast.Name) and isinstance(b, ast.Name):\n        return a.id == b.id\n    else:\n        return False\n\n\ndef expression_uses_variable(expr: ast.expr, var: str) -> bool:\n    if var in to_source(expr):\n        # This is WAY too broad, but it's better to have false-negatives\n        # than false-positives\n        return True\n    return False\n\n\ndef _get_duplicated_isinstance_call_by_node(node: ast.BoolOp) -> List[str]:\n    \"\"\"\n    Get a list of isinstance arguments which could be shortened.\n\n    This checks SIM101.\n\n    Examples\n    --------\n    >> g = _get_duplicated_isinstance_call_by_node\n    >> g(\"isinstance(a, int) or isinstance(a, float) or isinstance(b, int)\n    ['a']\n    >> g(\"isinstance(a, int) or isinstance(b, float) or isinstance(b, int)\n    ['b']\n    \"\"\"\n    counter: DefaultDict[str, int] = defaultdict(int)\n\n    for call in node.values:\n        # Make sure that this function call is actually a call of the built-in\n        # \"isinstance\"\n        if not isinstance(call, ast.Call) or len(call.args) != 2:\n            continue\n        function_name = to_source(call.func)\n        if function_name != \"isinstance\":\n            continue\n\n        # Collect the name of the argument\n        isinstance_arg0_name = to_source(call.args[0])\n        counter[isinstance_arg0_name] += 1\n    return [arg0_name for arg0_name, count in counter.items() if count > 1]\n\n\ndef body_contains_continue(stmts: List[ast.stmt]) -> bool:\n    return any(\n        isinstance(stmt, ast.Continue)\n        or (isinstance(stmt, ast.If) and body_contains_continue(stmt.body))\n        for stmt in stmts\n    )\n",
+        "returncode": 0,
+        "timestamp": 1787967078.0952861,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now I understand the structure. I'll add a check in `get_sim102` to detect if the outer `if` is `if __name__ == \"__main__\":` and skip it. Let me write a helper to detect this pattern. The test is a Compare with left being `Name(id='__name__')` and comparator being `Constant(value='__main__')`.\n\nLet me first reproduce the issue.\n\n```mswea_bash_command\ncd /flake8-simplify && cat > /tmp/repro.py << 'EOF'\nif __name__ == \"__main__\":\n    if foo(): ...\nEOF\npython -m flake8 --select=SIM102 /tmp/repro.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && cat > /tmp/repro.py << 'EOF'\nif __name__ == \"__main__\":\n    if foo(): ...\nEOF\npython -m flake8 --select=SIM102 /tmp/repro.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-97bfc0bcc6c7a07b",
+          "created": 1787967078,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now I understand the structure. I'll add a check in `get_sim102` to detect if the outer `if` is `if __name__ == \"__main__\":` and skip it. Let me write a helper to detect this pattern. The test is a Compare with left being `Name(id='__name__')` and comparator being `Constant(value='__main__')`.\n\nLet me first reproduce the issue.\n\n```mswea_bash_command\ncd /flake8-simplify && cat > /tmp/repro.py << 'EOF'\nif __name__ == \"__main__\":\n    if foo(): ...\nEOF\npython -m flake8 --select=SIM102 /tmp/repro.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 161,
+            "prompt_tokens": 5301,
+            "total_tokens": 5462,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967080.4184983
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>1</returncode>\n<output>\n/tmp/repro.py:1:1: SIM102 Use a single if-statement instead of nested if-statements\n</output>",
+      "extra": {
+        "raw_output": "/tmp/repro.py:1:1: SIM102 Use a single if-statement instead of nested if-statements\n",
+        "returncode": 1,
+        "timestamp": 1787967080.8162794,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Issue reproduced. Now let me edit the `get_sim102` function to ignore `if __name__ == \"__main__\":`.\n\n```mswea_bash_command\ncd /flake8-simplify && python - << 'EOF'\nimport re\npath = \"flake8_simplify/rules/ast_if.py\"\nsrc = open(path).read()\nold = '''def get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n    errors: List[Tuple[int, int, str]] = []\n\n    # ## Pattern 1'''\nnew = '''def is_main_check(node: ast.If) -> bool:\n    \"\"\"Check if the if-statement is ``if __name__ == \"__main__\":``.\"\"\"\n    test = node.test\n    if not isinstance(test, ast.Compare):\n        return False\n    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):\n        return False\n    if len(test.comparators) != 1:\n        return False\n    left = test.left\n    right = test.comparators[0]\n    if not (\n        isinstance(left, ast.Name)\n        and left.id == \"__name__\"\n        and isinstance(right, ast.Constant)\n        and right.value == \"__main__\"\n    ):\n        return False\n    return True\n\n\ndef get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n    errors: List[Tuple[int, int, str]] = []\n\n    # ``if __name__ == \"__main__\":`` is a special case that should not be\n    # combined with the nested if-statement.\n    if is_main_check(node):\n        return errors\n\n    # ## Pattern 1'''\nassert old in src\nsrc = src.replace(old, new)\nopen(path, \"w\").write(src)\nprint(\"done\")\nEOF\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && python - << 'EOF'\nimport re\npath = \"flake8_simplify/rules/ast_if.py\"\nsrc = open(path).read()\nold = '''def get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n    errors: List[Tuple[int, int, str]] = []\n\n    # ## Pattern 1'''\nnew = '''def is_main_check(node: ast.If) -> bool:\n    \"\"\"Check if the if-statement is ``if __name__ == \"__main__\":``.\"\"\"\n    test = node.test\n    if not isinstance(test, ast.Compare):\n        return False\n    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):\n        return False\n    if len(test.comparators) != 1:\n        return False\n    left = test.left\n    right = test.comparators[0]\n    if not (\n        isinstance(left, ast.Name)\n        and left.id == \"__name__\"\n        and isinstance(right, ast.Constant)\n        and right.value == \"__main__\"\n    ):\n        return False\n    return True\n\n\ndef get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n    errors: List[Tuple[int, int, str]] = []\n\n    # ``if __name__ == \"__main__\":`` is a special case that should not be\n    # combined with the nested if-statement.\n    if is_main_check(node):\n        return errors\n\n    # ## Pattern 1'''\nassert old in src\nsrc = src.replace(old, new)\nopen(path, \"w\").write(src)\nprint(\"done\")\nEOF"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-97f6599a4a82fc0a",
+          "created": 1787967080,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Issue reproduced. Now let me edit the `get_sim102` function to ignore `if __name__ == \"__main__\":`.\n\n```mswea_bash_command\ncd /flake8-simplify && python - << 'EOF'\nimport re\npath = \"flake8_simplify/rules/ast_if.py\"\nsrc = open(path).read()\nold = '''def get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n    errors: List[Tuple[int, int, str]] = []\n\n    # ## Pattern 1'''\nnew = '''def is_main_check(node: ast.If) -> bool:\n    \"\"\"Check if the if-statement is ``if __name__ == \"__main__\":``.\"\"\"\n    test = node.test\n    if not isinstance(test, ast.Compare):\n        return False\n    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):\n        return False\n    if len(test.comparators) != 1:\n        return False\n    left = test.left\n    right = test.comparators[0]\n    if not (\n        isinstance(left, ast.Name)\n        and left.id == \"__name__\"\n        and isinstance(right, ast.Constant)\n        and right.value == \"__main__\"\n    ):\n        return False\n    return True\n\n\ndef get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n    \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n    SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n    errors: List[Tuple[int, int, str]] = []\n\n    # ``if __name__ == \"__main__\":`` is a special case that should not be\n    # combined with the nested if-statement.\n    if is_main_check(node):\n        return errors\n\n    # ## Pattern 1'''\nassert old in src\nsrc = src.replace(old, new)\nopen(path, \"w\").write(src)\nprint(\"done\")\nEOF\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 509,
+            "prompt_tokens": 5518,
+            "total_tokens": 6027,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967087.5226545
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndone\n</output>",
+      "extra": {
+        "raw_output": "done\n",
+        "returncode": 0,
+        "timestamp": 1787967087.752262,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me verify the fix works and test edge cases.\n\n```mswea_bash_command\ncd /flake8-simplify && python -m flake8 --select=SIM102 /tmp/repro.py; echo \"---\"; cat > /tmp/repro2.py << 'EOF'\nif a:\n    if b: ...\nEOF\npython -m flake8 --select=SIM102 /tmp/repro2.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && python -m flake8 --select=SIM102 /tmp/repro.py; echo \"---\"; cat > /tmp/repro2.py << 'EOF'\nif a:\n    if b: ...\nEOF\npython -m flake8 --select=SIM102 /tmp/repro2.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-acd7b6a578c4b421",
+          "created": 1787967087,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me verify the fix works and test edge cases.\n\n```mswea_bash_command\ncd /flake8-simplify && python -m flake8 --select=SIM102 /tmp/repro.py; echo \"---\"; cat > /tmp/repro2.py << 'EOF'\nif a:\n    if b: ...\nEOF\npython -m flake8 --select=SIM102 /tmp/repro2.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 101,
+            "prompt_tokens": 6059,
+            "total_tokens": 6160,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967089.367681
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>1</returncode>\n<output>\n---\n/tmp/repro2.py:1:1: SIM102 Use a single if-statement instead of nested if-statements\n</output>",
+      "extra": {
+        "raw_output": "---\n/tmp/repro2.py:1:1: SIM102 Use a single if-statement instead of nested if-statements\n",
+        "returncode": 1,
+        "timestamp": 1787967089.9112618,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The fix works: the `__main__` case no longer triggers, while normal nested ifs still do. Let me run the existing test suite to ensure nothing is broken.\n\n```mswea_bash_command\ncd /flake8-simplify && python -m pytest tests/ -q 2>&1 | tail -20\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && python -m pytest tests/ -q 2>&1 | tail -20"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-a7027a936945aab6",
+          "created": 1787967089,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The fix works: the `__main__` case no longer triggers, while normal nested ifs still do. Let me run the existing test suite to ensure nothing is broken.\n\n```mswea_bash_command\ncd /flake8-simplify && python -m pytest tests/ -q 2>&1 | tail -20\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 75,
+            "prompt_tokens": 6219,
+            "total_tokens": 6294,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967091.2102
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nflake8_simplify/rules/ast_bool_op.py       88      2     56      6    94%   120->119, 121->120, 125, 160->159, 161->160, 165\nflake8_simplify/rules/ast_call.py          55      2     19      2    95%   108, 166\nflake8_simplify/rules/ast_classdef.py      34      2     21      1    95%   61-62\nflake8_simplify/rules/ast_compare.py       29      1      8      1    95%   47\nflake8_simplify/rules/ast_expr.py          42      4     16      3    88%   52-54, 55->60, 95\nflake8_simplify/rules/ast_for.py           52      3     28      3    92%   98, 116, 159\nflake8_simplify/rules/ast_if.py           148     10     62     11    90%   18, 28, 39, 252->254, 260, 276, 283, 297, 305, 422, 441\nflake8_simplify/rules/ast_ifexp.py         29      0      6      0   100%\nflake8_simplify/rules/ast_try.py           37      2     18      2    93%   80-81, 86->85\nflake8_simplify/rules/ast_unary_op.py      81      0     16      0   100%\nflake8_simplify/rules/ast_with.py          14      0      4      0   100%\nflake8_simplify/utils.py                  110      8     54      6    91%   38, 62, 69, 71, 78, 82-83, 147\n-----------------------------------------------------------------------------------\nTOTAL                                     846     34    326     35    94%\nCoverage HTML written to dir tests/reports/coverage-html\n\n============================= slowest 3 durations ==============================\n\n(3 durations < 0.005s hidden.  Use -vv to show these durations.)\n88 passed, 2 xfailed in 0.41s\n</output>",
+      "extra": {
+        "raw_output": "flake8_simplify/rules/ast_bool_op.py       88      2     56      6    94%   120->119, 121->120, 125, 160->159, 161->160, 165\nflake8_simplify/rules/ast_call.py          55      2     19      2    95%   108, 166\nflake8_simplify/rules/ast_classdef.py      34      2     21      1    95%   61-62\nflake8_simplify/rules/ast_compare.py       29      1      8      1    95%   47\nflake8_simplify/rules/ast_expr.py          42      4     16      3    88%   52-54, 55->60, 95\nflake8_simplify/rules/ast_for.py           52      3     28      3    92%   98, 116, 159\nflake8_simplify/rules/ast_if.py           148     10     62     11    90%   18, 28, 39, 252->254, 260, 276, 283, 297, 305, 422, 441\nflake8_simplify/rules/ast_ifexp.py         29      0      6      0   100%\nflake8_simplify/rules/ast_try.py           37      2     18      2    93%   80-81, 86->85\nflake8_simplify/rules/ast_unary_op.py      81      0     16      0   100%\nflake8_simplify/rules/ast_with.py          14      0      4      0   100%\nflake8_simplify/utils.py                  110      8     54      6    91%   38, 62, 69, 71, 78, 82-83, 147\n-----------------------------------------------------------------------------------\nTOTAL                                     846     34    326     35    94%\nCoverage HTML written to dir tests/reports/coverage-html\n\n============================= slowest 3 durations ==============================\n\n(3 durations < 0.005s hidden.  Use -vv to show these durations.)\n88 passed, 2 xfailed in 0.41s\n",
+        "returncode": 0,
+        "timestamp": 1787967092.1624587,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: All tests pass. Let me create the patch and verify it.\n\n```mswea_bash_command\ncd /flake8-simplify && git diff -- flake8_simplify/rules/ast_if.py > patch.txt && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && git diff -- flake8_simplify/rules/ast_if.py > patch.txt && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8a10e55f30c895dd",
+          "created": 1787967092,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: All tests pass. Let me create the patch and verify it.\n\n```mswea_bash_command\ncd /flake8-simplify && git diff -- flake8_simplify/rules/ast_if.py > patch.txt && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 56,
+            "prompt_tokens": 6968,
+            "total_tokens": 7024,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967093.2693195
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/flake8_simplify/rules/ast_if.py b/flake8_simplify/rules/ast_if.py\nindex 1756458..beaffa9 100644\n--- a/flake8_simplify/rules/ast_if.py\n+++ b/flake8_simplify/rules/ast_if.py\n@@ -7,11 +7,37 @@ from flake8_simplify.constants import AST_CONST_TYPES, BOOL_CONST_TYPES\n from flake8_simplify.utils import get_if_body_pairs, is_body_same, to_source\n \n \n+def is_main_check(node: ast.If) -> bool:\n+    \"\"\"Check if the if-statement is ``if __name__ == \"__main__\":``.\"\"\"\n+    test = node.test\n+    if not isinstance(test, ast.Compare):\n+        return False\n+    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):\n+        return False\n+    if len(test.comparators) != 1:\n+        return False\n+    left = test.left\n+    right = test.comparators[0]\n+    if not (\n+        isinstance(left, ast.Name)\n+        and left.id == \"__name__\"\n+        and isinstance(right, ast.Constant)\n+        and right.value == \"__main__\"\n+    ):\n+        return False\n+    return True\n+\n+\n def get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n     \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n     SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n     errors: List[Tuple[int, int, str]] = []\n \n+    # ``if __name__ == \"__main__\":`` is a special case that should not be\n+    # combined with the nested if-statement.\n+    if is_main_check(node):\n+        return errors\n+\n     # ## Pattern 1\n     # if a: <---\n     #     if b: <---\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/flake8_simplify/rules/ast_if.py b/flake8_simplify/rules/ast_if.py\nindex 1756458..beaffa9 100644\n--- a/flake8_simplify/rules/ast_if.py\n+++ b/flake8_simplify/rules/ast_if.py\n@@ -7,11 +7,37 @@ from flake8_simplify.constants import AST_CONST_TYPES, BOOL_CONST_TYPES\n from flake8_simplify.utils import get_if_body_pairs, is_body_same, to_source\n \n \n+def is_main_check(node: ast.If) -> bool:\n+    \"\"\"Check if the if-statement is ``if __name__ == \"__main__\":``.\"\"\"\n+    test = node.test\n+    if not isinstance(test, ast.Compare):\n+        return False\n+    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):\n+        return False\n+    if len(test.comparators) != 1:\n+        return False\n+    left = test.left\n+    right = test.comparators[0]\n+    if not (\n+        isinstance(left, ast.Name)\n+        and left.id == \"__name__\"\n+        and isinstance(right, ast.Constant)\n+        and right.value == \"__main__\"\n+    ):\n+        return False\n+    return True\n+\n+\n def get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n     \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n     SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n     errors: List[Tuple[int, int, str]] = []\n \n+    # ``if __name__ == \"__main__\":`` is a special case that should not be\n+    # combined with the nested if-statement.\n+    if is_main_check(node):\n+        return errors\n+\n     # ## Pattern 1\n     # if a: <---\n     #     if b: <---\n",
+        "returncode": 0,
+        "timestamp": 1787967093.4842725,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The patch looks correct and only contains the intended change. Let me submit.\n\n```mswea_bash_command\ncd /flake8-simplify && echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /flake8-simplify && echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b48e0e198ea308a0",
+          "created": 1787967093,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The patch looks correct and only contains the intended change. Let me submit.\n\n```mswea_bash_command\ncd /flake8-simplify && echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "routed_experts": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 50,
+            "prompt_tokens": 7524,
+            "total_tokens": 7574,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787967094.5456378
+      }
+    },
+    {
+      "role": "exit",
+      "content": "diff --git a/flake8_simplify/rules/ast_if.py b/flake8_simplify/rules/ast_if.py\nindex 1756458..beaffa9 100644\n--- a/flake8_simplify/rules/ast_if.py\n+++ b/flake8_simplify/rules/ast_if.py\n@@ -7,11 +7,37 @@ from flake8_simplify.constants import AST_CONST_TYPES, BOOL_CONST_TYPES\n from flake8_simplify.utils import get_if_body_pairs, is_body_same, to_source\n \n \n+def is_main_check(node: ast.If) -> bool:\n+    \"\"\"Check if the if-statement is ``if __name__ == \"__main__\":``.\"\"\"\n+    test = node.test\n+    if not isinstance(test, ast.Compare):\n+        return False\n+    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):\n+        return False\n+    if len(test.comparators) != 1:\n+        return False\n+    left = test.left\n+    right = test.comparators[0]\n+    if not (\n+        isinstance(left, ast.Name)\n+        and left.id == \"__name__\"\n+        and isinstance(right, ast.Constant)\n+        and right.value == \"__main__\"\n+    ):\n+        return False\n+    return True\n+\n+\n def get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n     \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n     SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n     errors: List[Tuple[int, int, str]] = []\n \n+    # ``if __name__ == \"__main__\":`` is a special case that should not be\n+    # combined with the nested if-statement.\n+    if is_main_check(node):\n+        return errors\n+\n     # ## Pattern 1\n     # if a: <---\n     #     if b: <---\n",
+      "extra": {
+        "exit_status": "Submitted",
+        "submission": "diff --git a/flake8_simplify/rules/ast_if.py b/flake8_simplify/rules/ast_if.py\nindex 1756458..beaffa9 100644\n--- a/flake8_simplify/rules/ast_if.py\n+++ b/flake8_simplify/rules/ast_if.py\n@@ -7,11 +7,37 @@ from flake8_simplify.constants import AST_CONST_TYPES, BOOL_CONST_TYPES\n from flake8_simplify.utils import get_if_body_pairs, is_body_same, to_source\n \n \n+def is_main_check(node: ast.If) -> bool:\n+    \"\"\"Check if the if-statement is ``if __name__ == \"__main__\":``.\"\"\"\n+    test = node.test\n+    if not isinstance(test, ast.Compare):\n+        return False\n+    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):\n+        return False\n+    if len(test.comparators) != 1:\n+        return False\n+    left = test.left\n+    right = test.comparators[0]\n+    if not (\n+        isinstance(left, ast.Name)\n+        and left.id == \"__name__\"\n+        and isinstance(right, ast.Constant)\n+        and right.value == \"__main__\"\n+    ):\n+        return False\n+    return True\n+\n+\n def get_sim102(node: ast.If) -> List[Tuple[int, int, str]]:\n     \"\"\"Get a list of all nested if-statements without else-blocks.\"\"\"\n     SIM102 = \"SIM102 Use a single if-statement instead of nested if-statements\"\n     errors: List[Tuple[int, int, str]] = []\n \n+    # ``if __name__ == \"__main__\":`` is a special case that should not be\n+    # combined with the nested if-statement.\n+    if is_main_check(node):\n+        return errors\n+\n     # ## Pattern 1\n     # if a: <---\n     #     if b: <---\n"
+      }
+    }
+  ],
+  "trajectory_format": "mini-swe-agent-1.1"
+}

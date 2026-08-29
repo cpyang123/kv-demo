@@ -1,0 +1,792 @@
+{
+  "info": {
+    "model_stats": {
+      "instance_cost": 0.0,
+      "api_calls": 10
+    },
+    "config": {
+      "agent": {
+        "system_template": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history.",
+        "instance_template": "<pr_description>\nConsider the following PR description:\n{{task}}\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /dataclasses-jsonschema (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>\n",
+        "step_limit": 100,
+        "cost_limit": 1000000000.0,
+        "wall_time_limit_seconds": 0,
+        "max_consecutive_format_errors": 3,
+        "output_path": "/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory/chainswe/runs/v3main100/s-knibbs_dataclasses-jsonschema_20190808__s0__mem_fusednote/traj_3_s-knibbs__dataclasses-jsonschema-101.json"
+      },
+      "agent_type": "minisweagent.agents.default.DefaultAgent",
+      "model": {
+        "model_name": "openai/coder-next",
+        "model_kwargs": {
+          "api_key": "EMPTY",
+          "temperature": 0.0,
+          "max_tokens": 16384,
+          "extra_body": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "api_base": "http://127.0.0.1:8858/v1"
+        },
+        "litellm_model_registry": null,
+        "set_cache_control": null,
+        "cost_tracking": "ignore_errors",
+        "format_error_template": "{% if finish_reason is defined and finish_reason in [\"length\", \"tool_calls\"] -%}\nYour previous response reached the output token limit (finish_reason={{ finish_reason }}) before you produced a complete action, so it was cut off. Respond more concisely and provide exactly one action in the required format. If you need to think more, do so briefly.\n{%- else -%}\nFormat error:\n\n<error>\n{{error}}\n</error>\n\nHere is general guidance on how to format your response:\n\nPlease always provide EXACTLY ONE action in triple backticks, found {{actions|length}} actions.\n\nPlease format your action in triple backticks as shown in <response_example>.\n\n<response_example>\nHere are some thoughts about why you want to perform the action.\n\n```mswea_bash_command\n<action>\n```\n</response_example>\n\nIf you have completed your assignment, please consult the first message about how to\nsubmit your solution (you will not be able to continue working on this task after that).\n{%- endif %}\n",
+        "observation_template": "{% if output.exception_info -%}\n<exception>{{output.exception_info}}</exception>\n{% endif -%}\n<returncode>{{output.returncode}}</returncode>\n{% if output.output | length < 10000 -%}\n<output>\n{{ output.output -}}\n</output>\n{%- else -%}\n<warning>\nThe output of your last command was too long.\nPlease try a different command that produces less output.\nIf you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.\nIf you're using grep or find and it produced too much output, you can use a more selective search pattern.\nIf you really need to see something from the full command's output, you can redirect output to a file and then search in that file.\n</warning>\n{%- set elided_chars = output.output | length - 10000 -%}\n<output_head>\n{{ output.output[:5000] }}\n</output_head>\n<elided_chars>\n{{ elided_chars }} characters elided\n</elided_chars>\n<output_tail>\n{{ output.output[-5000:] }}\n</output_tail>\n{%- endif -%}\n",
+        "multimodal_regex": "",
+        "action_regex": "```mswea_bash_command\\s*\\n(.*?)\\n```"
+      },
+      "model_type": "minisweagent.models.litellm_textbased_model.LitellmTextbasedModel",
+      "environment": {
+        "image": "/gpfs/radev/scratch/dijk/pl662/chainswe_sifs/swerebenchv2__s-knibbs-dataclasses-jsonschema__92-a63b0d1.sif",
+        "cwd": "/dataclasses-jsonschema",
+        "env": {},
+        "forward_env": [],
+        "timeout": 300,
+        "executable": "apptainer",
+        "sandbox_build_retries": 3,
+        "global_args": [
+          "--quiet"
+        ],
+        "exec_args": [
+          "--contain",
+          "--cleanenv",
+          "--fakeroot"
+        ]
+      },
+      "environment_type": "harness.env.RepoEnv"
+    },
+    "mini_version": "2.4.5",
+    "exit_status": "Submitted",
+    "submission": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex efe54f8..111ad8b 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -552,7 +552,9 @@ class JsonSchemaMixin:\n             field_schema = schema_reference(schema_type, field_type_name)\n         else:\n             # If is optional[...]\n-            if is_optional(field_type):\n+            if field_type is Any:\n+                field_schema = {}\n+            elif is_optional(field_type):\n                 field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                 required = False\n             elif is_nullable(field_type):\n"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history."
+    },
+    {
+      "role": "user",
+      "content": "<pr_description>\nConsider the following PR description:\n<memory_context>\nNotes from earlier work sessions on this repository:\n[s-knibbs__dataclasses-jsonschema-92]\nDID: Added discriminator support to JsonSchemaMixin via __init_subclass__ kwarg, _discriminator_property_name() MRO lookup, to_dict injection, and json_schema discriminator/property emission | WHERE: dataclasses_jsonschema/__init__.py:183-199,209-225,332-334,673-689 | VERIFY: python -m pytest tests/test_core.py -q [last exit 0]\nCONTEXT: Repo is dataclasses-jsonschema; main logic in dataclasses_jsonschema/__init__.py (691 lines), SchemaType enum in type_defs.py, tests in tests/test_core.py; Python 3.7 so use typing_extensions for Literal/Final | WHERE: dataclasses_jsonschema/__init__.py:1-14\nCONTEXT: Inheritance uses allOf + $ref to base schema (json_schema ~line 681-689); discriminator only added to the base class that sets it, subclasses inherit via MRO | WHERE: dataclasses_jsonschema/__init__.py:681-689\nLESSON: /tmp files are wiped between bash commands; write repro scripts into the repo dir (e.g. repro_tmp.py) and rm them after | WHERE: /tmp/repro.py\nLESSON: tests/test_apispec_plugin.py fails collection (No module named 'apispec'); run only tests/test_core.py | WHERE: tests/test_apispec_plugin.py:5\nDID: Created patch.txt capturing the diff for submission | WHERE: patch.txt | VERIFY: git diff -- dataclasses_jsonschema/__init__.py > patch.txt [last exit 0]\n\n[s-knibbs__dataclasses-jsonschema-93]\nDID: Added `import json` at line 2 of dataclasses_jsonschema/__init__.py | WHERE: dataclasses_jsonschema/__init__.py:2 | VERIFY: python -m pytest tests/test_core.py -q [last exit 0]\nDID: Added `to_json` method to JsonSchemaMixin after `to_dict` | WHERE: dataclasses_jsonschema/__init__.py:343-349 (to_json) | VERIFY: python -m pytest tests/test_core.py -q [last exit 0]\nDID: Added `from_json` classmethod to JsonSchemaMixin after `from_dict` | WHERE: dataclasses_jsonschema/__init__.py:449-455 (from_json) | VERIFY: python -m pytest tests/test_core.py -q [last exit 0]\nCONTEXT: JsonSchemaMixin in dataclasses_jsonschema/__init__.py has to_dict (line 323), from_dict (line 428), from_object (line 450); uses fastjsonschema or jsonschema for validation | WHERE: dataclasses_jsonschema/__init__.py:162-450\nCONTEXT: Test suite is in tests/test_core.py (27 tests); repro scripts are placed at repo root and deleted after use | WHERE: tests/test_core.py, test_issue.py\n</memory_context>\n\nAny type should generate an empty field schema\nThe following definition:\r\n\r\n```py\r\n@dataclass\r\nclass Parameter(JsonSchemaMixin):\r\n\r\n    id: str\r\n    type: ParameterTypeEnum\r\n    value: Any\r\n```\r\n\r\nleads to schema like this:\r\n\r\n```py\r\n{'type': 'object', 'required': ['id', 'type', 'value'], 'properties': {'id': {'type': 'string'}, 'type': {'type': 'string', 'enum': ['string', 'double']}, 'value': {'type': 'object'}}}\r\n```\r\n\r\nBut I would rather see:\r\n\r\n```py\r\n{'type': 'object', 'required': ['id', 'type', 'value'], 'properties': {'id': {'type': 'string'}, 'type': {'type': 'string', 'enum': ['string', 'double']}, 'value': {}}}\r\n```\r\n\r\n...where ```type``` for ```value``` is ommited, which means that ```value``` could be data of any type (string or number in this case). Is there a way how to achieve it? Many thanks.\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /dataclasses-jsonschema (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>"
+    },
+    {
+      "content": "THOUGHT: Let me start by exploring the repository structure and understanding the codebase.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && ls -la && cat dataclasses_jsonschema/__init__.py | head -100\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && ls -la && cat dataclasses_jsonschema/__init__.py | head -100"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-ad8cb3e47e789188",
+          "created": 1787952285,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me start by exploring the repository structure and understanding the codebase.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && ls -la && cat dataclasses_jsonschema/__init__.py | head -100\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 56,
+            "prompt_tokens": 2384,
+            "total_tokens": 2440,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952286.3436573
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ntotal 68\ndrwxrwxrwx 8 pl662 dijk 4096 Aug 28 21:24 .\ndrwxr-xr-x 1 pl662 dijk   80 Aug 28 21:24 ..\ndrwxr-xr-x 4 pl662 dijk 4096 Feb 22  2026 .eggs\ndrwxrwxrwx 8 pl662 dijk 4096 Aug 28 21:24 .git\n-rw-r--r-- 1 pl662 dijk 1251 Feb 22  2026 .gitignore\ndrwxr-xr-x 3 pl662 dijk 4096 Aug 28 21:23 .pytest_cache\n-rw-r--r-- 1 pl662 dijk  117 Feb 22  2026 .travis.yml\n-rw-r--r-- 1 pl662 dijk 1071 Feb 22  2026 LICENSE\n-rw-r--r-- 1 pl662 dijk 5963 Feb 22  2026 README.rst\ndrwxrwxrwx 3 pl662 dijk 4096 Aug 28 21:24 dataclasses_jsonschema\ndrwxr-xr-x 2 pl662 dijk 4096 Feb 22  2026 dataclasses_jsonschema.egg-info\n-rw-r--r-- 1 pl662 dijk 1700 Aug 28 21:24 patch.txt\n-rw-r--r-- 1 pl662 dijk   93 Feb 22  2026 setup.cfg\n-rw-r--r-- 1 pl662 dijk 1318 Feb 22  2026 setup.py\n-rw-r--r-- 1 pl662 dijk  835 Feb 22  2026 test_issue.py\ndrwxrwxrwx 3 pl662 dijk 4096 Aug 28 21:23 tests\n-rw-r--r-- 1 pl662 dijk  360 Feb 22  2026 tox.ini\nimport sys\nimport json\nimport functools\nfrom _decimal import Decimal\nfrom ipaddress import IPv4Address, IPv6Address\nfrom typing import Optional, Type, Union, Any, Dict, Tuple, List, TypeVar, get_type_hints, Callable\nimport re\nfrom datetime import datetime\nfrom dataclasses import fields, is_dataclass, Field, MISSING, dataclass, asdict\nfrom uuid import UUID\nfrom enum import Enum\nimport warnings\n\nfrom typing_extensions import Final, Literal\n\n\nfrom dataclasses_jsonschema.field_types import (  # noqa: F401\n    FieldEncoder, DateTimeFieldEncoder, UuidField, DecimalField,\n    IPv4AddressField, IPv6AddressField, DateTimeField\n)\nfrom dataclasses_jsonschema.type_defs import JsonDict, SchemaType, JsonSchemaMeta, _NULL_TYPE, NULL  # noqa: F401\n\ntry:\n    import fastjsonschema\n\n    def validate_func(data, schema):\n        return fastjsonschema.validate(schema, data)\n    JsonSchemaValidationError = fastjsonschema.JsonSchemaException\n    fast_validation = True\nexcept ImportError:\n    import jsonschema\n    validate_func = jsonschema.validate\n    JsonSchemaValidationError = jsonschema.ValidationError\n    fast_validation = False\n\nJSON_ENCODABLE_TYPES = {\n    str: {'type': 'string'},\n    int: {'type': 'integer'},\n    bool: {'type': 'boolean'},\n    float: {'type': 'number'}\n}\n\n\nclass ValidationError(Exception):\n    pass\n\n\ndef is_enum(field_type: Any):\n    return issubclass_safe(field_type, Enum)\n\n\ndef issubclass_safe(klass: Any, base: Type):\n    try:\n        return issubclass(klass, base)\n    except TypeError:\n        return False\n\n\ndef is_optional(field: Any) -> bool:\n    try:\n        return field.__origin__ == Union and type(None) in field.__args__\n    except AttributeError:\n        return False\n\n\ndef is_final(field: Any) -> bool:\n    try:\n        return field.__origin__ == Final\n    except AttributeError:\n        if sys.version_info[:2] == (3, 6):\n            return type(field).__qualname__ == \"_Final\"\n        return False\n\n\ndef is_literal(field: Any) -> bool:\n    try:\n        return field.__origin__ == Literal\n    except AttributeError:\n        if sys.version_info[:2] == (3, 6):\n            return type(field).__qualname__ == \"_Literal\"\n        return False\n\n\ndef is_nullable(field: Any) -> bool:\n    try:\n        if sys.version_info[:2] == (3, 6):\n            # Hack to get python 3.6 working\n            return \"_NULL_TYPE\" in repr(field)\n        return field.__origin__ == Union and _NULL_TYPE in field.__args__\n    except AttributeError:\n        return False\n\n\ndef unwrap_final(final_type: Any) -> Any:\n    return final_type.__args__[0] if sys.version_info[:2] >= (3, 7) else final_type.__type__\n\n\ndef unwrap_optional(optional_type: Any) -> Any:\n    idx = optional_type.__args__.index(type(None))\n    return Union[optional_type.__args__[:idx] + optional_type.__args__[idx+1:]]\n</output>",
+      "extra": {
+        "raw_output": "total 68\ndrwxrwxrwx 8 pl662 dijk 4096 Aug 28 21:24 .\ndrwxr-xr-x 1 pl662 dijk   80 Aug 28 21:24 ..\ndrwxr-xr-x 4 pl662 dijk 4096 Feb 22  2026 .eggs\ndrwxrwxrwx 8 pl662 dijk 4096 Aug 28 21:24 .git\n-rw-r--r-- 1 pl662 dijk 1251 Feb 22  2026 .gitignore\ndrwxr-xr-x 3 pl662 dijk 4096 Aug 28 21:23 .pytest_cache\n-rw-r--r-- 1 pl662 dijk  117 Feb 22  2026 .travis.yml\n-rw-r--r-- 1 pl662 dijk 1071 Feb 22  2026 LICENSE\n-rw-r--r-- 1 pl662 dijk 5963 Feb 22  2026 README.rst\ndrwxrwxrwx 3 pl662 dijk 4096 Aug 28 21:24 dataclasses_jsonschema\ndrwxr-xr-x 2 pl662 dijk 4096 Feb 22  2026 dataclasses_jsonschema.egg-info\n-rw-r--r-- 1 pl662 dijk 1700 Aug 28 21:24 patch.txt\n-rw-r--r-- 1 pl662 dijk   93 Feb 22  2026 setup.cfg\n-rw-r--r-- 1 pl662 dijk 1318 Feb 22  2026 setup.py\n-rw-r--r-- 1 pl662 dijk  835 Feb 22  2026 test_issue.py\ndrwxrwxrwx 3 pl662 dijk 4096 Aug 28 21:23 tests\n-rw-r--r-- 1 pl662 dijk  360 Feb 22  2026 tox.ini\nimport sys\nimport json\nimport functools\nfrom _decimal import Decimal\nfrom ipaddress import IPv4Address, IPv6Address\nfrom typing import Optional, Type, Union, Any, Dict, Tuple, List, TypeVar, get_type_hints, Callable\nimport re\nfrom datetime import datetime\nfrom dataclasses import fields, is_dataclass, Field, MISSING, dataclass, asdict\nfrom uuid import UUID\nfrom enum import Enum\nimport warnings\n\nfrom typing_extensions import Final, Literal\n\n\nfrom dataclasses_jsonschema.field_types import (  # noqa: F401\n    FieldEncoder, DateTimeFieldEncoder, UuidField, DecimalField,\n    IPv4AddressField, IPv6AddressField, DateTimeField\n)\nfrom dataclasses_jsonschema.type_defs import JsonDict, SchemaType, JsonSchemaMeta, _NULL_TYPE, NULL  # noqa: F401\n\ntry:\n    import fastjsonschema\n\n    def validate_func(data, schema):\n        return fastjsonschema.validate(schema, data)\n    JsonSchemaValidationError = fastjsonschema.JsonSchemaException\n    fast_validation = True\nexcept ImportError:\n    import jsonschema\n    validate_func = jsonschema.validate\n    JsonSchemaValidationError = jsonschema.ValidationError\n    fast_validation = False\n\nJSON_ENCODABLE_TYPES = {\n    str: {'type': 'string'},\n    int: {'type': 'integer'},\n    bool: {'type': 'boolean'},\n    float: {'type': 'number'}\n}\n\n\nclass ValidationError(Exception):\n    pass\n\n\ndef is_enum(field_type: Any):\n    return issubclass_safe(field_type, Enum)\n\n\ndef issubclass_safe(klass: Any, base: Type):\n    try:\n        return issubclass(klass, base)\n    except TypeError:\n        return False\n\n\ndef is_optional(field: Any) -> bool:\n    try:\n        return field.__origin__ == Union and type(None) in field.__args__\n    except AttributeError:\n        return False\n\n\ndef is_final(field: Any) -> bool:\n    try:\n        return field.__origin__ == Final\n    except AttributeError:\n        if sys.version_info[:2] == (3, 6):\n            return type(field).__qualname__ == \"_Final\"\n        return False\n\n\ndef is_literal(field: Any) -> bool:\n    try:\n        return field.__origin__ == Literal\n    except AttributeError:\n        if sys.version_info[:2] == (3, 6):\n            return type(field).__qualname__ == \"_Literal\"\n        return False\n\n\ndef is_nullable(field: Any) -> bool:\n    try:\n        if sys.version_info[:2] == (3, 6):\n            # Hack to get python 3.6 working\n            return \"_NULL_TYPE\" in repr(field)\n        return field.__origin__ == Union and _NULL_TYPE in field.__args__\n    except AttributeError:\n        return False\n\n\ndef unwrap_final(final_type: Any) -> Any:\n    return final_type.__args__[0] if sys.version_info[:2] >= (3, 7) else final_type.__type__\n\n\ndef unwrap_optional(optional_type: Any) -> Any:\n    idx = optional_type.__args__.index(type(None))\n    return Union[optional_type.__args__[:idx] + optional_type.__args__[idx+1:]]\n",
+        "returncode": 0,
+        "timestamp": 1787952286.5259666,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me look at the field type resolution logic, particularly how `Any` is handled.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && grep -n \"Any\\|_get_type_schema\\|def _get\" dataclasses_jsonschema/__init__.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && grep -n \"Any\\|_get_type_schema\\|def _get\" dataclasses_jsonschema/__init__.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-92b32c365ea85f0c",
+          "created": 1787952286,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me look at the field type resolution logic, particularly how `Any` is handled.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && grep -n \"Any\\|_get_type_schema\\|def _get\" dataclasses_jsonschema/__init__.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 66,
+            "prompt_tokens": 3741,
+            "total_tokens": 3807,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952287.3940465
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n6:from typing import Optional, Type, Union, Any, Dict, Tuple, List, TypeVar, get_type_hints, Callable\n48:def is_enum(field_type: Any):\n52:def issubclass_safe(klass: Any, base: Type):\n59:def is_optional(field: Any) -> bool:\n66:def is_final(field: Any) -> bool:\n75:def is_literal(field: Any) -> bool:\n84:def is_nullable(field: Any) -> bool:\n94:def unwrap_final(final_type: Any) -> Any:\n98:def unwrap_optional(optional_type: Any) -> Any:\n103:def unwrap_nullable(nullable_type: Any) -> Any:\n115:_ValueEncoder = Callable[[Any, Any, bool], Any]\n116:_ValueDecoder = Callable[[str, Any, Any], Any]\n138:    default: Any = None\n145:    extensions: Optional[Dict[str, Any]] = None\n180:    __encode_cache: Dict[Any, _ValueEncoder]\n181:    __decode_cache: Dict[Any, _ValueDecoder]\n239:    def _encode_field(cls, field_type: Any, value: Any, omit_none: bool) -> Any:\n295:    def _get_fields(cls, base_fields=True) -> List[Tuple[Field, str]]:\n297:        def _get_fields_uncached():\n347:        Any additional keyword arguments are passed to :func:`json.dumps`.\n352:    def _decode_field(cls, field: str, field_type: Any, value: Any) -> Any:\n404:            elif field_type == Any:\n433:        init_values: Dict[str, Any] = {}\n434:        non_init_values: Dict[str, Any] = {}\n453:        Any additional keyword arguments are passed to :func:`json.loads`.\n458:    def from_object(cls: Type[T], obj: Any, exclude: FieldExcludeList = tuple()) -> T:\n465:        init_values: Dict[str, Any] = {}\n466:        non_init_values: Dict[str, Any] = {}\n506:    def _get_field_meta(cls, field: Field, schema_type: SchemaType) -> Tuple[FieldMeta, bool]:\n539:    def _get_field_schema(cls, field: Union[Field, Type], schema_type: SchemaType) -> Tuple[JsonDict, bool]:\n596:                if field_type.__args__[1] is not Any:\n602:                if field_type.__args__[0] is not Any:\n625:    def _get_field_definitions(cls, field_type: Any, definitions: JsonDict,\n740:    def _get_field_type_name(field_type: Any) -> str:\n</output>",
+      "extra": {
+        "raw_output": "6:from typing import Optional, Type, Union, Any, Dict, Tuple, List, TypeVar, get_type_hints, Callable\n48:def is_enum(field_type: Any):\n52:def issubclass_safe(klass: Any, base: Type):\n59:def is_optional(field: Any) -> bool:\n66:def is_final(field: Any) -> bool:\n75:def is_literal(field: Any) -> bool:\n84:def is_nullable(field: Any) -> bool:\n94:def unwrap_final(final_type: Any) -> Any:\n98:def unwrap_optional(optional_type: Any) -> Any:\n103:def unwrap_nullable(nullable_type: Any) -> Any:\n115:_ValueEncoder = Callable[[Any, Any, bool], Any]\n116:_ValueDecoder = Callable[[str, Any, Any], Any]\n138:    default: Any = None\n145:    extensions: Optional[Dict[str, Any]] = None\n180:    __encode_cache: Dict[Any, _ValueEncoder]\n181:    __decode_cache: Dict[Any, _ValueDecoder]\n239:    def _encode_field(cls, field_type: Any, value: Any, omit_none: bool) -> Any:\n295:    def _get_fields(cls, base_fields=True) -> List[Tuple[Field, str]]:\n297:        def _get_fields_uncached():\n347:        Any additional keyword arguments are passed to :func:`json.dumps`.\n352:    def _decode_field(cls, field: str, field_type: Any, value: Any) -> Any:\n404:            elif field_type == Any:\n433:        init_values: Dict[str, Any] = {}\n434:        non_init_values: Dict[str, Any] = {}\n453:        Any additional keyword arguments are passed to :func:`json.loads`.\n458:    def from_object(cls: Type[T], obj: Any, exclude: FieldExcludeList = tuple()) -> T:\n465:        init_values: Dict[str, Any] = {}\n466:        non_init_values: Dict[str, Any] = {}\n506:    def _get_field_meta(cls, field: Field, schema_type: SchemaType) -> Tuple[FieldMeta, bool]:\n539:    def _get_field_schema(cls, field: Union[Field, Type], schema_type: SchemaType) -> Tuple[JsonDict, bool]:\n596:                if field_type.__args__[1] is not Any:\n602:                if field_type.__args__[0] is not Any:\n625:    def _get_field_definitions(cls, field_type: Any, definitions: JsonDict,\n740:    def _get_field_type_name(field_type: Any) -> str:\n",
+        "returncode": 0,
+        "timestamp": 1787952287.5649312,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me look at the `_get_field_schema` and `_get_field_definitions` methods in detail.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '539,740p' dataclasses_jsonschema/__init__.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && sed -n '539,740p' dataclasses_jsonschema/__init__.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8b1e61f9788650dd",
+          "created": 1787952287,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me look at the `_get_field_schema` and `_get_field_definitions` methods in detail.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '539,740p' dataclasses_jsonschema/__init__.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 64,
+            "prompt_tokens": 4471,
+            "total_tokens": 4535,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952288.4569466
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n    def _get_field_schema(cls, field: Union[Field, Type], schema_type: SchemaType) -> Tuple[JsonDict, bool]:\n        field_schema: JsonDict = {'type': 'object'}\n        required = True\n\n        if isinstance(field, Field):\n            field_type = field.type\n            field_meta, required = cls._get_field_meta(field, schema_type)\n        else:\n            field_type = field\n            field_meta = FieldMeta(schema_type=schema_type)\n\n        field_type_name = cls._get_field_type_name(field_type)\n        if cls._is_json_schema_subclass(field_type):\n            field_schema = schema_reference(schema_type, field_type_name)\n        else:\n            # If is optional[...]\n            if is_optional(field_type):\n                field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                required = False\n            elif is_nullable(field_type):\n                field_schema, required = cls._get_field_schema(unwrap_nullable(field_type), schema_type)\n                if schema_type == SchemaType.OPENAPI_3:\n                    field_schema[\"nullable\"] = True\n                elif schema_type != SchemaType.SWAGGER_V2:\n                    field_schema = {\"oneOf\": [field_schema, {\"type\": \"null\"}]}\n            elif is_final(field_type):\n                field_schema, required = cls._get_field_schema(unwrap_final(field_type), schema_type)\n            elif is_literal(field_type):\n                field_schema = {\n                    'enum': list(field_type.__args__ if sys.version_info[:2] >= (3, 7) else field_type.__values__)\n                }\n            elif is_enum(field_type):\n                member_types = set()\n                values = []\n                for member in field_type:\n                    member_types.add(type(member.value))\n                    values.append(member.value)\n                if len(member_types) == 1:\n                    member_type = member_types.pop()\n                    if member_type in JSON_ENCODABLE_TYPES:\n    \n...[output truncated]...\n    cls._get_field_definitions(field.type, definitions, schema_type)\n                if is_required:\n                    required.append(target_field)\n\n            discriminator_property = cls._discriminator_property_name()\n            if discriminator_property is not None:\n                properties[discriminator_property] = {'type': 'string'}\n                required.append(discriminator_property)\n\n            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\n\n            if discriminator_property is not None:\n                schema['discriminator'] = {'propertyName': discriminator_property}\n\n            # Needed for Draft 04 backwards compatibility\n            if len(required) == 0:\n                del schema[\"required\"]\n\n            dataclass_bases = [\n                klass for klass in cls.__bases__ if is_dataclass(klass) and issubclass(klass, JsonSchemaMixin)\n            ]\n            if len(dataclass_bases) > 0:\n                schema = {\n                    \"allOf\": [schema_reference(schema_type, base.__name__) for base in dataclass_bases] + [schema]\n                }\n                for base in dataclass_bases:\n                    definitions.update(base.json_schema(embeddable=True, schema_type=schema_type))\n\n            if cls.__doc__:\n                schema['description'] = cls.__doc__\n\n            cls.__schema[schema_type] = schema\n\n        if embeddable:\n            return {**definitions, cls.__name__: schema}\n        else:\n            schema_uri = 'http://json-schema.org/draft-06/schema#'\n            if schema_type == SchemaType.DRAFT_04:\n                schema_uri = 'http://json-shema.org/draft-04/schema#'\n\n            full_schema = {**schema, **{'$schema': schema_uri}}\n            if len(definitions) > 0:\n                full_schema['definitions'] = definitions\n            return full_schema\n\n    @staticmethod\n    def _get_field_type_name(field_type: Any) -> str:\n</output>",
+      "extra": {
+        "raw_output": "    def _get_field_schema(cls, field: Union[Field, Type], schema_type: SchemaType) -> Tuple[JsonDict, bool]:\n        field_schema: JsonDict = {'type': 'object'}\n        required = True\n\n        if isinstance(field, Field):\n            field_type = field.type\n            field_meta, required = cls._get_field_meta(field, schema_type)\n        else:\n            field_type = field\n            field_meta = FieldMeta(schema_type=schema_type)\n\n        field_type_name = cls._get_field_type_name(field_type)\n        if cls._is_json_schema_subclass(field_type):\n            field_schema = schema_reference(schema_type, field_type_name)\n        else:\n            # If is optional[...]\n            if is_optional(field_type):\n                field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                required = False\n            elif is_nullable(field_type):\n                field_schema, required = cls._get_field_schema(unwrap_nullable(field_type), schema_type)\n                if schema_type == SchemaType.OPENAPI_3:\n                    field_schema[\"nullable\"] = True\n                elif schema_type != SchemaType.SWAGGER_V2:\n                    field_schema = {\"oneOf\": [field_schema, {\"type\": \"null\"}]}\n            elif is_final(field_type):\n                field_schema, required = cls._get_field_schema(unwrap_final(field_type), schema_type)\n            elif is_literal(field_type):\n                field_schema = {\n                    'enum': list(field_type.__args__ if sys.version_info[:2] >= (3, 7) else field_type.__values__)\n                }\n            elif is_enum(field_type):\n                member_types = set()\n                values = []\n                for member in field_type:\n                    member_types.add(type(member.value))\n                    values.append(member.value)\n                if len(member_types) == 1:\n                    member_type = member_types.pop()\n                    if member_type in JSON_ENCODABLE_TYPES:\n    \n...[output truncated]...\n    cls._get_field_definitions(field.type, definitions, schema_type)\n                if is_required:\n                    required.append(target_field)\n\n            discriminator_property = cls._discriminator_property_name()\n            if discriminator_property is not None:\n                properties[discriminator_property] = {'type': 'string'}\n                required.append(discriminator_property)\n\n            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\n\n            if discriminator_property is not None:\n                schema['discriminator'] = {'propertyName': discriminator_property}\n\n            # Needed for Draft 04 backwards compatibility\n            if len(required) == 0:\n                del schema[\"required\"]\n\n            dataclass_bases = [\n                klass for klass in cls.__bases__ if is_dataclass(klass) and issubclass(klass, JsonSchemaMixin)\n            ]\n            if len(dataclass_bases) > 0:\n                schema = {\n                    \"allOf\": [schema_reference(schema_type, base.__name__) for base in dataclass_bases] + [schema]\n                }\n                for base in dataclass_bases:\n                    definitions.update(base.json_schema(embeddable=True, schema_type=schema_type))\n\n            if cls.__doc__:\n                schema['description'] = cls.__doc__\n\n            cls.__schema[schema_type] = schema\n\n        if embeddable:\n            return {**definitions, cls.__name__: schema}\n        else:\n            schema_uri = 'http://json-schema.org/draft-06/schema#'\n            if schema_type == SchemaType.DRAFT_04:\n                schema_uri = 'http://json-shema.org/draft-04/schema#'\n\n            full_schema = {**schema, **{'$schema': schema_uri}}\n            if len(definitions) > 0:\n                full_schema['definitions'] = definitions\n            return full_schema\n\n    @staticmethod\n    def _get_field_type_name(field_type: Any) -> str:\n",
+        "returncode": 0,
+        "timestamp": 1787952288.6410947,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me see the full `_get_field_schema` method, especially the part handling `Any`.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '539,625p' dataclasses_jsonschema/__init__.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && sed -n '539,625p' dataclasses_jsonschema/__init__.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-80742ec8e5a13365",
+          "created": 1787952288,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me see the full `_get_field_schema` method, especially the part handling `Any`.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '539,625p' dataclasses_jsonschema/__init__.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 63,
+            "prompt_tokens": 5431,
+            "total_tokens": 5494,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952289.5794182
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n    def _get_field_schema(cls, field: Union[Field, Type], schema_type: SchemaType) -> Tuple[JsonDict, bool]:\n        field_schema: JsonDict = {'type': 'object'}\n        required = True\n\n        if isinstance(field, Field):\n            field_type = field.type\n            field_meta, required = cls._get_field_meta(field, schema_type)\n        else:\n            field_type = field\n            field_meta = FieldMeta(schema_type=schema_type)\n\n        field_type_name = cls._get_field_type_name(field_type)\n        if cls._is_json_schema_subclass(field_type):\n            field_schema = schema_reference(schema_type, field_type_name)\n        else:\n            # If is optional[...]\n            if is_optional(field_type):\n                field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                required = False\n            elif is_nullable(field_type):\n                field_schema, required = cls._get_field_schema(unwrap_nullable(field_type), schema_type)\n                if schema_type == SchemaType.OPENAPI_3:\n                    field_schema[\"nullable\"] = True\n                elif schema_type != SchemaType.SWAGGER_V2:\n                    field_schema = {\"oneOf\": [field_schema, {\"type\": \"null\"}]}\n            elif is_final(field_type):\n                field_schema, required = cls._get_field_schema(unwrap_final(field_type), schema_type)\n            elif is_literal(field_type):\n                field_schema = {\n                    'enum': list(field_type.__args__ if sys.version_info[:2] >= (3, 7) else field_type.__values__)\n                }\n            elif is_enum(field_type):\n                member_types = set()\n                values = []\n                for member in field_type:\n                    member_types.add(type(member.value))\n                    values.append(member.value)\n                if len(member_types) == 1:\n                    member_type = member_types.pop()\n                    if member_type in JSON_ENCODABLE_TYPES:\n    \n...[output truncated]...\nError('Type unions unsupported in Swagger 2.0')\n                field_schema = {\n                    'oneOf': [cls._get_field_schema(variant, schema_type)[0] for variant in field_type.__args__]\n                }\n            elif field_type_name in ('Dict', 'Mapping'):\n                field_schema = {'type': 'object'}\n                if field_type.__args__[1] is not Any:\n                    field_schema['additionalProperties'] = cls._get_field_schema(\n                        field_type.__args__[1], schema_type\n                    )[0]\n            elif field_type_name in ('Sequence', 'List') or (field_type_name == \"Tuple\" and ... in field_type.__args__):\n                field_schema = {'type': 'array'}\n                if field_type.__args__[0] is not Any:\n                    field_schema['items'] = cls._get_field_schema(field_type.__args__[0], schema_type)[0]\n            elif field_type_name == \"Tuple\":\n                tuple_len = len(field_type.__args__)\n                # TODO: How do we handle Optional type within lists / tuples\n                field_schema = {\n                    'type': 'array', 'minItems': tuple_len, 'maxItems': tuple_len,\n                    'items': [cls._get_field_schema(type_arg, schema_type)[0] for type_arg in field_type.__args__]\n                }\n            elif field_type in JSON_ENCODABLE_TYPES:\n                field_schema.update(JSON_ENCODABLE_TYPES[field_type])\n            elif field_type in cls._field_encoders:\n                field_schema.update(cls._field_encoders[field_type].json_schema)\n            elif hasattr(field_type, '__supertype__'):  # NewType fields\n                field_schema, _ = cls._get_field_schema(field_type.__supertype__, schema_type)\n            else:\n                warnings.warn(f\"Unable to create schema for '{field_type_name}'\")\n\n        field_schema.update(field_meta.as_dict)\n\n        return field_schema, required\n\n    @classmethod\n    def _get_field_definitions(cls, field_type: Any, definitions: JsonDict,\n</output>",
+      "extra": {
+        "raw_output": "    def _get_field_schema(cls, field: Union[Field, Type], schema_type: SchemaType) -> Tuple[JsonDict, bool]:\n        field_schema: JsonDict = {'type': 'object'}\n        required = True\n\n        if isinstance(field, Field):\n            field_type = field.type\n            field_meta, required = cls._get_field_meta(field, schema_type)\n        else:\n            field_type = field\n            field_meta = FieldMeta(schema_type=schema_type)\n\n        field_type_name = cls._get_field_type_name(field_type)\n        if cls._is_json_schema_subclass(field_type):\n            field_schema = schema_reference(schema_type, field_type_name)\n        else:\n            # If is optional[...]\n            if is_optional(field_type):\n                field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                required = False\n            elif is_nullable(field_type):\n                field_schema, required = cls._get_field_schema(unwrap_nullable(field_type), schema_type)\n                if schema_type == SchemaType.OPENAPI_3:\n                    field_schema[\"nullable\"] = True\n                elif schema_type != SchemaType.SWAGGER_V2:\n                    field_schema = {\"oneOf\": [field_schema, {\"type\": \"null\"}]}\n            elif is_final(field_type):\n                field_schema, required = cls._get_field_schema(unwrap_final(field_type), schema_type)\n            elif is_literal(field_type):\n                field_schema = {\n                    'enum': list(field_type.__args__ if sys.version_info[:2] >= (3, 7) else field_type.__values__)\n                }\n            elif is_enum(field_type):\n                member_types = set()\n                values = []\n                for member in field_type:\n                    member_types.add(type(member.value))\n                    values.append(member.value)\n                if len(member_types) == 1:\n                    member_type = member_types.pop()\n                    if member_type in JSON_ENCODABLE_TYPES:\n    \n...[output truncated]...\nError('Type unions unsupported in Swagger 2.0')\n                field_schema = {\n                    'oneOf': [cls._get_field_schema(variant, schema_type)[0] for variant in field_type.__args__]\n                }\n            elif field_type_name in ('Dict', 'Mapping'):\n                field_schema = {'type': 'object'}\n                if field_type.__args__[1] is not Any:\n                    field_schema['additionalProperties'] = cls._get_field_schema(\n                        field_type.__args__[1], schema_type\n                    )[0]\n            elif field_type_name in ('Sequence', 'List') or (field_type_name == \"Tuple\" and ... in field_type.__args__):\n                field_schema = {'type': 'array'}\n                if field_type.__args__[0] is not Any:\n                    field_schema['items'] = cls._get_field_schema(field_type.__args__[0], schema_type)[0]\n            elif field_type_name == \"Tuple\":\n                tuple_len = len(field_type.__args__)\n                # TODO: How do we handle Optional type within lists / tuples\n                field_schema = {\n                    'type': 'array', 'minItems': tuple_len, 'maxItems': tuple_len,\n                    'items': [cls._get_field_schema(type_arg, schema_type)[0] for type_arg in field_type.__args__]\n                }\n            elif field_type in JSON_ENCODABLE_TYPES:\n                field_schema.update(JSON_ENCODABLE_TYPES[field_type])\n            elif field_type in cls._field_encoders:\n                field_schema.update(cls._field_encoders[field_type].json_schema)\n            elif hasattr(field_type, '__supertype__'):  # NewType fields\n                field_schema, _ = cls._get_field_schema(field_type.__supertype__, schema_type)\n            else:\n                warnings.warn(f\"Unable to create schema for '{field_type_name}'\")\n\n        field_schema.update(field_meta.as_dict)\n\n        return field_schema, required\n\n    @classmethod\n    def _get_field_definitions(cls, field_type: Any, definitions: JsonDict,\n",
+        "returncode": 0,
+        "timestamp": 1787952289.7588797,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: I see the issue. When `field_type` is `Any`, none of the branches match (it's not optional, not enum, not in JSON_ENCODABLE_TYPES, etc.), so it falls to the `else` branch which warns \"Unable to create schema\" and leaves `field_schema` as the default `{'type': 'object'}`. \n\nThe fix: add a branch to handle `Any` and produce an empty schema `{}`. Let me add it. I'll add a check for `field_type is Any` early. Let me look at the exact lines to insert.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '553,556p' dataclasses_jsonschema/__init__.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && sed -n '553,556p' dataclasses_jsonschema/__init__.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-a2818fec5bfe5ab6",
+          "created": 1787952289,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: I see the issue. When `field_type` is `Any`, none of the branches match (it's not optional, not enum, not in JSON_ENCODABLE_TYPES, etc.), so it falls to the `else` branch which warns \"Unable to create schema\" and leaves `field_schema` as the default `{'type': 'object'}`. \n\nThe fix: add a branch to handle `Any` and produce an empty schema `{}`. Let me add it. I'll add a check for `field_type is Any` early. Let me look at the exact lines to insert.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '553,556p' dataclasses_jsonschema/__init__.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 165,
+            "prompt_tokens": 6409,
+            "total_tokens": 6574,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952291.7745616
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n        else:\n            # If is optional[...]\n            if is_optional(field_type):\n                field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n</output>",
+      "extra": {
+        "raw_output": "        else:\n            # If is optional[...]\n            if is_optional(field_type):\n                field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n",
+        "returncode": 0,
+        "timestamp": 1787952291.9588544,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: I'll add a branch for `Any` right after the `else:` and before the optional check. Let me use sed to insert it.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python - <<'EOF'\nimport re\nf = 'dataclasses_jsonschema/__init__.py'\ns = open(f).read()\nold = \"\"\"        else:\n            # If is optional[...]\n            if is_optional(field_type):\"\"\"\nnew = \"\"\"        else:\n            # If is optional[...]\n            if field_type is Any:\n                field_schema = {}\n            elif is_optional(field_type):\"\"\"\nassert old in s\ns = s.replace(old, new)\nopen(f, 'w').write(s)\nprint(\"done\")\nEOF\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && python - <<'EOF'\nimport re\nf = 'dataclasses_jsonschema/__init__.py'\ns = open(f).read()\nold = \"\"\"        else:\n            # If is optional[...]\n            if is_optional(field_type):\"\"\"\nnew = \"\"\"        else:\n            # If is optional[...]\n            if field_type is Any:\n                field_schema = {}\n            elif is_optional(field_type):\"\"\"\nassert old in s\ns = s.replace(old, new)\nopen(f, 'w').write(s)\nprint(\"done\")\nEOF"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-af633e1ce736c108",
+          "created": 1787952291,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: I'll add a branch for `Any` right after the `else:` and before the optional check. Let me use sed to insert it.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python - <<'EOF'\nimport re\nf = 'dataclasses_jsonschema/__init__.py'\ns = open(f).read()\nold = \"\"\"        else:\n            # If is optional[...]\n            if is_optional(field_type):\"\"\"\nnew = \"\"\"        else:\n            # If is optional[...]\n            if field_type is Any:\n                field_schema = {}\n            elif is_optional(field_type):\"\"\"\nassert old in s\ns = s.replace(old, new)\nopen(f, 'w').write(s)\nprint(\"done\")\nEOF\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 173,
+            "prompt_tokens": 6644,
+            "total_tokens": 6817,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952294.0615976
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndone\n</output>",
+      "extra": {
+        "raw_output": "done\n",
+        "returncode": 0,
+        "timestamp": 1787952294.263924,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me verify with a repro script.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && cat > repro_tmp.py <<'EOF'\nfrom dataclasses import dataclass\nfrom typing import Any\nfrom dataclasses_jsonschema import JsonSchemaMixin\n\n@dataclass\nclass Parameter(JsonSchemaMixin):\n    id: str\n    value: Any\n\nprint(Parameter.json_schema())\nEOF\npython repro_tmp.py && rm repro_tmp.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && cat > repro_tmp.py <<'EOF'\nfrom dataclasses import dataclass\nfrom typing import Any\nfrom dataclasses_jsonschema import JsonSchemaMixin\n\n@dataclass\nclass Parameter(JsonSchemaMixin):\n    id: str\n    value: Any\n\nprint(Parameter.json_schema())\nEOF\npython repro_tmp.py && rm repro_tmp.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b8bcddc99d1c51bf",
+          "created": 1787952294,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me verify with a repro script.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && cat > repro_tmp.py <<'EOF'\nfrom dataclasses import dataclass\nfrom typing import Any\nfrom dataclasses_jsonschema import JsonSchemaMixin\n\n@dataclass\nclass Parameter(JsonSchemaMixin):\n    id: str\n    value: Any\n\nprint(Parameter.json_schema())\nEOF\npython repro_tmp.py && rm repro_tmp.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 102,
+            "prompt_tokens": 6849,
+            "total_tokens": 6951,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952295.6745794
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n{'type': 'object', 'required': ['id', 'value'], 'properties': {'id': {'type': 'string'}, 'value': {}}, 'description': 'Parameter(id: str, value: Any)', '$schema': 'http://json-schema.org/draft-06/schema#'}\n</output>",
+      "extra": {
+        "raw_output": "{'type': 'object', 'required': ['id', 'value'], 'properties': {'id': {'type': 'string'}, 'value': {}}, 'description': 'Parameter(id: str, value: Any)', '$schema': 'http://json-schema.org/draft-06/schema#'}\n",
+        "returncode": 0,
+        "timestamp": 1787952296.0469835,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The `value` field now produces `{}`. Let me run the test suite to ensure nothing broke.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python -m pytest tests/test_core.py -q 2>&1 | tail -20\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && python -m pytest tests/test_core.py -q 2>&1 | tail -20"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-ab084044ae653f82",
+          "created": 1787952296,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The `value` field now produces `{}`. Let me run the test suite to ensure nothing broke.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python -m pytest tests/test_core.py -q 2>&1 | tail -20\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 63,
+            "prompt_tokens": 7044,
+            "total_tokens": 7107,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952297.0778022
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n...........................                                              [100%]\n27 passed in 0.05s\n</output>",
+      "extra": {
+        "raw_output": "...........................                                              [100%]\n27 passed in 0.05s\n",
+        "returncode": 0,
+        "timestamp": 1787952297.6270292,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: All tests pass. Let me create the patch and verify it.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && git diff -- dataclasses_jsonschema/__init__.py > patch.txt && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && git diff -- dataclasses_jsonschema/__init__.py > patch.txt && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b0af7947f4d5e248",
+          "created": 1787952297,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: All tests pass. Let me create the patch and verify it.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && git diff -- dataclasses_jsonschema/__init__.py > patch.txt && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 54,
+            "prompt_tokens": 7158,
+            "total_tokens": 7212,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952298.5725794
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex efe54f8..111ad8b 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -552,7 +552,9 @@ class JsonSchemaMixin:\n             field_schema = schema_reference(schema_type, field_type_name)\n         else:\n             # If is optional[...]\n-            if is_optional(field_type):\n+            if field_type is Any:\n+                field_schema = {}\n+            elif is_optional(field_type):\n                 field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                 required = False\n             elif is_nullable(field_type):\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex efe54f8..111ad8b 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -552,7 +552,9 @@ class JsonSchemaMixin:\n             field_schema = schema_reference(schema_type, field_type_name)\n         else:\n             # If is optional[...]\n-            if is_optional(field_type):\n+            if field_type is Any:\n+                field_schema = {}\n+            elif is_optional(field_type):\n                 field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                 required = False\n             elif is_nullable(field_type):\n",
+        "returncode": 0,
+        "timestamp": 1787952298.7549288,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The patch looks correct and minimal. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "reasoning": null,
+        "refusal": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-bd4cb83fea91578f",
+          "created": 1787952298,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The patch looks correct and minimal. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "reasoning": null,
+                  "refusal": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "token_ids": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 39,
+            "prompt_tokens": 7420,
+            "total_tokens": 7459,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787952299.5609276
+      }
+    },
+    {
+      "role": "exit",
+      "content": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex efe54f8..111ad8b 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -552,7 +552,9 @@ class JsonSchemaMixin:\n             field_schema = schema_reference(schema_type, field_type_name)\n         else:\n             # If is optional[...]\n-            if is_optional(field_type):\n+            if field_type is Any:\n+                field_schema = {}\n+            elif is_optional(field_type):\n                 field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                 required = False\n             elif is_nullable(field_type):\n",
+      "extra": {
+        "exit_status": "Submitted",
+        "submission": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex efe54f8..111ad8b 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -552,7 +552,9 @@ class JsonSchemaMixin:\n             field_schema = schema_reference(schema_type, field_type_name)\n         else:\n             # If is optional[...]\n-            if is_optional(field_type):\n+            if field_type is Any:\n+                field_schema = {}\n+            elif is_optional(field_type):\n                 field_schema = cls._get_field_schema(unwrap_optional(field_type), schema_type)[0]\n                 required = False\n             elif is_nullable(field_type):\n"
+      }
+    }
+  ],
+  "trajectory_format": "mini-swe-agent-1.1"
+}

@@ -1,0 +1,936 @@
+{
+  "info": {
+    "model_stats": {
+      "instance_cost": 0.0,
+      "api_calls": 12
+    },
+    "config": {
+      "agent": {
+        "system_template": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history.",
+        "instance_template": "<pr_description>\nConsider the following PR description:\n{{task}}\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /keras (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>\n",
+        "step_limit": 100,
+        "cost_limit": 1000000000.0,
+        "wall_time_limit_seconds": 0,
+        "max_consecutive_format_errors": 3,
+        "output_path": "/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory/chainswe/runs/v3main100/keras-team_keras_20241123__s0__mem_rawcat/traj_2_keras-team__keras-20550.json"
+      },
+      "agent_type": "minisweagent.agents.default.DefaultAgent",
+      "model": {
+        "model_name": "openai/coder-next",
+        "model_kwargs": {
+          "api_key": "EMPTY",
+          "temperature": 0.0,
+          "max_tokens": 16384,
+          "extra_body": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "api_base": "http://127.0.0.1:8866/v1"
+        },
+        "litellm_model_registry": null,
+        "set_cache_control": null,
+        "cost_tracking": "ignore_errors",
+        "format_error_template": "{% if finish_reason is defined and finish_reason in [\"length\", \"tool_calls\"] -%}\nYour previous response reached the output token limit (finish_reason={{ finish_reason }}) before you produced a complete action, so it was cut off. Respond more concisely and provide exactly one action in the required format. If you need to think more, do so briefly.\n{%- else -%}\nFormat error:\n\n<error>\n{{error}}\n</error>\n\nHere is general guidance on how to format your response:\n\nPlease always provide EXACTLY ONE action in triple backticks, found {{actions|length}} actions.\n\nPlease format your action in triple backticks as shown in <response_example>.\n\n<response_example>\nHere are some thoughts about why you want to perform the action.\n\n```mswea_bash_command\n<action>\n```\n</response_example>\n\nIf you have completed your assignment, please consult the first message about how to\nsubmit your solution (you will not be able to continue working on this task after that).\n{%- endif %}\n",
+        "observation_template": "{% if output.exception_info -%}\n<exception>{{output.exception_info}}</exception>\n{% endif -%}\n<returncode>{{output.returncode}}</returncode>\n{% if output.output | length < 10000 -%}\n<output>\n{{ output.output -}}\n</output>\n{%- else -%}\n<warning>\nThe output of your last command was too long.\nPlease try a different command that produces less output.\nIf you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.\nIf you're using grep or find and it produced too much output, you can use a more selective search pattern.\nIf you really need to see something from the full command's output, you can redirect output to a file and then search in that file.\n</warning>\n{%- set elided_chars = output.output | length - 10000 -%}\n<output_head>\n{{ output.output[:5000] }}\n</output_head>\n<elided_chars>\n{{ elided_chars }} characters elided\n</elided_chars>\n<output_tail>\n{{ output.output[-5000:] }}\n</output_tail>\n{%- endif -%}\n",
+        "multimodal_regex": "",
+        "action_regex": "```mswea_bash_command\\s*\\n(.*?)\\n```"
+      },
+      "model_type": "minisweagent.models.litellm_textbased_model.LitellmTextbasedModel",
+      "environment": {
+        "image": "/gpfs/radev/scratch/dijk/pl662/chainswe_sifs/swerebenchv2__keras-team-keras__20541-ceabd61.sif",
+        "cwd": "/keras",
+        "env": {},
+        "forward_env": [],
+        "timeout": 300,
+        "executable": "apptainer",
+        "sandbox_build_retries": 3,
+        "global_args": [
+          "--quiet"
+        ],
+        "exec_args": [
+          "--contain",
+          "--cleanenv",
+          "--fakeroot"
+        ]
+      },
+      "environment_type": "harness.env.RepoEnv"
+    },
+    "mini_version": "2.4.5",
+    "exit_status": "Submitted",
+    "submission": "diff --git a/keras/src/models/cloning.py b/keras/src/models/cloning.py\nindex 018cddd67..5d7c541e5 100644\n--- a/keras/src/models/cloning.py\n+++ b/keras/src/models/cloning.py\n@@ -298,7 +298,7 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n         input_dtype = None\n         input_batch_shape = None\n \n-    if input_tensors:\n+    if input_tensors is not None:\n         if isinstance(input_tensors, (list, tuple)):\n             if len(input_tensors) != 1:\n                 raise ValueError(\n@@ -310,7 +310,12 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n                 \"Argument `input_tensors` must be a KerasTensor. \"\n                 f\"Received invalid value: input_tensors={input_tensors}\"\n             )\n-        inputs = Input(tensor=input_tensors, name=input_name)\n+        inputs = Input(\n+            tensor=input_tensors,\n+            batch_shape=input_batch_shape,\n+            dtype=input_dtype,\n+            name=input_name,\n+        )\n         new_layers = [inputs] + new_layers\n     else:\n         if input_batch_shape is not None:\n"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history."
+    },
+    {
+      "role": "user",
+      "content": "<pr_description>\nConsider the following PR description:\n<memory_context>\nNotes from earlier work sessions on this repository:\n[keras-team__keras-20541]\nASSISTANT:\nTHOUGHT: Let me start by exploring the repository structure to understand the codebase.\n\n```mswea_bash_command\ncd /keras && ls -la && git log --oneline -5\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\ntotal 140\ndrwxrwxrwx 13 pl662 dijk  4096 Feb 21  2026 .\ndrwxr-xr-x  1 pl662 dijk    80 Aug 29 02:54 ..\ndrwxrwxrwx  2 pl662 dijk  4096 Feb 21  2026 .devcontainer\ndrwxrwxrwx  8 pl662 dijk  4096 Feb 21  2026 .git\ndrwxrwxrwx  3 pl662 dijk  4096 Feb 21  2026 .github\n-rw-r--r--  1 pl662 dijk   245 Feb 21  2026 .gitignore\ndrwxrwxrwx  3 pl662 dijk  4096 Feb 21  2026 .kokoro\n-rw-r--r--  1 pl662 dijk  6953 Feb 21  2026 CONTRIBUTING.md\n-rw-r--r--  1 pl662 dijk 11356 Feb 21  2026 LICENSE\n-rw-r--r--  1 pl662 dijk  4789 Feb 21  2026 README.md\n-rw-r--r--  1 pl662 dijk  5154 Feb 21  2026 SECURITY.md\n-rw-r--r--  1 pl662 dijk  8288 Feb 21  2026 api_gen.py\ndrwxrwxrwx  5 pl662 dijk  4096 Feb 21  2026 benchmarks\n-rw-r--r--  1 pl662 dijk   662 Feb 21  2026 codecov.yml\n-rw-r--r--  1 pl662 dijk  1034 Feb 21  2026 conftest.py\ndrwxr-xr-x  2 pl662 dijk  4096 Feb 21  2026 dist\ndrwxrwxrwx  2 pl662 dijk  4096 Feb 21  2026 examples\ndrwxrwxrwx  2 pl662 dijk  4096 Feb 21  2026 guides\ndrwxrwxrwx  3 pl662 dijk  4096 Feb 21  2026 integration_tests\ndrwxrwxrwx  4 pl662 dijk  4096 Feb 21  2026 keras\n-rw-r--r--  1 pl662 dijk  5228 Feb 21  2026 pip_build.py\n-rw-r--r--  1 pl662 dijk  253\n\nASSISTANT:\nTHOUGHT: This is about distributed training with MirroredStrategy. The issue is likely in how losses are reduced across replicas. Let me look at the training loop and loss reduction code.\n\n```mswea_bash_command\ncd /keras && ls keras/src/trainers/ && grep -rn \"reduce\" keras/src/trainers/ | head -40\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n__init__.py\ncompile_utils.py\ncompile_utils_test.py\ndata_adapters\nepoch_iterator.py\nepoch_iterator_test.py\ntrainer.py\ntrainer_test.py\nkeras/src/trainers/data_adapters/py_dataset_adapter.py:41:            Reduce this value to reduce the CPU memory consumption of\n</output>\n\nASSISTANT:\nTHOUGHT: Let me look at the trainer.py for how losses are computed and reduced, especially around distributed strategies.\n\n```mswea_bash_command\ncd /keras && grep -n \"reduce\\|strategy\\|replica\\|per_replica\\|cross_replica\\|all_reduce\\|mean\" keras/src/trainers/trainer.py | head -60\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n234:            if self._distribute_strategy:\n327:                loss = ops.mean((y_pred - y) ** 2)\n650:                input tensors or NumPy arrays, the default `None` means that the\n</output>\n\nASSISTANT:\nTHOUGHT: Let me look at the trainer.py more broadly, especially the training step and how losses are aggregated.\n\n```mswea_bash_command\ncd /keras && grep -n \"def \\|reduce\\|strategy\\|replica\\|all_reduce\\|cross_replica\\|per_replica\" keras/src/trainers/trainer.py | head -80\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n21:    def __init__(self):\n41:    def compile(\n204:    def jit_compile(self):\n211:    def jit_compile(self, value):\n221:    def _resolve_auto_jit_compile(self):\n234:            if self._distribute_strategy:\n243:    def run_eagerly(self):\n247:    def run_eagerly(self, value):\n251:    def metrics(self):\n272:    def metrics_names(self):\n275:    def reset_metrics(self):\n279:    def _get_own_metrics(self):\n290:    def _clear_previous_trainer_metrics(self):\n305:    def compute_loss(\n322:            def __init__(self, *args, **kwargs):\n326:            def compute_loss(self, x, y, y_pred, sample_weight, training=True):\n332:            def reset_metrics(self):\n336:            def metrics(self):\n384:    def _compute_loss(\n405:    def stateless_compute_loss(\n449:    def compute_metrics(self, x, y, y_pred, sample_weight=None):\n461:            def __init__(self, *args, **kwargs):\n465:            def compute_metrics(self, x, y, y_pred, sample_weight):\n495:    def get_metrics_result(self):\n514:    def fit(\n716:    def evaluate(\n803:    def predict(\n861:    def train_on_batch(\n899:    def test_on_batch(\n928:    def predict_on_batch(self, x):\n939:    def get_comp\n\nASSISTANT:\nTHOUGHT: Let me look at the epoch_iterator.py which likely handles the distributed training loop and loss reduction.\n\n```mswea_bash_command\ncd /keras && grep -n \"reduce\\|strategy\\|replica\\|all_reduce\\|cross_replica\\|per_replica\\|mean\\|def \" keras/src/trainers/epoch_iterator.py | head -80\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n49:    def __init__(\n76:    def _get_iterator(self):\n79:    def _interrupted_warning(self):\n89:    def reset(self):\n96:    def _enumerate_iterator(self):\n123:    def __iter__(self):\n127:    def __next__(self):\n139:    def enumerate_epoch(self):\n144:    def catch_stop_iteration(self):\n156:    def num_batches(self):\n</output>\n\nASSISTANT:\nTHOUGHT: Let me look at the trainer.py training step functions and how losses are reduced. Let me look at the full trainer.py around the training step.\n\n```mswea_bash_command\ncd /keras && sed -n '384,510p' keras/src/trainers/trainer.py\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n    def _compute_loss(\n        self,\n        x=None,\n        y=None,\n        y_pred=None,\n        sample_weight=None,\n        training=True,\n    ):\n        \"\"\"Backwards compatibility wrapper for `compute_loss`.\n\n        This should be used instead `compute_loss` within `train_step` and\n        `test_step` to support overrides of `compute_loss` that may not have\n        the `training` argument, as this argument was added in Keras 3.3.\n        \"\"\"\n        if self._compute_loss_has_training_arg:\n            return self.compute_loss(\n                x, y, y_pred, sample_weight, training=training\n            )\n        else:\n            return self.compute_loss(x, y, y_pred, sample_weight)\n\n    def stateless_compute_loss(\n        self,\n        trainable_variables,\n        non_trainable_variables,\n        metrics_variables,\n        x=None,\n        y=None,\n        y_pred=None,\n        sample_weight=None,\n        training=True,\n    ):\n        var_mapping = list(zip(self.trainable_variables, trainable_variables))\n        var_mapping.extend(\n            zip(self.non_trainable_variables, non_trainable_variables)\n        )\n        var_mapping.extend(zip(self.\n\nASSISTANT:\nTHOUGHT: The loss reduction across replicas is likely in the loss function itself. Let me look at how losses are reduced. The issue is that with MirroredStrategy, the loss is computed per-replica and then reduced. Let me look at the loss code and how it handles distributed reduction.\n\n```mswea_bash_command\ncd /keras && grep -rn \"cross_replica\\|all_reduce\\|per_replica\\|reduce_to\\|distribute\" keras/src/losses/ | head -40\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n</output>\n\nASSISTANT:\nTHOUGHT: No distributed handling in losses. Let me look at how the training step reduces losses. Let me search the whole codebase for distributed reduction logic.\n\n```mswea_bash_command\ncd /keras && grep -rn \"cross_replica\\|all_reduce\\|per_replica\\|reduce_to\\|MirroredStrategy\\|distribute_strategy\" keras/src/ | grep -v test | head -40\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\nkeras/src/backend/jax/distribution_lib.py:144:        per_replica_batch_size = int(\nkeras/src/backend/jax/distribution_lib.py:147:        if per_process_batch_size % per_replica_batch_size != 0:\nkeras/src/backend/jax/distribution_lib.py:150:                \"per_replica_batch_size`. \"\nkeras/src/backend/jax/distribution_lib.py:152:                f\"per_replica_batch_size = {per_replica_batch_size}\"\nkeras/src/backend/jax/distribution_lib.py:154:        per_replica_batches = np.split(\nkeras/src/backend/jax/distribution_lib.py:159:            per_replica_batch\nkeras/src/backend/jax/distribution_lib.py:160:            for per_replica_batch in per_replica_batches\nkeras/src/backend/jax/distribution_lib.py:173:        per_replica_batch_size = per_process_batch_size\nkeras/src/backend/jax/distribution_lib.py:179:    global_batch_size = per_replica_batch_size * num_model_replicas_total\nkeras/src/backend/tensorflow/nn.py:806:    y_sum = replica_ctx.all_reduce(tf.distribute.ReduceOp.SUM, local_sum)\nkeras/src/backend/tensorflow/nn.py:807:    y_squared_sum = replica_ctx.all_reduce(\nkeras/src/backend/tensorflow/nn.py:810:    count_sum = replica_ctx.all_reduce(tf.\n\nASSISTANT:\nTHOUGHT: Let me look at the tensorflow trainer.py, especially the train_step and how losses are reduced.\n\n```mswea_bash_command\ncd /keras && sed -n '60,130p' keras/src/backend/tensorflow/trainer.py\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n                x=x,\n                y=y,\n                y_pred=y_pred,\n                sample_weight=sample_weight,\n                training=True,\n            )\n            self._loss_tracker.update_state(\n                loss, sample_weight=tf.shape(tree.flatten(x)[0])[0]\n            )\n            if self.optimizer is not None:\n                loss = self.optimizer.scale_loss(loss)\n\n        # Compute gradients\n        if self.trainable_weights:\n            trainable_weights = self.trainable_weights\n            gradients = tape.gradient(loss, trainable_weights)\n\n            # Update weights\n            self.optimizer.apply_gradients(zip(gradients, trainable_weights))\n        else:\n            warnings.warn(\"The model does not have any trainable weights.\")\n\n        return self.compute_metrics(x, y, y_pred, sample_weight=sample_weight)\n\n    def test_step(self, data):\n        x, y, sample_weight = data_adapter_utils.unpack_x_y_sample_weight(data)\n        if self._call_has_training_arg:\n            y_pred = self(x, training=False)\n        else:\n            y_pred = self(x)\n        loss = self._compute_loss(\n            x=x, y=y, y_pred=y_pred, samp\n\nASSISTANT:\nTHOUGHT: Now let me look at the train_step beginning and the loss_tracker. The key issue: the loss is computed per-replica, then `reduce_per_replica` with reduction=\"auto\" reduces the metric results. Let me look at the loss_tracker and how the loss is reduced. Let me look at the loss_tracker class.\n\n```mswea_bash_command\ncd /keras && grep -rn \"loss_tracker\\|_loss_tracker\\|LossTracker\\|class.*Tracker\" keras/src/ | grep -v test | head -20\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\nkeras/src/utils/tracking.py:31:class Tracker:\nkeras/src/backend/jax/trainer.py:125:            self._loss_tracker.update_state(\nkeras/src/backend/jax/trainer.py:172:            self._loss_tracker.update_state(\nkeras/src/backend/torch/trainer.py:55:        self._loss_tracker.update_state(\nkeras/src/backend/torch/trainer.py:91:        self._loss_tracker.update_state(\nkeras/src/backend/tensorflow/trainer.py:66:            self._loss_tracker.update_state(\nkeras/src/backend/tensorflow/trainer.py:93:        self._loss_tracker.update_state(\nkeras/src/backend/numpy/trainer.py:34:        self._loss_tracker.update_state(\nkeras/src/trainers/trainer.py:37:        self._loss_tracker = None\nkeras/src/trainers/trainer.py:185:        self._loss_tracker = metrics_module.Mean(name=\"loss\")\nkeras/src/trainers/trainer.py:256:            if self._loss_tracker is not None:\nkeras/src/trainers/trainer.py:257:                metrics.append(self._loss_tracker)\nkeras/src/trainers/trainer.py:281:        if self._loss_tracker is not None:\nkeras/src/trainers/trainer.py:282:            metrics.append(self._loss_tracker)\nkeras/src/trainers/trainer.py:299:            layer._loss_\n\nASSISTANT:\nTHOUGHT: The loss_tracker is a `metrics_module.Mean`. The issue is in how the Mean metric reduces across replicas. Let me look at the Mean metric and how it handles distributed reduction.\n\n```mswea_bash_command\ncd /keras && grep -rn \"class Mean\\|class Metric\\|def update_state\\|def result\\|def reset_state\\|cross_replica\\|all_reduce\\|reduce\" keras/src/metrics/metric.py | head -40\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n12:class Metric(KerasSaveable):\n72:        def update_state(self, y_true, y_pred, sample_weight=None):\n87:        def result(self):\n108:    def reset_state(self):\n117:    def update_state(self, *args, **kwargs):\n146:    def result(self):\n</output>\n\nASSISTANT:\nTHOUGHT: Let me look at the full metric.py to understand how the Mean metric works and how it handles distributed reduction.\n\n```mswea_bash_command\ncd /keras && cat keras/src/metrics/metric.py\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\nfrom keras.src import backend\nfrom keras.src import dtype_policies\nfrom keras.src import initializers\nfrom keras.src import ops\nfrom keras.src.api_export import keras_export\nfrom keras.src.saving.keras_saveable import KerasSaveable\nfrom keras.src.utils.naming import auto_name\nfrom keras.src.utils.tracking import Tracker\n\n\n@keras_export([\"keras.Metric\", \"keras.metrics.Metric\"])\nclass Metric(KerasSaveable):\n    \"\"\"Encapsulates metric logic and state.\n\n    Args:\n        name: Optional name for the metric instance.\n        dtype: The dtype of the metric's computations. Defaults to `None`, which\n            means using `keras.backend.floatx()`. `keras.backend.floatx()` is a\n            `\"float32\"` unless set to different value\n            (via `keras.backend.set_floatx()`). If a `keras.DTypePolicy` is\n            provided, then the `compute_dtype` will be utilized.\n\n    Example:\n\n    ```python\n    m = SomeMetric(...)\n    for input in ...:\n        m.update_state(input)\n    print('Final result: ', m.result())\n    ```\n\n    Usage with `compile()` API:\n\n    ```python\n    model = keras.Sequential()\n    model.add(keras.layers.Dense(64, activation='relu'))\n  \n\nASSISTANT:\nTHOUGHT: Let me look at the Mean metric specifically and how it computes result.\n\n```mswea_bash_command\ncd /keras && cat keras/src/metrics/mean_metric.py\n```\n\nOBSERVATION:\n<returncode>1</returncode>\n<output>\ncat: keras/src/metrics/mean_metric.py: No such file or directory\n</output>\n\nASSISTANT:\n```mswea_bash_command\ncd /keras && ls keras/src/metrics/ && grep -rln \"class Mean\" keras/src/metrics/\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n__init__.py\naccuracy_metrics.py\naccuracy_metrics_test.py\nconfusion_metrics.py\nconfusion_metrics_test.py\ncorrelation_metrics.py\ncorrelation_metrics_test.py\nf_score_metrics.py\nf_score_metrics_test.py\nhinge_metrics.py\nhinge_metrics_test.py\niou_metrics.py\niou_metrics_test.py\nmetric.py\nmetric_test.py\nmetrics_utils.py\nprobabilistic_metrics.py\nprobabilistic_metrics_test.py\nreduction_metrics.py\nreduction_metrics_test.py\nregression_metrics.py\nregression_metrics_test.py\nkeras/src/metrics/regression_metrics_test.py\nkeras/src/metrics/iou_metrics_test.py\nkeras/src/metrics/reduction_metrics_test.py\nkeras/src/metrics/iou_metrics.py\nkeras/src/metrics/regression_metrics.py\nkeras/src/metrics/reduction_metrics.py\n</output>\n\nASSISTANT:\n```mswea_bash_command\ncd /keras && cat keras/src/metrics/reduction_metrics.py\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\nfrom keras.src import backend\nfrom keras.src import initializers\nfrom keras.src import losses\nfrom keras.src import ops\nfrom keras.src.api_export import keras_export\nfrom keras.src.metrics.metric import Metric\nfrom keras.src.saving import serialization_lib\n\n\ndef reduce_to_samplewise_values(values, sample_weight, reduce_fn, dtype):\n    dtype = dtype or backend.floatx()\n    mask = backend.get_keras_mask(values)\n    values = ops.cast(values, dtype=dtype)\n    if sample_weight is not None:\n        sample_weight = ops.convert_to_tensor(sample_weight, dtype=dtype)\n\n        if mask is not None:\n            sample_weight = losses.loss.apply_mask(\n                sample_weight, mask, dtype=dtype, reduction=\"sum\"\n            )\n        # Update dimensions of weights to match with values if possible.\n        values, sample_weight = losses.loss.squeeze_or_expand_to_same_rank(\n            values, sample_weight\n        )\n        # Reduce values to same ndim as weight array.\n        weight_ndim = len(sample_weight.shape)\n        values_ndim = len(values.shape)\n        if values_ndim > weight_ndim:\n            values = reduce_fn(\n                values, axis=list(\n\nASSISTANT:\nTHOUGHT: Let me see the Mean class definition in reduction_metrics.py.\n\n```mswea_bash_command\ncd /keras && sed -n '55,160p' keras/src/metrics/reduction_metrics.py\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\n    This is ultimately returned as the sum value.\n\n    Args:\n        name: (Optional) string name of the metric instance.\n        dtype: (Optional) data type of the metric result.\n\n    Example:\n\n    >>> m = metrics.Sum()\n    >>> m.update_state([1, 3, 5, 7])\n    >>> m.result()\n    16.0\n\n    >>> m = metrics.Sum()\n    >>> m.update_state([1, 3, 5, 7], sample_weight=[1, 1, 0, 0])\n    >>> m.result()\n    4.0\n    \"\"\"\n\n    def __init__(self, name=\"sum\", dtype=None):\n        super().__init__(name=name, dtype=dtype)\n        self.total = self.add_variable(\n            shape=(),\n            initializer=initializers.Zeros(),\n            dtype=self.dtype,\n            name=\"total\",\n        )\n\n    def update_state(self, values, sample_weight=None):\n        values, _ = reduce_to_samplewise_values(\n            values, sample_weight, reduce_fn=ops.sum, dtype=self.dtype\n        )\n        self.total.assign_add(ops.sum(values))\n\n    def reset_state(self):\n        self.total.assign(0)\n\n    def result(self):\n        return ops.cast(self.total, self.dtype)\n\n\n@keras_export(\"keras.metrics.Mean\")\nclass Mean(Metric):\n    \"\"\"Compute the (weighted) mean of the given values.\n\n  \n\nASSISTANT:\nTHOUGHT: Now I understand the structure. The Mean metric has `total` and `count` variables. In a distributed context, each replica updates its own `total` and `count`. The `result()` divides total by count. The issue is that the metric variables need to be reduced across replicas.\n\nLet me look at how the metric variables are reduced across replicas. Let me look at the `reduce_per_replica` function and how the metric results are reduced.\n\n```mswea_bash_command\ncd /keras && sed -n '742,820p' keras/src/backend/tensorflow/trainer.py\n```\n\nOBSERVATION:\n<returncode>0</returncode>\n<output>\ndef reduce_per_replica(values, strategy, reduction):\n    \"\"\"Attempt to reduce the structure `values` to single values.\n\n    Given `values` (a `tf.Tensor` or a `PerReplica` structure),\n    which represents the values across all the replicas, `reduce_per_replica`\n    attempts to \"reduce\" those values and returns the corresponding structure\n    that represents only single values.\n\n    Currently, `reduce_per_replica` is only used for reducing the metric results\n    from `tf.distribute.Strategy.run()`. Depending on the underlying\n    `Strategy` implementation, `values` may be a `PerReplica` object,\n    which can be thought of as a collection of values across the replicas,\n    or a `tf.Tensor`, if the strategy has already conducted the reduction\n    for the downstream library.\n\n    There are five possible outcomes of reduction:\n\n    1) if the `values` is a structure of simple `tf.Tensor`s, meaning that\n       reduction is not actually needed, `reduce_per_replica` returns the\n       structure a\n\nFINAL DIFF:\ndiff --git a/keras/src/backend/tensorflow/core.py b/keras/src/backend/tensorflow/core.py\nindex d33d2c0b7..107bfb265 100644\n--- a/keras/src/backend/tensorflow/core.py\n+++ b/keras/src/backend/tensorflow/core.py\n@@ -34,9 +34,29 @@ class Variable(\n     def handle(self):\n         return self.value.handle\n \n+    def _get_cross_replica_kwargs(self):\n+        \"\"\"Return kwargs for cross-replica variable synchronization.\n+\n+        Metric variables (with `aggregation=\"sum\"`) need to be synchronized\n+        across replicas so that their accumulated state (e.g. the `total` and\n+        `count` of a `Mean` metric) reflects the sum over all replicas. This\n+        matches the behavior of `tf.keras` metrics, which create their state\n+        variables with `cross_replica` aggregation.\n+        \"\"\"\n+        if self._aggregation == \"sum\":\n+            return {\n+                \"synchronization\": tf.VariableSynchronization.ON_READ,\n+                \"aggregation\": tf.VariableAggregation.SUM,\n+            }\n+        return {}\n+\n     def _initialize(self, value):\n         self._value = tf.Variable(\n-            value, dtype=self._dtype, trainable=self.trainable, name=self.name\n+            value,\n+            dtype=self._dtype,\n+            trainable=self.trainable,\n+            name=self.name,\n+            **self._get_cross_replica_kwargs(),\n         )\n \n     def _initialize_with_initializer(self, initializer):\n@@ -45,6 +65,7 @@ class Variable(\n             dtype=self._dtype,\n             trainable=self.trainable,\n             name=self.name,\n+            **self._get_cross_replica_kwargs(),\n         )\n \n     def _deferred_initialize(self):\n\n</memory_context>\n\nCloning of Sequential models w. input_tensors argument fails\nCloning a Sequential models layers fails if using the input_tensors argument.\r\n\r\nMinimum reproducible example:\r\n\r\n```\r\nimport keras\r\n\r\nmodel = keras.models.Sequential()\r\nmodel.add(keras.layers.Input(shape=(7, 3)))\r\nmodel.add(keras.layers.Conv1D(2, 2, padding=\"same\"))\r\n\r\ninput_tensor = model.inputs[0]\r\nnew_model = keras.models.clone_model(model, input_tensors=input_tensor)\r\n```\r\n\r\nTraceback:\r\n```\r\nTraceback (most recent call last):\r\n  File \"<stdin>\", line 1, in <module>\r\n  File \"/workspaces/keras/keras/src/models/cloning.py\", line 159, in clone_model\r\n    return _clone_sequential_model(\r\n  File \"/workspaces/keras/keras/src/models/cloning.py\", line 301, in _clone_sequential_model\r\n    if input_tensors:\r\n  File \"/workspaces/keras/keras/src/backend/common/keras_tensor.py\", line 172, in __bool__\r\n    raise TypeError(\"A symbolic KerasTensor cannot be used as a boolean.\")\r\nTypeError: A symbolic KerasTensor cannot be used as a boolean.\r\n```\r\n\r\nStill fails even after manually changing `if input_tensors:` to `if input_tensors is not None:` in keras/src/models/cloning.py:\r\n```\r\nTraceback (most recent call last):\r\n  File \"<stdin>\", line 1, in <module>\r\n  File \"/workspaces/keras/keras/src/models/cloning.py\", line 159, in clone_model\r\n    return _clone_sequential_model(\r\n  File \"/workspaces/keras/keras/src/models/cloning.py\", line 313, in _clone_sequential_model\r\n    inputs = Input(tensor=input_tensors, name=input_name)\r\n  File \"/workspaces/keras/keras/src/layers/core/input_layer.py\", line 154, in Input\r\n    layer = InputLayer(\r\n  File \"/workspaces/keras/keras/src/layers/core/input_layer.py\", line 44, in __init__\r\n    raise ValueError(\"You must pass a `shape` argument.\")\r\nValueError: You must pass a `shape` argument.\r\n```\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /keras (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>"
+    },
+    {
+      "content": "THOUGHT: Let me look at the cloning.py file to understand the issue.\n\n```mswea_bash_command\ncd /keras && sed -n '280,340p' keras/src/models/cloning.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && sed -n '280,340p' keras/src/models/cloning.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8d6fefbd2565a8d8",
+          "created": 1787973335,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me look at the cloning.py file to understand the issue.\n\n```mswea_bash_command\ncd /keras && sed -n '280,340p' keras/src/models/cloning.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 53,
+            "prompt_tokens": 8097,
+            "total_tokens": 8150,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973336.6196637
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n            f\"Received: model={model}\"\n        )\n\n    if not callable(clone_function):\n        raise ValueError(\n            \"Expected `clone_function` argument to be a callable. \"\n            f\"Received: clone_function={clone_function}\"\n        )\n\n    new_layers = [clone_function(layer) for layer in model.layers]\n\n    if isinstance(model._layers[0], InputLayer):\n        ref_input_layer = model._layers[0]\n        input_name = ref_input_layer.name\n        input_batch_shape = ref_input_layer.batch_shape\n        input_dtype = ref_input_layer._dtype\n    else:\n        input_name = None\n        input_dtype = None\n        input_batch_shape = None\n\n    if input_tensors:\n        if isinstance(input_tensors, (list, tuple)):\n            if len(input_tensors) != 1:\n                raise ValueError(\n                    \"Argument `input_tensors` must contain a single tensor.\"\n                )\n            input_tensors = input_tensors[0]\n        if not isinstance(input_tensors, backend.KerasTensor):\n            raise ValueError(\n                \"Argument `input_tensors` must be a KerasTensor. \"\n                f\"Received invalid value: input_tensors={input_tensors}\"\n            )\n        inputs = Input(tensor=input_tensors, name=input_name)\n        new_layers = [inputs] + new_layers\n    else:\n        if input_batch_shape is not None:\n            inputs = Input(\n                tensor=input_tensors,\n                batch_shape=input_batch_shape,\n                dtype=input_dtype,\n                name=input_name,\n            )\n            new_layers = [inputs] + new_layers\n    return Sequential(new_layers, name=model.name, trainable=model.trainable)\n\n\ndef _clone_functional_model(\n    model, clone_function, input_tensors=None, call_function=None\n):\n    \"\"\"Clone a `Functional` model instance.\n\n    Model cloning is similar to calling a model on new inputs,\n    except that it creates new layers (and thus new weights) instead\n    of sharing the weights of the existing layers.\n\n    Input layers are always cloned.\n\n    Args:\n        model: Instance of `Functional`.\n        input_tensors: optional list of input tensors\n</output>",
+      "extra": {
+        "raw_output": "            f\"Received: model={model}\"\n        )\n\n    if not callable(clone_function):\n        raise ValueError(\n            \"Expected `clone_function` argument to be a callable. \"\n            f\"Received: clone_function={clone_function}\"\n        )\n\n    new_layers = [clone_function(layer) for layer in model.layers]\n\n    if isinstance(model._layers[0], InputLayer):\n        ref_input_layer = model._layers[0]\n        input_name = ref_input_layer.name\n        input_batch_shape = ref_input_layer.batch_shape\n        input_dtype = ref_input_layer._dtype\n    else:\n        input_name = None\n        input_dtype = None\n        input_batch_shape = None\n\n    if input_tensors:\n        if isinstance(input_tensors, (list, tuple)):\n            if len(input_tensors) != 1:\n                raise ValueError(\n                    \"Argument `input_tensors` must contain a single tensor.\"\n                )\n            input_tensors = input_tensors[0]\n        if not isinstance(input_tensors, backend.KerasTensor):\n            raise ValueError(\n                \"Argument `input_tensors` must be a KerasTensor. \"\n                f\"Received invalid value: input_tensors={input_tensors}\"\n            )\n        inputs = Input(tensor=input_tensors, name=input_name)\n        new_layers = [inputs] + new_layers\n    else:\n        if input_batch_shape is not None:\n            inputs = Input(\n                tensor=input_tensors,\n                batch_shape=input_batch_shape,\n                dtype=input_dtype,\n                name=input_name,\n            )\n            new_layers = [inputs] + new_layers\n    return Sequential(new_layers, name=model.name, trainable=model.trainable)\n\n\ndef _clone_functional_model(\n    model, clone_function, input_tensors=None, call_function=None\n):\n    \"\"\"Clone a `Functional` model instance.\n\n    Model cloning is similar to calling a model on new inputs,\n    except that it creates new layers (and thus new weights) instead\n    of sharing the weights of the existing layers.\n\n    Input layers are always cloned.\n\n    Args:\n        model: Instance of `Functional`.\n        input_tensors: optional list of input tensors\n",
+        "returncode": 0,
+        "timestamp": 1787973336.8046224,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: I see the issue. When `input_tensors` is provided, the code calls `Input(tensor=input_tensors, name=input_name)` without passing `shape`/`batch_shape`. Let me look at the Input function and InputLayer to understand what's needed.\n\n```mswea_bash_command\ncd /keras && sed -n '1,160p' keras/src/layers/core/input_layer.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && sed -n '1,160p' keras/src/layers/core/input_layer.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b12399dc669372a2",
+          "created": 1787973336,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: I see the issue. When `input_tensors` is provided, the code calls `Input(tensor=input_tensors, name=input_name)` without passing `shape`/`batch_shape`. Let me look at the Input function and InputLayer to understand what's needed.\n\n```mswea_bash_command\ncd /keras && sed -n '1,160p' keras/src/layers/core/input_layer.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 92,
+            "prompt_tokens": 8648,
+            "total_tokens": 8740,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973338.433824
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nimport warnings\n\nfrom keras.src import backend\nfrom keras.src.api_export import keras_export\nfrom keras.src.layers.layer import Layer\nfrom keras.src.ops.node import Node\n\n\n@keras_export(\"keras.layers.InputLayer\")\nclass InputLayer(Layer):\n    def __init__(\n        self,\n        shape=None,\n        batch_size=None,\n        dtype=None,\n        sparse=None,\n        batch_shape=None,\n        input_tensor=None,\n        optional=False,\n        name=None,\n        **kwargs,\n    ):\n        # TODO: support for ragged.\n        super().__init__(name=name)\n        if \"input_shape\" in kwargs:\n            warnings.warn(\n                \"Argument `input_shape` is deprecated. Use `shape` instead.\"\n            )\n            shape = kwargs.pop(\"input_shape\")\n        if \"batch_input_shape\" in kwargs:\n            batch_shape = kwargs.pop(\"batch_input_shape\")\n\n        if shape is not None and batch_shape is not None:\n            raise ValueError(\n                \"You cannot pass both `shape` and `batch_shape` at the \"\n                \"same time.\"\n            )\n        if batch_size is not None and batch_shape is not None:\n            raise ValueError(\n                \"You cannot pass both `batch_size` and `batch_shape` at the \"\n                \"same time.\"\n            )\n        if shape is None and batch_shape is None:\n            raise ValueError(\"You must pass a `shape` argument.\")\n\n        if shape is not None:\n            shape = backend.standardize_shape(shape)\n            batch_shape = (batch_size,) + shape\n        self._batch_shape = backend.standardize_shape(batch_shape)\n        self._dtype = backend.standardize_dtype(dtype)\n\n        self.sparse = bool(sparse)\n        if self.sparse and not backend.SUPPORTS_SPARSE_TENSORS:\n            raise ValueError(\n                \"`sparse=True` is not supported with backend: \"\n                f\"{backend.backend()}\"\n            )\n\n        if input_tensor is not None:\n            if not isinstance(input_tensor, backend.KerasTensor):\n           \n...[output truncated]...\nmes possible to do:\n    `model = Model(input=[a, b], output=c)`\n\n    Args:\n        shape: A shape tuple (tuple of integers or `None` objects),\n            not including the batch size.\n            For instance, `shape=(32,)` indicates that the expected input\n            will be batches of 32-dimensional vectors. Elements of this tuple\n            can be `None`; `None` elements represent dimensions where the shape\n            is not known and may vary (e.g. sequence length).\n        batch_size: Optional static batch size (integer).\n        dtype: The data type expected by the input, as a string\n            (e.g. `\"float32\"`, `\"int32\"`...)\n        sparse: A boolean specifying whether the expected input will be sparse\n            tensors. Note that, if `sparse` is `False`, sparse tensors can still\n            be passed into the input - they will be densified with a default\n            value of 0. This feature is only supported with the TensorFlow\n            backend. Defaults to `False`.\n        batch_shape: Optional shape tuple (tuple of integers or `None` objects),\n            including the batch size.\n        name: Optional name string for the layer.\n            Should be unique in a model (do not reuse the same name twice).\n            It will be autogenerated if it isn't provided.\n        tensor: Optional existing tensor to wrap into the `Input` layer.\n            If set, the layer will use this tensor rather\n            than creating a new placeholder tensor.\n        optional: Boolean, whether the input is optional or not.\n            An optional input can accept `None` values.\n\n    Returns:\n      A Keras tensor.\n\n    Example:\n\n    ```python\n    # This is a logistic regression in Keras\n    x = Input(shape=(32,))\n    y = Dense(16, activation='softmax')(x)\n    model = Model(x, y)\n    ```\n    \"\"\"\n    layer = InputLayer(\n        shape=shape,\n        batch_size=batch_size,\n        dtype=dtype,\n        sparse=sparse,\n        batch_shape=batch_shape,\n        name=name,\n</output>",
+      "extra": {
+        "raw_output": "import warnings\n\nfrom keras.src import backend\nfrom keras.src.api_export import keras_export\nfrom keras.src.layers.layer import Layer\nfrom keras.src.ops.node import Node\n\n\n@keras_export(\"keras.layers.InputLayer\")\nclass InputLayer(Layer):\n    def __init__(\n        self,\n        shape=None,\n        batch_size=None,\n        dtype=None,\n        sparse=None,\n        batch_shape=None,\n        input_tensor=None,\n        optional=False,\n        name=None,\n        **kwargs,\n    ):\n        # TODO: support for ragged.\n        super().__init__(name=name)\n        if \"input_shape\" in kwargs:\n            warnings.warn(\n                \"Argument `input_shape` is deprecated. Use `shape` instead.\"\n            )\n            shape = kwargs.pop(\"input_shape\")\n        if \"batch_input_shape\" in kwargs:\n            batch_shape = kwargs.pop(\"batch_input_shape\")\n\n        if shape is not None and batch_shape is not None:\n            raise ValueError(\n                \"You cannot pass both `shape` and `batch_shape` at the \"\n                \"same time.\"\n            )\n        if batch_size is not None and batch_shape is not None:\n            raise ValueError(\n                \"You cannot pass both `batch_size` and `batch_shape` at the \"\n                \"same time.\"\n            )\n        if shape is None and batch_shape is None:\n            raise ValueError(\"You must pass a `shape` argument.\")\n\n        if shape is not None:\n            shape = backend.standardize_shape(shape)\n            batch_shape = (batch_size,) + shape\n        self._batch_shape = backend.standardize_shape(batch_shape)\n        self._dtype = backend.standardize_dtype(dtype)\n\n        self.sparse = bool(sparse)\n        if self.sparse and not backend.SUPPORTS_SPARSE_TENSORS:\n            raise ValueError(\n                \"`sparse=True` is not supported with backend: \"\n                f\"{backend.backend()}\"\n            )\n\n        if input_tensor is not None:\n            if not isinstance(input_tensor, backend.KerasTensor):\n           \n...[output truncated]...\nmes possible to do:\n    `model = Model(input=[a, b], output=c)`\n\n    Args:\n        shape: A shape tuple (tuple of integers or `None` objects),\n            not including the batch size.\n            For instance, `shape=(32,)` indicates that the expected input\n            will be batches of 32-dimensional vectors. Elements of this tuple\n            can be `None`; `None` elements represent dimensions where the shape\n            is not known and may vary (e.g. sequence length).\n        batch_size: Optional static batch size (integer).\n        dtype: The data type expected by the input, as a string\n            (e.g. `\"float32\"`, `\"int32\"`...)\n        sparse: A boolean specifying whether the expected input will be sparse\n            tensors. Note that, if `sparse` is `False`, sparse tensors can still\n            be passed into the input - they will be densified with a default\n            value of 0. This feature is only supported with the TensorFlow\n            backend. Defaults to `False`.\n        batch_shape: Optional shape tuple (tuple of integers or `None` objects),\n            including the batch size.\n        name: Optional name string for the layer.\n            Should be unique in a model (do not reuse the same name twice).\n            It will be autogenerated if it isn't provided.\n        tensor: Optional existing tensor to wrap into the `Input` layer.\n            If set, the layer will use this tensor rather\n            than creating a new placeholder tensor.\n        optional: Boolean, whether the input is optional or not.\n            An optional input can accept `None` values.\n\n    Returns:\n      A Keras tensor.\n\n    Example:\n\n    ```python\n    # This is a logistic regression in Keras\n    x = Input(shape=(32,))\n    y = Dense(16, activation='softmax')(x)\n    model = Model(x, y)\n    ```\n    \"\"\"\n    layer = InputLayer(\n        shape=shape,\n        batch_size=batch_size,\n        dtype=dtype,\n        sparse=sparse,\n        batch_shape=batch_shape,\n        name=name,\n",
+        "returncode": 0,
+        "timestamp": 1787973338.6227243,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now I understand. When `input_tensors` is provided, the `Input` is created without `batch_shape`/`shape`, which causes the error. The fix is to pass `batch_shape=input_batch_shape` and `dtype=input_dtype` when creating the Input with `input_tensors`. Let me look at the Input function signature to confirm.\n\n```mswea_bash_command\ncd /keras && sed -n '160,200p' keras/src/layers/core/input_layer.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && sed -n '160,200p' keras/src/layers/core/input_layer.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-9fef8cedb92afc7a",
+          "created": 1787973338,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now I understand. When `input_tensors` is provided, the `Input` is created without `batch_shape`/`shape`, which causes the error. The fix is to pass `batch_shape=input_batch_shape` and `dtype=input_dtype` when creating the Input with `input_tensors`. Let me look at the Input function signature to confirm.\n\n```mswea_bash_command\ncd /keras && sed -n '160,200p' keras/src/layers/core/input_layer.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 112,
+            "prompt_tokens": 9706,
+            "total_tokens": 9818,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973340.5635743
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n        name=name,\n        input_tensor=tensor,\n        optional=optional,\n    )\n    return layer.output\n</output>",
+      "extra": {
+        "raw_output": "        name=name,\n        input_tensor=tensor,\n        optional=optional,\n    )\n    return layer.output\n",
+        "returncode": 0,
+        "timestamp": 1787973340.734573,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me look at the Input function signature to confirm the parameters.\n\n```mswea_bash_command\ncd /keras && sed -n '120,160p' keras/src/layers/core/input_layer.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && sed -n '120,160p' keras/src/layers/core/input_layer.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-83b978a6cf85a648",
+          "created": 1787973340,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me look at the Input function signature to confirm the parameters.\n\n```mswea_bash_command\ncd /keras && sed -n '120,160p' keras/src/layers/core/input_layer.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 56,
+            "prompt_tokens": 9874,
+            "total_tokens": 9930,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973342.0074713
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n            will be batches of 32-dimensional vectors. Elements of this tuple\n            can be `None`; `None` elements represent dimensions where the shape\n            is not known and may vary (e.g. sequence length).\n        batch_size: Optional static batch size (integer).\n        dtype: The data type expected by the input, as a string\n            (e.g. `\"float32\"`, `\"int32\"`...)\n        sparse: A boolean specifying whether the expected input will be sparse\n            tensors. Note that, if `sparse` is `False`, sparse tensors can still\n            be passed into the input - they will be densified with a default\n            value of 0. This feature is only supported with the TensorFlow\n            backend. Defaults to `False`.\n        batch_shape: Optional shape tuple (tuple of integers or `None` objects),\n            including the batch size.\n        name: Optional name string for the layer.\n            Should be unique in a model (do not reuse the same name twice).\n            It will be autogenerated if it isn't provided.\n        tensor: Optional existing tensor to wrap into the `Input` layer.\n            If set, the layer will use this tensor rather\n            than creating a new placeholder tensor.\n        optional: Boolean, whether the input is optional or not.\n            An optional input can accept `None` values.\n\n    Returns:\n      A Keras tensor.\n\n    Example:\n\n    ```python\n    # This is a logistic regression in Keras\n    x = Input(shape=(32,))\n    y = Dense(16, activation='softmax')(x)\n    model = Model(x, y)\n    ```\n    \"\"\"\n    layer = InputLayer(\n        shape=shape,\n        batch_size=batch_size,\n        dtype=dtype,\n        sparse=sparse,\n        batch_shape=batch_shape,\n        name=name,\n</output>",
+      "extra": {
+        "raw_output": "            will be batches of 32-dimensional vectors. Elements of this tuple\n            can be `None`; `None` elements represent dimensions where the shape\n            is not known and may vary (e.g. sequence length).\n        batch_size: Optional static batch size (integer).\n        dtype: The data type expected by the input, as a string\n            (e.g. `\"float32\"`, `\"int32\"`...)\n        sparse: A boolean specifying whether the expected input will be sparse\n            tensors. Note that, if `sparse` is `False`, sparse tensors can still\n            be passed into the input - they will be densified with a default\n            value of 0. This feature is only supported with the TensorFlow\n            backend. Defaults to `False`.\n        batch_shape: Optional shape tuple (tuple of integers or `None` objects),\n            including the batch size.\n        name: Optional name string for the layer.\n            Should be unique in a model (do not reuse the same name twice).\n            It will be autogenerated if it isn't provided.\n        tensor: Optional existing tensor to wrap into the `Input` layer.\n            If set, the layer will use this tensor rather\n            than creating a new placeholder tensor.\n        optional: Boolean, whether the input is optional or not.\n            An optional input can accept `None` values.\n\n    Returns:\n      A Keras tensor.\n\n    Example:\n\n    ```python\n    # This is a logistic regression in Keras\n    x = Input(shape=(32,))\n    y = Dense(16, activation='softmax')(x)\n    model = Model(x, y)\n    ```\n    \"\"\"\n    layer = InputLayer(\n        shape=shape,\n        batch_size=batch_size,\n        dtype=dtype,\n        sparse=sparse,\n        batch_shape=batch_shape,\n        name=name,\n",
+        "returncode": 0,
+        "timestamp": 1787973342.179563,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now I understand the fix. The `Input` function accepts `batch_shape` and `dtype`. When `input_tensors` is provided, we should pass `batch_shape=input_batch_shape` and `dtype=input_dtype`. Let me make the fix.\n\n```mswea_bash_command\ncd /keras && python -c \"\nimport re\nwith open('keras/src/models/cloning.py') as f:\n    content = f.read()\nold = '''        inputs = Input(tensor=input_tensors, name=input_name)\n        new_layers = [inputs] + new_layers'''\nnew = '''        inputs = Input(\n            tensor=input_tensors,\n            batch_shape=input_batch_shape,\n            dtype=input_dtype,\n            name=input_name,\n        )\n        new_layers = [inputs] + new_layers'''\nassert old in content\ncontent = content.replace(old, new)\nwith open('keras/src/models/cloning.py','w') as f:\n    f.write(content)\nprint('done')\n\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && python -c \"\nimport re\nwith open('keras/src/models/cloning.py') as f:\n    content = f.read()\nold = '''        inputs = Input(tensor=input_tensors, name=input_name)\n        new_layers = [inputs] + new_layers'''\nnew = '''        inputs = Input(\n            tensor=input_tensors,\n            batch_shape=input_batch_shape,\n            dtype=input_dtype,\n            name=input_name,\n        )\n        new_layers = [inputs] + new_layers'''\nassert old in content\ncontent = content.replace(old, new)\nwith open('keras/src/models/cloning.py','w') as f:\n    f.write(content)\nprint('done')\n\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-a6ee77636a031453",
+          "created": 1787973342,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now I understand the fix. The `Input` function accepts `batch_shape` and `dtype`. When `input_tensors` is provided, we should pass `batch_shape=input_batch_shape` and `dtype=input_dtype`. Let me make the fix.\n\n```mswea_bash_command\ncd /keras && python -c \"\nimport re\nwith open('keras/src/models/cloning.py') as f:\n    content = f.read()\nold = '''        inputs = Input(tensor=input_tensors, name=input_name)\n        new_layers = [inputs] + new_layers'''\nnew = '''        inputs = Input(\n            tensor=input_tensors,\n            batch_shape=input_batch_shape,\n            dtype=input_dtype,\n            name=input_name,\n        )\n        new_layers = [inputs] + new_layers'''\nassert old in content\ncontent = content.replace(old, new)\nwith open('keras/src/models/cloning.py','w') as f:\n    f.write(content)\nprint('done')\n\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 222,
+            "prompt_tokens": 10368,
+            "total_tokens": 10590,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973345.5113227
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndone\n</output>",
+      "extra": {
+        "raw_output": "done\n",
+        "returncode": 0,
+        "timestamp": 1787973345.7397978,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me verify the fix works with the reproduction script.\n\n```mswea_bash_command\ncd /keras && python -c \"\nimport keras\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\nnew_model = keras.models.clone_model(model, input_tensors=input_tensor)\nprint('Success:', new_model)\n\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && python -c \"\nimport keras\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\nnew_model = keras.models.clone_model(model, input_tensors=input_tensor)\nprint('Success:', new_model)\n\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-9d52d0fc1691279e",
+          "created": 1787973345,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me verify the fix works with the reproduction script.\n\n```mswea_bash_command\ncd /keras && python -c \"\nimport keras\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\nnew_model = keras.models.clone_model(model, input_tensors=input_tensor)\nprint('Success:', new_model)\n\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 114,
+            "prompt_tokens": 10622,
+            "total_tokens": 10736,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973347.7670796
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>1</returncode>\n<output>\n2026-08-29 03:15:48.623529: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.\n2026-08-29 03:15:48.646004: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.\n2026-08-29 03:15:48.895057: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.\n2026-08-29 03:15:49.083604: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered\nWARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nE0000 00:00:1787973349.232018 1319870 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered\nE0000 00:00:1787973349.265289 1319870 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered\n2026-08-29 03:15:49.689988: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 AVX512F AVX512_VNNI AVX512_BF16 AVX512_FP16 AVX_VNNI AMX_TILE AMX_INT8 AMX_BF16 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n2026-08-29 03:15:52.850436: E external/local_xla/xla/stream_executor/cuda/cuda_driver.cc:152] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)\nTraceback (most recent call last):\n  File \"<string>\", line 7, in <module>\n  File \"/keras/keras/src/models/cloning.py\", line 159, in clone_model\n    return _clone_sequential_model(\n  File \"/keras/keras/src/models/cloning.py\", line 301, in _clone_sequential_model\n    if input_tensors:\n  File \"/keras/keras/src/backend/common/keras_tensor.py\", line 172, in __bool__\n    raise TypeError(\"A symbolic KerasTensor cannot be used as a boolean.\")\nTypeError: A symbolic KerasTensor cannot be used as a boolean.\n</output>",
+      "extra": {
+        "raw_output": "2026-08-29 03:15:48.623529: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.\n2026-08-29 03:15:48.646004: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.\n2026-08-29 03:15:48.895057: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.\n2026-08-29 03:15:49.083604: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered\nWARNING: All log messages before absl::InitializeLog() is called are written to STDERR\nE0000 00:00:1787973349.232018 1319870 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered\nE0000 00:00:1787973349.265289 1319870 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered\n2026-08-29 03:15:49.689988: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.\nTo enable the following instructions: AVX2 AVX512F AVX512_VNNI AVX512_BF16 AVX512_FP16 AVX_VNNI AMX_TILE AMX_INT8 AMX_BF16 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.\n2026-08-29 03:15:52.850436: E external/local_xla/xla/stream_executor/cuda/cuda_driver.cc:152] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)\nTraceback (most recent call last):\n  File \"<string>\", line 7, in <module>\n  File \"/keras/keras/src/models/cloning.py\", line 159, in clone_model\n    return _clone_sequential_model(\n  File \"/keras/keras/src/models/cloning.py\", line 301, in _clone_sequential_model\n    if input_tensors:\n  File \"/keras/keras/src/backend/common/keras_tensor.py\", line 172, in __bool__\n    raise TypeError(\"A symbolic KerasTensor cannot be used as a boolean.\")\nTypeError: A symbolic KerasTensor cannot be used as a boolean.\n",
+        "returncode": 1,
+        "timestamp": 1787973353.3276968,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The first error `if input_tensors:` still occurs. I need to fix that too. Let me change it to `if input_tensors is not None:`.\n\n```mswea_bash_command\ncd /keras && python -c \"\nwith open('keras/src/models/cloning.py') as f:\n    content = f.read()\nold = '''    if input_tensors:\n        if isinstance(input_tensors, (list, tuple)):'''\nnew = '''    if input_tensors is not None:\n        if isinstance(input_tensors, (list, tuple)):'''\nassert old in content\ncontent = content.replace(old, new)\nwith open('keras/src/models/cloning.py','w') as f:\n    f.write(content)\nprint('done')\n\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && python -c \"\nwith open('keras/src/models/cloning.py') as f:\n    content = f.read()\nold = '''    if input_tensors:\n        if isinstance(input_tensors, (list, tuple)):'''\nnew = '''    if input_tensors is not None:\n        if isinstance(input_tensors, (list, tuple)):'''\nassert old in content\ncontent = content.replace(old, new)\nwith open('keras/src/models/cloning.py','w') as f:\n    f.write(content)\nprint('done')\n\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-ba037283b2833277",
+          "created": 1787973353,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The first error `if input_tensors:` still occurs. I need to fix that too. Let me change it to `if input_tensors is not None:`.\n\n```mswea_bash_command\ncd /keras && python -c \"\nwith open('keras/src/models/cloning.py') as f:\n    content = f.read()\nold = '''    if input_tensors:\n        if isinstance(input_tensors, (list, tuple)):'''\nnew = '''    if input_tensors is not None:\n        if isinstance(input_tensors, (list, tuple)):'''\nassert old in content\ncontent = content.replace(old, new)\nwith open('keras/src/models/cloning.py','w') as f:\n    f.write(content)\nprint('done')\n\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 170,
+            "prompt_tokens": 11561,
+            "total_tokens": 11731,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973356.1090183
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndone\n</output>",
+      "extra": {
+        "raw_output": "done\n",
+        "returncode": 0,
+        "timestamp": 1787973356.3036098,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me re-run the reproduction script.\n\n```mswea_bash_command\ncd /keras && python -c \"\nimport keras\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\nnew_model = keras.models.clone_model(model, input_tensors=input_tensor)\nprint('Success:', new_model)\n\" 2>/dev/null\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && python -c \"\nimport keras\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\nnew_model = keras.models.clone_model(model, input_tensors=input_tensor)\nprint('Success:', new_model)\n\" 2>/dev/null"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-ab403bcde75fab81",
+          "created": 1787973356,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me re-run the reproduction script.\n\n```mswea_bash_command\ncd /keras && python -c \"\nimport keras\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\nnew_model = keras.models.clone_model(model, input_tensors=input_tensor)\nprint('Success:', new_model)\n\" 2>/dev/null\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 116,
+            "prompt_tokens": 11763,
+            "total_tokens": 11879,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973358.4317205
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nSuccess: <Sequential name=sequential, built=True>\n</output>",
+      "extra": {
+        "raw_output": "Success: <Sequential name=sequential, built=True>\n",
+        "returncode": 0,
+        "timestamp": 1787973363.9886596,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The fix works. Let me also test the list/tuple case and verify the model is functional.\n\n```mswea_bash_command\ncd /keras && python -c \"\nimport keras\nimport numpy as np\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\n# list case\nnew_model = keras.models.clone_model(model, input_tensors=[input_tensor])\nprint('List case Success:', new_model)\n# verify output works\nout = new_model(np.random.rand(1,7,3).astype('float32'))\nprint('Output shape:', out.shape)\n\" 2>/dev/null\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && python -c \"\nimport keras\nimport numpy as np\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\n# list case\nnew_model = keras.models.clone_model(model, input_tensors=[input_tensor])\nprint('List case Success:', new_model)\n# verify output works\nout = new_model(np.random.rand(1,7,3).astype('float32'))\nprint('Output shape:', out.shape)\n\" 2>/dev/null"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-848afdaa1bef8e10",
+          "created": 1787973364,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The fix works. Let me also test the list/tuple case and verify the model is functional.\n\n```mswea_bash_command\ncd /keras && python -c \"\nimport keras\nimport numpy as np\nmodel = keras.models.Sequential()\nmodel.add(keras.layers.Input(shape=(7, 3)))\nmodel.add(keras.layers.Conv1D(2, 2, padding='same'))\ninput_tensor = model.inputs[0]\n# list case\nnew_model = keras.models.clone_model(model, input_tensors=[input_tensor])\nprint('List case Success:', new_model)\n# verify output works\nout = new_model(np.random.rand(1,7,3).astype('float32'))\nprint('Output shape:', out.shape)\n\" 2>/dev/null\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 174,
+            "prompt_tokens": 11921,
+            "total_tokens": 12095,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973366.8248243
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nList case Success: <Sequential name=sequential, built=True>\nOutput shape: (1, 7, 2)\n</output>",
+      "extra": {
+        "raw_output": "List case Success: <Sequential name=sequential, built=True>\nOutput shape: (1, 7, 2)\n",
+        "returncode": 0,
+        "timestamp": 1787973372.4216723,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Both cases work. Let me view the final diff to confirm the changes.\n\n```mswea_bash_command\ncd /keras && git diff keras/src/models/cloning.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && git diff keras/src/models/cloning.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-965c429695670210",
+          "created": 1787973372,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Both cases work. Let me view the final diff to confirm the changes.\n\n```mswea_bash_command\ncd /keras && git diff keras/src/models/cloning.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 44,
+            "prompt_tokens": 12152,
+            "total_tokens": 12196,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973373.6796725
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/keras/src/models/cloning.py b/keras/src/models/cloning.py\nindex 018cddd67..5d7c541e5 100644\n--- a/keras/src/models/cloning.py\n+++ b/keras/src/models/cloning.py\n@@ -298,7 +298,7 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n         input_dtype = None\n         input_batch_shape = None\n \n-    if input_tensors:\n+    if input_tensors is not None:\n         if isinstance(input_tensors, (list, tuple)):\n             if len(input_tensors) != 1:\n                 raise ValueError(\n@@ -310,7 +310,12 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n                 \"Argument `input_tensors` must be a KerasTensor. \"\n                 f\"Received invalid value: input_tensors={input_tensors}\"\n             )\n-        inputs = Input(tensor=input_tensors, name=input_name)\n+        inputs = Input(\n+            tensor=input_tensors,\n+            batch_shape=input_batch_shape,\n+            dtype=input_dtype,\n+            name=input_name,\n+        )\n         new_layers = [inputs] + new_layers\n     else:\n         if input_batch_shape is not None:\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/keras/src/models/cloning.py b/keras/src/models/cloning.py\nindex 018cddd67..5d7c541e5 100644\n--- a/keras/src/models/cloning.py\n+++ b/keras/src/models/cloning.py\n@@ -298,7 +298,7 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n         input_dtype = None\n         input_batch_shape = None\n \n-    if input_tensors:\n+    if input_tensors is not None:\n         if isinstance(input_tensors, (list, tuple)):\n             if len(input_tensors) != 1:\n                 raise ValueError(\n@@ -310,7 +310,12 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n                 \"Argument `input_tensors` must be a KerasTensor. \"\n                 f\"Received invalid value: input_tensors={input_tensors}\"\n             )\n-        inputs = Input(tensor=input_tensors, name=input_name)\n+        inputs = Input(\n+            tensor=input_tensors,\n+            batch_shape=input_batch_shape,\n+            dtype=input_dtype,\n+            name=input_name,\n+        )\n         new_layers = [inputs] + new_layers\n     else:\n         if input_batch_shape is not None:\n",
+        "returncode": 0,
+        "timestamp": 1787973373.8737624,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The diff looks good. Let me create the patch file and submit.\n\n```mswea_bash_command\ncd /keras && git diff -- keras/src/models/cloning.py > patch.txt && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /keras && git diff -- keras/src/models/cloning.py > patch.txt && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8d70ab0914f8add8",
+          "created": 1787973373,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The diff looks good. Let me create the patch file and submit.\n\n```mswea_bash_command\ncd /keras && git diff -- keras/src/models/cloning.py > patch.txt && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 51,
+            "prompt_tokens": 12529,
+            "total_tokens": 12580,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973375.252814
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/keras/src/models/cloning.py b/keras/src/models/cloning.py\nindex 018cddd67..5d7c541e5 100644\n--- a/keras/src/models/cloning.py\n+++ b/keras/src/models/cloning.py\n@@ -298,7 +298,7 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n         input_dtype = None\n         input_batch_shape = None\n \n-    if input_tensors:\n+    if input_tensors is not None:\n         if isinstance(input_tensors, (list, tuple)):\n             if len(input_tensors) != 1:\n                 raise ValueError(\n@@ -310,7 +310,12 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n                 \"Argument `input_tensors` must be a KerasTensor. \"\n                 f\"Received invalid value: input_tensors={input_tensors}\"\n             )\n-        inputs = Input(tensor=input_tensors, name=input_name)\n+        inputs = Input(\n+            tensor=input_tensors,\n+            batch_shape=input_batch_shape,\n+            dtype=input_dtype,\n+            name=input_name,\n+        )\n         new_layers = [inputs] + new_layers\n     else:\n         if input_batch_shape is not None:\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/keras/src/models/cloning.py b/keras/src/models/cloning.py\nindex 018cddd67..5d7c541e5 100644\n--- a/keras/src/models/cloning.py\n+++ b/keras/src/models/cloning.py\n@@ -298,7 +298,7 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n         input_dtype = None\n         input_batch_shape = None\n \n-    if input_tensors:\n+    if input_tensors is not None:\n         if isinstance(input_tensors, (list, tuple)):\n             if len(input_tensors) != 1:\n                 raise ValueError(\n@@ -310,7 +310,12 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n                 \"Argument `input_tensors` must be a KerasTensor. \"\n                 f\"Received invalid value: input_tensors={input_tensors}\"\n             )\n-        inputs = Input(tensor=input_tensors, name=input_name)\n+        inputs = Input(\n+            tensor=input_tensors,\n+            batch_shape=input_batch_shape,\n+            dtype=input_dtype,\n+            name=input_name,\n+        )\n         new_layers = [inputs] + new_layers\n     else:\n         if input_batch_shape is not None:\n",
+        "returncode": 0,
+        "timestamp": 1787973375.4585612,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The patch is verified and contains only the intended changes. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-bb822e75bb36803b",
+          "created": 1787973375,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-988cb80a",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The patch is verified and contains only the intended changes. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "stop_reason": null,
+                "routed_experts": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 43,
+            "prompt_tokens": 12913,
+            "total_tokens": 12956,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973376.7660022
+      }
+    },
+    {
+      "role": "exit",
+      "content": "diff --git a/keras/src/models/cloning.py b/keras/src/models/cloning.py\nindex 018cddd67..5d7c541e5 100644\n--- a/keras/src/models/cloning.py\n+++ b/keras/src/models/cloning.py\n@@ -298,7 +298,7 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n         input_dtype = None\n         input_batch_shape = None\n \n-    if input_tensors:\n+    if input_tensors is not None:\n         if isinstance(input_tensors, (list, tuple)):\n             if len(input_tensors) != 1:\n                 raise ValueError(\n@@ -310,7 +310,12 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n                 \"Argument `input_tensors` must be a KerasTensor. \"\n                 f\"Received invalid value: input_tensors={input_tensors}\"\n             )\n-        inputs = Input(tensor=input_tensors, name=input_name)\n+        inputs = Input(\n+            tensor=input_tensors,\n+            batch_shape=input_batch_shape,\n+            dtype=input_dtype,\n+            name=input_name,\n+        )\n         new_layers = [inputs] + new_layers\n     else:\n         if input_batch_shape is not None:\n",
+      "extra": {
+        "exit_status": "Submitted",
+        "submission": "diff --git a/keras/src/models/cloning.py b/keras/src/models/cloning.py\nindex 018cddd67..5d7c541e5 100644\n--- a/keras/src/models/cloning.py\n+++ b/keras/src/models/cloning.py\n@@ -298,7 +298,7 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n         input_dtype = None\n         input_batch_shape = None\n \n-    if input_tensors:\n+    if input_tensors is not None:\n         if isinstance(input_tensors, (list, tuple)):\n             if len(input_tensors) != 1:\n                 raise ValueError(\n@@ -310,7 +310,12 @@ def _clone_sequential_model(model, clone_function, input_tensors=None):\n                 \"Argument `input_tensors` must be a KerasTensor. \"\n                 f\"Received invalid value: input_tensors={input_tensors}\"\n             )\n-        inputs = Input(tensor=input_tensors, name=input_name)\n+        inputs = Input(\n+            tensor=input_tensors,\n+            batch_shape=input_batch_shape,\n+            dtype=input_dtype,\n+            name=input_name,\n+        )\n         new_layers = [inputs] + new_layers\n     else:\n         if input_batch_shape is not None:\n"
+      }
+    }
+  ],
+  "trajectory_format": "mini-swe-agent-1.1"
+}

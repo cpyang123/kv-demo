@@ -1,0 +1,720 @@
+{
+  "info": {
+    "model_stats": {
+      "instance_cost": 0.0,
+      "api_calls": 9
+    },
+    "config": {
+      "agent": {
+        "system_template": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history.",
+        "instance_template": "<pr_description>\nConsider the following PR description:\n{{task}}\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /testbed (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>\n",
+        "step_limit": 100,
+        "cost_limit": 1000000000.0,
+        "wall_time_limit_seconds": 0,
+        "max_consecutive_format_errors": 3,
+        "output_path": "/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory/chainswe/runs/v3main100/tobymao_sqlglot_20240909_1615bad9__s0__seq/traj_1_tobymao__sqlglot-4093.json"
+      },
+      "agent_type": "minisweagent.agents.default.DefaultAgent",
+      "model": {
+        "model_name": "openai/coder-next",
+        "model_kwargs": {
+          "api_key": "EMPTY",
+          "temperature": 0.0,
+          "max_tokens": 16384,
+          "extra_body": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "api_base": "http://127.0.0.1:8861/v1"
+        },
+        "litellm_model_registry": null,
+        "set_cache_control": null,
+        "cost_tracking": "ignore_errors",
+        "format_error_template": "{% if finish_reason is defined and finish_reason in [\"length\", \"tool_calls\"] -%}\nYour previous response reached the output token limit (finish_reason={{ finish_reason }}) before you produced a complete action, so it was cut off. Respond more concisely and provide exactly one action in the required format. If you need to think more, do so briefly.\n{%- else -%}\nFormat error:\n\n<error>\n{{error}}\n</error>\n\nHere is general guidance on how to format your response:\n\nPlease always provide EXACTLY ONE action in triple backticks, found {{actions|length}} actions.\n\nPlease format your action in triple backticks as shown in <response_example>.\n\n<response_example>\nHere are some thoughts about why you want to perform the action.\n\n```mswea_bash_command\n<action>\n```\n</response_example>\n\nIf you have completed your assignment, please consult the first message about how to\nsubmit your solution (you will not be able to continue working on this task after that).\n{%- endif %}\n",
+        "observation_template": "{% if output.exception_info -%}\n<exception>{{output.exception_info}}</exception>\n{% endif -%}\n<returncode>{{output.returncode}}</returncode>\n{% if output.output | length < 10000 -%}\n<output>\n{{ output.output -}}\n</output>\n{%- else -%}\n<warning>\nThe output of your last command was too long.\nPlease try a different command that produces less output.\nIf you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.\nIf you're using grep or find and it produced too much output, you can use a more selective search pattern.\nIf you really need to see something from the full command's output, you can redirect output to a file and then search in that file.\n</warning>\n{%- set elided_chars = output.output | length - 10000 -%}\n<output_head>\n{{ output.output[:5000] }}\n</output_head>\n<elided_chars>\n{{ elided_chars }} characters elided\n</elided_chars>\n<output_tail>\n{{ output.output[-5000:] }}\n</output_tail>\n{%- endif -%}\n",
+        "multimodal_regex": "",
+        "action_regex": "```mswea_bash_command\\s*\\n(.*?)\\n```"
+      },
+      "model_type": "minisweagent.models.litellm_textbased_model.LitellmTextbasedModel",
+      "environment": {
+        "image": "/gpfs/radev/scratch/dijk/pl662/chainswe_sifs/swerebench__sweb.eval.x86_64.tobymao_1776_sqlglot-4093.sif",
+        "cwd": "/testbed",
+        "env": {},
+        "forward_env": [],
+        "timeout": 300,
+        "executable": "apptainer",
+        "sandbox_build_retries": 3,
+        "global_args": [
+          "--quiet"
+        ],
+        "exec_args": [
+          "--contain",
+          "--cleanenv",
+          "--fakeroot"
+        ]
+      },
+      "environment_type": "harness.env.RepoEnv"
+    },
+    "mini_version": "2.4.5",
+    "exit_status": "Submitted",
+    "submission": "diff --git a/sqlglot/dialects/bigquery.py b/sqlglot/dialects/bigquery.py\nindex 883ee665..f9750a52 100644\n--- a/sqlglot/dialects/bigquery.py\n+++ b/sqlglot/dialects/bigquery.py\n@@ -756,6 +756,7 @@ class BigQuery(Dialect):\n             exp.DataType.Type.TINYINT: \"INT64\",\n             exp.DataType.Type.VARBINARY: \"BYTES\",\n             exp.DataType.Type.ROWVERSION: \"BYTES\",\n+            exp.DataType.Type.UUID: \"STRING\",\n             exp.DataType.Type.VARCHAR: \"STRING\",\n             exp.DataType.Type.VARIANT: \"ANY TYPE\",\n         }\n"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history."
+    },
+    {
+      "role": "user",
+      "content": "<pr_description>\nConsider the following PR description:\nTranspile from DuckDB to BigQuery for UUID results in a BigQuery column type of UUID but no such type exists in BQ\nAs the name suggests DuckDB defines a number of column types one of which is UUID. But such a type doesn't exist in BigQuery. The below snippet shows that.\r\n\r\n```\r\n>>> sqlg.transpile(\"create table foo(a long, id uuid)\", read=\"duckdb\", write=\"\r\n... bigquery\")[0]\r\n'CREATE TABLE foo (a INT64, id UUID)'\r\n```\r\n\r\nThere exists a BQ function to generate UUIDs: `GENERATE_UUID` and it returns a string.\r\n\r\nSQLGlot should probably parse this and return it as a `STRING` when going from duckdb to BQ.\r\n\r\nMore types reference: https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types\r\n\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /testbed (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>"
+    },
+    {
+      "content": "THOUGHT: Let me start by exploring the codebase structure to understand how SQLGlot handles type mapping between dialects.\n\n```mswea_bash_command\ncd /testbed && ls && python -c \"import sqlglot; print(sqlglot.transpile('create table foo(a long, id uuid)', read='duckdb', write='bigquery')[0])\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && ls && python -c \"import sqlglot; print(sqlglot.transpile('create table foo(a long, id uuid)', read='duckdb', write='bigquery')[0])\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-9662c83ef12784f8",
+          "created": 1787938921,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me start by exploring the codebase structure to understand how SQLGlot handles type mapping between dialects.\n\n```mswea_bash_command\ncd /testbed && ls && python -c \"import sqlglot; print(sqlglot.transpile('create table foo(a long, id uuid)', read='duckdb', write='bigquery')[0])\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 83,
+            "prompt_tokens": 1638,
+            "total_tokens": 1721,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938922.347971
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nCHANGELOG.md\nCONTRIBUTING.md\nLICENSE\nMakefile\nREADME.md\nbenchmarks\ndocs\npdoc\nposts\nsetup.cfg\nsetup.py\nsqlglot\nsqlglot.egg-info\nsqlglot.png\nsqlglotrs\ntests\nCREATE TABLE foo (a INT64, id UUID)\n</output>",
+      "extra": {
+        "raw_output": "CHANGELOG.md\nCONTRIBUTING.md\nLICENSE\nMakefile\nREADME.md\nbenchmarks\ndocs\npdoc\nposts\nsetup.cfg\nsetup.py\nsqlglot\nsqlglot.egg-info\nsqlglot.png\nsqlglotrs\ntests\nCREATE TABLE foo (a INT64, id UUID)\n",
+        "returncode": 0,
+        "timestamp": 1787938923.537574,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me look at the BigQuery dialect file to understand how types are mapped.\n\n```mswea_bash_command\ncd /testbed && grep -n \"UUID\\|uuid\" sqlglot/dialects/bigquery.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && grep -n \"UUID\\|uuid\" sqlglot/dialects/bigquery.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b1f2220203c37896",
+          "created": 1787938923,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me look at the BigQuery dialect file to understand how types are mapped.\n\n```mswea_bash_command\ncd /testbed && grep -n \"UUID\\|uuid\" sqlglot/dialects/bigquery.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 55,
+            "prompt_tokens": 1821,
+            "total_tokens": 1876,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938924.3153472
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n727:            exp.Uuid: lambda *_: \"GENERATE_UUID()\",\n</output>",
+      "extra": {
+        "raw_output": "727:            exp.Uuid: lambda *_: \"GENERATE_UUID()\",\n",
+        "returncode": 0,
+        "timestamp": 1787938924.6625361,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me look at the BigQuery dialect's type mapping (TYPE_MAPPING) and how types are defined.\n\n```mswea_bash_command\ncd /testbed && grep -n \"TYPE_MAPPING\\|class Token\\|UUID\\|DataType\" sqlglot/dialects/bigquery.py | head -40\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && grep -n \"TYPE_MAPPING\\|class Token\\|UUID\\|DataType\" sqlglot/dialects/bigquery.py | head -40"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-a421d6bf990dc754",
+          "created": 1787938924,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me look at the BigQuery dialect's type mapping (TYPE_MAPPING) and how types are defined.\n\n```mswea_bash_command\ncd /testbed && grep -n \"TYPE_MAPPING\\|class Token\\|UUID\\|DataType\" sqlglot/dialects/bigquery.py | head -40\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 73,
+            "prompt_tokens": 1924,
+            "total_tokens": 1997,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938925.6583855
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n178:    expression.this.replace(exp.cast(expression.this, exp.DataType.Type.TIMESTAMP))\n179:    expression.expression.replace(exp.cast(expression.expression, exp.DataType.Type.TIMESTAMP))\n196:        exp.Div(this=timestamp, expression=exp.func(\"POW\", 10, scale)), exp.DataType.Type.BIGINT\n308:    class Tokenizer(tokens.Tokenizer):\n607:                if unnest_expr.is_type(exp.DataType.Type.ARRAY) and any(\n608:                    array_elem.is_type(exp.DataType.Type.STRUCT)\n727:            exp.Uuid: lambda *_: \"GENERATE_UUID()\",\n738:        TYPE_MAPPING = {\n739:            **generator.Generator.TYPE_MAPPING,\n740:            exp.DataType.Type.BIGDECIMAL: \"BIGNUMERIC\",\n741:            exp.DataType.Type.BIGINT: \"INT64\",\n742:            exp.DataType.Type.BINARY: \"BYTES\",\n743:            exp.DataType.Type.BOOLEAN: \"BOOL\",\n744:            exp.DataType.Type.CHAR: \"STRING\",\n745:            exp.DataType.Type.DECIMAL: \"NUMERIC\",\n746:            exp.DataType.Type.DOUBLE: \"FLOAT64\",\n747:            exp.DataType.Type.FLOAT: \"FLOAT64\",\n748:            exp.DataType.Type.INT: \"INT64\",\n749:            exp.DataType.Type.NCHAR: \"STRING\",\n750:            exp.DataType.Type.NVARCHAR: \"STRING\",\n751:            exp.DataType.Type.SMALLINT: \"INT64\",\n752:            exp.DataType.Type.TEXT: \"STRING\",\n753:            exp.DataType.Type.TIMESTAMP: \"DATETIME\",\n754:            exp.DataType.Type.TIMESTAMPTZ: \"TIMESTAMP\",\n755:            exp.DataType.Type.TIMESTAMPLTZ: \"TIMESTAMP\",\n756:            exp.DataType.Type.TINYINT: \"INT64\",\n757:            exp.DataType.Type.VARBINARY: \"BYTES\",\n758:            exp.DataType.Type.ROWVERSION: \"BYTES\",\n759:            exp.DataType.Type.VARCHAR: \"STRING\",\n760:            exp.DataType.Type.VARIANT: \"ANY TYPE\",\n949:            if len(expressions) == 1 and this and this.is_type(exp.DataType.Type.STRUCT):\n956:                if arg.type and arg.type.this in exp.DataType.TEXT_TYPES:\n</output>",
+      "extra": {
+        "raw_output": "178:    expression.this.replace(exp.cast(expression.this, exp.DataType.Type.TIMESTAMP))\n179:    expression.expression.replace(exp.cast(expression.expression, exp.DataType.Type.TIMESTAMP))\n196:        exp.Div(this=timestamp, expression=exp.func(\"POW\", 10, scale)), exp.DataType.Type.BIGINT\n308:    class Tokenizer(tokens.Tokenizer):\n607:                if unnest_expr.is_type(exp.DataType.Type.ARRAY) and any(\n608:                    array_elem.is_type(exp.DataType.Type.STRUCT)\n727:            exp.Uuid: lambda *_: \"GENERATE_UUID()\",\n738:        TYPE_MAPPING = {\n739:            **generator.Generator.TYPE_MAPPING,\n740:            exp.DataType.Type.BIGDECIMAL: \"BIGNUMERIC\",\n741:            exp.DataType.Type.BIGINT: \"INT64\",\n742:            exp.DataType.Type.BINARY: \"BYTES\",\n743:            exp.DataType.Type.BOOLEAN: \"BOOL\",\n744:            exp.DataType.Type.CHAR: \"STRING\",\n745:            exp.DataType.Type.DECIMAL: \"NUMERIC\",\n746:            exp.DataType.Type.DOUBLE: \"FLOAT64\",\n747:            exp.DataType.Type.FLOAT: \"FLOAT64\",\n748:            exp.DataType.Type.INT: \"INT64\",\n749:            exp.DataType.Type.NCHAR: \"STRING\",\n750:            exp.DataType.Type.NVARCHAR: \"STRING\",\n751:            exp.DataType.Type.SMALLINT: \"INT64\",\n752:            exp.DataType.Type.TEXT: \"STRING\",\n753:            exp.DataType.Type.TIMESTAMP: \"DATETIME\",\n754:            exp.DataType.Type.TIMESTAMPTZ: \"TIMESTAMP\",\n755:            exp.DataType.Type.TIMESTAMPLTZ: \"TIMESTAMP\",\n756:            exp.DataType.Type.TINYINT: \"INT64\",\n757:            exp.DataType.Type.VARBINARY: \"BYTES\",\n758:            exp.DataType.Type.ROWVERSION: \"BYTES\",\n759:            exp.DataType.Type.VARCHAR: \"STRING\",\n760:            exp.DataType.Type.VARIANT: \"ANY TYPE\",\n949:            if len(expressions) == 1 and this and this.is_type(exp.DataType.Type.STRUCT):\n956:                if arg.type and arg.type.this in exp.DataType.TEXT_TYPES:\n",
+        "returncode": 0,
+        "timestamp": 1787938926.0036995,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: I can see the TYPE_MAPPING. I need to add UUID -> STRING mapping. Let me check the DataType.Type has UUID.\n\n```mswea_bash_command\ncd /testbed && grep -n \"UUID\" sqlglot/expressions.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && grep -n \"UUID\" sqlglot/expressions.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-88176e9143db8d01",
+          "created": 1787938926,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: I can see the TYPE_MAPPING. I need to add UUID -> STRING mapping. Let me check the DataType.Type has UUID.\n\n```mswea_bash_command\ncd /testbed && grep -n \"UUID\" sqlglot/expressions.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 59,
+            "prompt_tokens": 2580,
+            "total_tokens": 2639,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938926.8727217
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n4162:        UUID = auto()\n6221:    _sql_names = [\"UUID\", \"GEN_RANDOM_UUID\", \"GENERATE_UUID\", \"UUID_STRING\"]\n</output>",
+      "extra": {
+        "raw_output": "4162:        UUID = auto()\n6221:    _sql_names = [\"UUID\", \"GEN_RANDOM_UUID\", \"GENERATE_UUID\", \"UUID_STRING\"]\n",
+        "returncode": 0,
+        "timestamp": 1787938927.1955185,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: UUID type exists. Let me add the mapping to BigQuery's TYPE_MAPPING.\n\n```mswea_bash_command\ncd /testbed && sed -i 's/            exp.DataType.Type.VARCHAR: \"STRING\",/            exp.DataType.Type.UUID: \"STRING\",\\n            exp.DataType.Type.VARCHAR: \"STRING\",/' sqlglot/dialects/bigquery.py && sed -n '756,762p' sqlglot/dialects/bigquery.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && sed -i 's/            exp.DataType.Type.VARCHAR: \"STRING\",/            exp.DataType.Type.UUID: \"STRING\",\\n            exp.DataType.Type.VARCHAR: \"STRING\",/' sqlglot/dialects/bigquery.py && sed -n '756,762p' sqlglot/dialects/bigquery.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-aed11a723f107362",
+          "created": 1787938927,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: UUID type exists. Let me add the mapping to BigQuery's TYPE_MAPPING.\n\n```mswea_bash_command\ncd /testbed && sed -i 's/            exp.DataType.Type.VARCHAR: \"STRING\",/            exp.DataType.Type.UUID: \"STRING\",\\n            exp.DataType.Type.VARCHAR: \"STRING\",/' sqlglot/dialects/bigquery.py && sed -n '756,762p' sqlglot/dialects/bigquery.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 108,
+            "prompt_tokens": 2708,
+            "total_tokens": 2816,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938928.6599069
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n            exp.DataType.Type.TINYINT: \"INT64\",\n            exp.DataType.Type.VARBINARY: \"BYTES\",\n            exp.DataType.Type.ROWVERSION: \"BYTES\",\n            exp.DataType.Type.UUID: \"STRING\",\n            exp.DataType.Type.VARCHAR: \"STRING\",\n            exp.DataType.Type.VARIANT: \"ANY TYPE\",\n        }\n</output>",
+      "extra": {
+        "raw_output": "            exp.DataType.Type.TINYINT: \"INT64\",\n            exp.DataType.Type.VARBINARY: \"BYTES\",\n            exp.DataType.Type.ROWVERSION: \"BYTES\",\n            exp.DataType.Type.UUID: \"STRING\",\n            exp.DataType.Type.VARCHAR: \"STRING\",\n            exp.DataType.Type.VARIANT: \"ANY TYPE\",\n        }\n",
+        "returncode": 0,
+        "timestamp": 1787938928.9955008,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me verify the fix works.\n\n```mswea_bash_command\ncd /testbed && python -c \"import sqlglot; print(sqlglot.transpile('create table foo(a long, id uuid)', read='duckdb', write='bigquery')[0])\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && python -c \"import sqlglot; print(sqlglot.transpile('create table foo(a long, id uuid)', read='duckdb', write='bigquery')[0])\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8005a021f82f06fc",
+          "created": 1787938929,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me verify the fix works.\n\n```mswea_bash_command\ncd /testbed && python -c \"import sqlglot; print(sqlglot.transpile('create table foo(a long, id uuid)', read='duckdb', write='bigquery')[0])\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 67,
+            "prompt_tokens": 2920,
+            "total_tokens": 2987,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938929.97366
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nCREATE TABLE foo (a INT64, id STRING)\n</output>",
+      "extra": {
+        "raw_output": "CREATE TABLE foo (a INT64, id STRING)\n",
+        "returncode": 0,
+        "timestamp": 1787938930.5265477,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The fix works. Let me run the relevant tests to make sure nothing is broken.\n\n```mswea_bash_command\ncd /testbed && python -m pytest tests/dialects/test_bigquery.py -q 2>&1 | tail -15\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && python -m pytest tests/dialects/test_bigquery.py -q 2>&1 | tail -15"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-a04455f21a788cf5",
+          "created": 1787938930,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The fix works. Let me run the relevant tests to make sure nothing is broken.\n\n```mswea_bash_command\ncd /testbed && python -m pytest tests/dialects/test_bigquery.py -q 2>&1 | tail -15\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 61,
+            "prompt_tokens": 3030,
+            "total_tokens": 3091,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938931.4361606
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n................                                                         [100%]\n16 passed in 0.46s\n</output>",
+      "extra": {
+        "raw_output": "................                                                         [100%]\n16 passed in 0.46s\n",
+        "returncode": 0,
+        "timestamp": 1787938933.180519,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: All tests pass. Let me create the patch and submit.\n\n```mswea_bash_command\ncd /testbed && git diff -- sqlglot/dialects/bigquery.py > patch.txt && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && git diff -- sqlglot/dialects/bigquery.py > patch.txt && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-ace310580501e4e3",
+          "created": 1787938933,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: All tests pass. Let me create the patch and submit.\n\n```mswea_bash_command\ncd /testbed && git diff -- sqlglot/dialects/bigquery.py > patch.txt && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 52,
+            "prompt_tokens": 3141,
+            "total_tokens": 3193,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938933.990422
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/sqlglot/dialects/bigquery.py b/sqlglot/dialects/bigquery.py\nindex 883ee665..f9750a52 100644\n--- a/sqlglot/dialects/bigquery.py\n+++ b/sqlglot/dialects/bigquery.py\n@@ -756,6 +756,7 @@ class BigQuery(Dialect):\n             exp.DataType.Type.TINYINT: \"INT64\",\n             exp.DataType.Type.VARBINARY: \"BYTES\",\n             exp.DataType.Type.ROWVERSION: \"BYTES\",\n+            exp.DataType.Type.UUID: \"STRING\",\n             exp.DataType.Type.VARCHAR: \"STRING\",\n             exp.DataType.Type.VARIANT: \"ANY TYPE\",\n         }\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/sqlglot/dialects/bigquery.py b/sqlglot/dialects/bigquery.py\nindex 883ee665..f9750a52 100644\n--- a/sqlglot/dialects/bigquery.py\n+++ b/sqlglot/dialects/bigquery.py\n@@ -756,6 +756,7 @@ class BigQuery(Dialect):\n             exp.DataType.Type.TINYINT: \"INT64\",\n             exp.DataType.Type.VARBINARY: \"BYTES\",\n             exp.DataType.Type.ROWVERSION: \"BYTES\",\n+            exp.DataType.Type.UUID: \"STRING\",\n             exp.DataType.Type.VARCHAR: \"STRING\",\n             exp.DataType.Type.VARIANT: \"ANY TYPE\",\n         }\n",
+        "returncode": 0,
+        "timestamp": 1787938934.3614783,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The patch looks correct. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-bcfd8a72acc99a73",
+          "created": 1787938934,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The patch looks correct. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "token_ids": null,
+                "stop_reason": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 37,
+            "prompt_tokens": 3393,
+            "total_tokens": 3430,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787938935.01453
+      }
+    },
+    {
+      "role": "exit",
+      "content": "diff --git a/sqlglot/dialects/bigquery.py b/sqlglot/dialects/bigquery.py\nindex 883ee665..f9750a52 100644\n--- a/sqlglot/dialects/bigquery.py\n+++ b/sqlglot/dialects/bigquery.py\n@@ -756,6 +756,7 @@ class BigQuery(Dialect):\n             exp.DataType.Type.TINYINT: \"INT64\",\n             exp.DataType.Type.VARBINARY: \"BYTES\",\n             exp.DataType.Type.ROWVERSION: \"BYTES\",\n+            exp.DataType.Type.UUID: \"STRING\",\n             exp.DataType.Type.VARCHAR: \"STRING\",\n             exp.DataType.Type.VARIANT: \"ANY TYPE\",\n         }\n",
+      "extra": {
+        "exit_status": "Submitted",
+        "submission": "diff --git a/sqlglot/dialects/bigquery.py b/sqlglot/dialects/bigquery.py\nindex 883ee665..f9750a52 100644\n--- a/sqlglot/dialects/bigquery.py\n+++ b/sqlglot/dialects/bigquery.py\n@@ -756,6 +756,7 @@ class BigQuery(Dialect):\n             exp.DataType.Type.TINYINT: \"INT64\",\n             exp.DataType.Type.VARBINARY: \"BYTES\",\n             exp.DataType.Type.ROWVERSION: \"BYTES\",\n+            exp.DataType.Type.UUID: \"STRING\",\n             exp.DataType.Type.VARCHAR: \"STRING\",\n             exp.DataType.Type.VARIANT: \"ANY TYPE\",\n         }\n"
+      }
+    }
+  ],
+  "trajectory_format": "mini-swe-agent-1.1"
+}

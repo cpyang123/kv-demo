@@ -4,3 +4,5 @@ from .attribution import probes         # noqa: F401
 from .ours import fusednote             # noqa: F401
 from .baselines import mem0_official    # noqa: F401
 from .baselines import memop_prompt     # noqa: F401
+from .baselines import reasoningbank    # noqa: F401
+from .baselines import cline_membank    # noqa: F401

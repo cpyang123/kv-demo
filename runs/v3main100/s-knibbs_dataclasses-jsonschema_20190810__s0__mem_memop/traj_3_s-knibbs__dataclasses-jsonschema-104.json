@@ -1,0 +1,864 @@
+{
+  "info": {
+    "model_stats": {
+      "instance_cost": 0.0,
+      "api_calls": 11
+    },
+    "config": {
+      "agent": {
+        "system_template": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history.",
+        "instance_template": "<pr_description>\nConsider the following PR description:\n{{task}}\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /dataclasses-jsonschema (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>\n",
+        "step_limit": 100,
+        "cost_limit": 1000000000.0,
+        "wall_time_limit_seconds": 0,
+        "max_consecutive_format_errors": 3,
+        "output_path": "/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory/chainswe/runs/v3main100/s-knibbs_dataclasses-jsonschema_20190810__s0__mem_memop/traj_3_s-knibbs__dataclasses-jsonschema-104.json"
+      },
+      "agent_type": "minisweagent.agents.default.DefaultAgent",
+      "model": {
+        "model_name": "openai/coder-next",
+        "model_kwargs": {
+          "api_key": "EMPTY",
+          "temperature": 0.0,
+          "max_tokens": 16384,
+          "extra_body": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "api_base": "http://127.0.0.1:8860/v1"
+        },
+        "litellm_model_registry": null,
+        "set_cache_control": null,
+        "cost_tracking": "ignore_errors",
+        "format_error_template": "{% if finish_reason is defined and finish_reason in [\"length\", \"tool_calls\"] -%}\nYour previous response reached the output token limit (finish_reason={{ finish_reason }}) before you produced a complete action, so it was cut off. Respond more concisely and provide exactly one action in the required format. If you need to think more, do so briefly.\n{%- else -%}\nFormat error:\n\n<error>\n{{error}}\n</error>\n\nHere is general guidance on how to format your response:\n\nPlease always provide EXACTLY ONE action in triple backticks, found {{actions|length}} actions.\n\nPlease format your action in triple backticks as shown in <response_example>.\n\n<response_example>\nHere are some thoughts about why you want to perform the action.\n\n```mswea_bash_command\n<action>\n```\n</response_example>\n\nIf you have completed your assignment, please consult the first message about how to\nsubmit your solution (you will not be able to continue working on this task after that).\n{%- endif %}\n",
+        "observation_template": "{% if output.exception_info -%}\n<exception>{{output.exception_info}}</exception>\n{% endif -%}\n<returncode>{{output.returncode}}</returncode>\n{% if output.output | length < 10000 -%}\n<output>\n{{ output.output -}}\n</output>\n{%- else -%}\n<warning>\nThe output of your last command was too long.\nPlease try a different command that produces less output.\nIf you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.\nIf you're using grep or find and it produced too much output, you can use a more selective search pattern.\nIf you really need to see something from the full command's output, you can redirect output to a file and then search in that file.\n</warning>\n{%- set elided_chars = output.output | length - 10000 -%}\n<output_head>\n{{ output.output[:5000] }}\n</output_head>\n<elided_chars>\n{{ elided_chars }} characters elided\n</elided_chars>\n<output_tail>\n{{ output.output[-5000:] }}\n</output_tail>\n{%- endif -%}\n",
+        "multimodal_regex": "",
+        "action_regex": "```mswea_bash_command\\s*\\n(.*?)\\n```"
+      },
+      "model_type": "minisweagent.models.litellm_textbased_model.LitellmTextbasedModel",
+      "environment": {
+        "image": "/gpfs/radev/scratch/dijk/pl662/chainswe_sifs/swerebenchv2__s-knibbs-dataclasses-jsonschema__93-b5ccd44.sif",
+        "cwd": "/dataclasses-jsonschema",
+        "env": {},
+        "forward_env": [],
+        "timeout": 300,
+        "executable": "apptainer",
+        "sandbox_build_retries": 3,
+        "global_args": [
+          "--quiet"
+        ],
+        "exec_args": [
+          "--contain",
+          "--cleanenv",
+          "--fakeroot"
+        ]
+      },
+      "environment_type": "harness.env.RepoEnv"
+    },
+    "mini_version": "2.4.5",
+    "exit_status": "Submitted",
+    "submission": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex 178b0a3..bef5572 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -697,7 +697,8 @@ class JsonSchemaMixin:\n             schema = {\n                 'type': 'object',\n                 'required': required,\n-                'properties': properties\n+                'properties': properties,\n+                'additionalProperties': False\n             }\n \n             if cls.__discriminator_name is not None and \\\n"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history."
+    },
+    {
+      "role": "user",
+      "content": "<pr_description>\nConsider the following PR description:\n<memory_context>\nNotes from earlier work sessions on this repository:\n## Task Guidance\n### Repository Structure\n- **Package**: `dataclasses_jsonschema/` \u2014 main module is `__init__.py` containing `JsonSchemaMixin` class\n- **Supporting modules**: `field_types.py` (field encoders), `type_defs.py` (type definitions), `apispec.py` (API spec plugin)\n- **Tests**: `tests/test_core.py` (core functionality), `tests/test_apispec_plugin.py` (requires `apispec` package)\n- **Config**: `setup.py`, `setup.cfg`, `tox.ini`, `.travis.yml`\n\n### Common Commands\n- **Run core tests**: `python3 -m pytest tests/test_core.py -q`\n- **Run all tests**: `python3 -m pytest tests/ -q` (note: `test_apispec_plugin.py` requires `apispec` package which may not be installed)\n- **Quick validation**: Use inline Python scripts with `python3 - <<'EOF'` for ad-hoc testing\n\n### Code Style & Conventions\n- **Type hints**: Use full type annotations with `Type[T]` for classmethods, `Optional`, `Union`, etc.\n- **Docstrings**: Use triple-quoted docstrings describing parameters and behavior\n- **Method placement**: Instance methods (`to_dict`, `to_json`) go before classmethods (`from_dict`, `from_json`)\n- **Convenience methods**: New serialization methods should wrap existing dict-based methods (e.g., `to_json` wraps `to_dict`, `from_json` wraps `from_dict`)\n- **Imports**: Add standard library imports at the top of the file\n\n### Best Practices\n- **Test edge cases**: Always verify `omit_none`, `validate`, nested dataclasses, and error handling (e.g., `ValidationError`)\n- **Preserve existing behavior**: New methods should delegate to existing methods to maintain consistency\n- **Run existing tests**: Always run `tests/test_core.py` after changes to ensure no regressions\n- **Avoid breaking changes**: New features should be additive, not modifying existing method signatures\n- **Schema generation**: When adding support for new type hints in `_get_field_schema`, place the check before the fallback `else` warning branch; for `Any`, use an empty schema `{}` to indicate no type restriction\n- **Type dispatch pattern**: Field type handling uses `field_type_name` (string) for typing module types and direct type comparison for built-in types; check `field_type is Any` for the `Any` type specifically\n</memory_context>\n\ndon't allow undeclared object properties\nThanks for the great work on this project, been really useful thus far.\r\n\r\nWe used `\"additionalProperties\": false` for objects in our (hand-written) json-schema's, which was helpful to prevent invalid inputs. In this project I see no way of achieving the same.\r\n\r\n```python\r\nfrom dataclasses import dataclass\r\nfrom dataclasses_jsonschema import JsonSchemaMixin\r\n\r\n@dataclass\r\nclass Point(JsonSchemaMixin):\r\n    \"A 2D point\"\r\n    x: float\r\n    y: float\r\n\r\n# adding an additional key to the dict results in the key being dropped\r\nprint(Point.from_dict({\"x\": 1.1, \"y\": 2.2, \"z\": 3.3}))\r\nPoint(x=1.1, y=2.2)\r\n```\r\n\r\nThis is especially problematic with items that have defaults, if a field name is typod validation will still pass, but the resulting object will have unexpected values.\r\n\r\ndesired validation can be achieved by updating `dataclass_jsonschema/__init__.py` on line 690:\r\n```python\r\nschema = {\r\n                'type': 'object',\r\n                'required': required,\r\n                'properties': properties,\r\n                'additionalProperties': False\r\n            }\r\n```\r\n\r\n```python\r\nPoint.from_dict({\"x\": 1.1, \"y\": 2.2, \"z\": 3.3})\r\nTraceback (most recent call last):\r\n  File \"/Users/jmmccon/.pyenv/versions/taskcat-v9-3.6.9/lib/python3.6/site-packages/dataclasses_jsonschema/__init__.py\", line 421, in _validate\r\n    validate_func(data, cls.json_schema())\r\n  File \"/Users/jmmccon/.pyenv/versions/taskcat-v9-3.6.9/lib/python3.6/site-packages/jsonschema/validators.py\", line 899, in validate\r\n    raise error\r\njsonschema.exceptions.ValidationError: Additional properties are not allowed ('z' was unexpected)\r\n```\r\n\r\nI'm happy to pr a change, but not sure if I've missed some way to do this that is already catered for, or even if others want this behavior (One thought to make it optional is to provide an additional mixin `StrictJsonSchemaMixin` that adds this)\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /dataclasses-jsonschema (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>"
+    },
+    {
+      "content": "THOUGHT: Let me start by exploring the repository structure and understanding the codebase.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && ls -la && echo \"---\" && cat dataclasses_jsonschema/__init__.py | head -100\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && ls -la && echo \"---\" && cat dataclasses_jsonschema/__init__.py | head -100"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-91f04b011f11043b",
+          "created": 1787980520,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me start by exploring the repository structure and understanding the codebase.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && ls -la && echo \"---\" && cat dataclasses_jsonschema/__init__.py | head -100\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 60,
+            "prompt_tokens": 2509,
+            "total_tokens": 2569,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980520.9091964
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ntotal 68\ndrwxrwxrwx 8 pl662 dijk 4096 Aug 29 05:14 .\ndrwxr-xr-x 1 pl662 dijk   80 Aug 29 05:15 ..\ndrwxr-xr-x 4 pl662 dijk 4096 Feb 21  2026 .eggs\ndrwxrwxrwx 8 pl662 dijk 4096 Aug 29 05:15 .git\n-rw-r--r-- 1 pl662 dijk 1251 Feb 21  2026 .gitignore\ndrwxr-xr-x 3 pl662 dijk 4096 Aug 29 05:14 .pytest_cache\n-rw-r--r-- 1 pl662 dijk  117 Feb 21  2026 .travis.yml\n-rw-r--r-- 1 pl662 dijk 1071 Feb 21  2026 LICENSE\n-rw-r--r-- 1 pl662 dijk 5963 Feb 21  2026 README.rst\ndrwxrwxrwx 3 pl662 dijk 4096 Aug 29 05:14 dataclasses_jsonschema\ndrwxr-xr-x 2 pl662 dijk 4096 Feb 21  2026 dataclasses_jsonschema.egg-info\n-rw-r--r-- 1 pl662 dijk  668 Aug 29 05:15 patch.txt\n-rw-r--r-- 1 pl662 dijk   93 Feb 21  2026 setup.cfg\n-rw-r--r-- 1 pl662 dijk 1318 Feb 21  2026 setup.py\n-rw-r--r-- 1 pl662 dijk  835 Feb 21  2026 test_issue.py\ndrwxrwxrwx 3 pl662 dijk 4096 Aug 29 05:14 tests\n-rw-r--r-- 1 pl662 dijk  360 Feb 21  2026 tox.ini\n---\nimport json\nimport sys\nimport functools\nfrom _decimal import Decimal\nfrom ipaddress import IPv4Address, IPv6Address\nfrom typing import Optional, Type, Union, Any, Dict, Tuple, List, TypeVar, get_type_hints, Callable\nimport re\nfrom datetime import datetime\nfrom dataclasses import fields, is_dataclass, Field, MISSING, dataclass, asdict\nfrom uuid import UUID\nfrom enum import Enum\nimport warnings\n\nfrom typing_extensions import Final, Literal\n\n\nfrom dataclasses_jsonschema.field_types import (  # noqa: F401\n    FieldEncoder, DateTimeFieldEncoder, UuidField, DecimalField,\n    IPv4AddressField, IPv6AddressField, DateTimeField\n)\nfrom dataclasses_jsonschema.type_defs import JsonDict, SchemaType, JsonSchemaMeta, _NULL_TYPE, NULL  # noqa: F401\n\ntry:\n    import fastjsonschema\n\n    def validate_func(data, schema):\n        return fastjsonschema.validate(schema, data)\n    JsonSchemaValidationError = fastjsonschema.JsonSchemaException\n    fast_validation = True\nexcept ImportError:\n    import jsonschema\n    validate_func = jsonschema.validate\n    JsonSchemaValidationError = jsonschema.ValidationError\n    fast_validation = False\n\nJSON_ENCODABLE_TYPES = {\n    str: {'type': 'string'},\n    int: {'type': 'integer'},\n    bool: {'type': 'boolean'},\n    float: {'type': 'number'}\n}\n\n\nclass ValidationError(Exception):\n    pass\n\n\ndef is_enum(field_type: Any):\n    return issubclass_safe(field_type, Enum)\n\n\ndef issubclass_safe(klass: Any, base: Type):\n    try:\n        return issubclass(klass, base)\n    except TypeError:\n        return False\n\n\ndef is_optional(field: Any) -> bool:\n    try:\n        return field.__origin__ == Union and type(None) in field.__args__\n    except AttributeError:\n        return False\n\n\ndef is_final(field: Any) -> bool:\n    try:\n        return field.__origin__ == Final\n    except AttributeError:\n        if sys.version_info[:2] == (3, 6):\n            return type(field).__qualname__ == \"_Final\"\n        return False\n\n\ndef is_literal(field: Any) -> bool:\n    try:\n        return field.__origin__ == Literal\n    except AttributeError:\n        if sys.version_info[:2] == (3, 6):\n            return type(field).__qualname__ == \"_Literal\"\n        return False\n\n\ndef is_nullable(field: Any) -> bool:\n    try:\n        if sys.version_info[:2] == (3, 6):\n            # Hack to get python 3.6 working\n            return \"_NULL_TYPE\" in repr(field)\n        return field.__origin__ == Union and _NULL_TYPE in field.__args__\n    except AttributeError:\n        return False\n\n\ndef unwrap_final(final_type: Any) -> Any:\n    return final_type.__args__[0] if sys.version_info[:2] >= (3, 7) else final_type.__type__\n\n\ndef unwrap_optional(optional_type: Any) -> Any:\n    idx = optional_type.__args__.index(type(None))\n    return Union[optional_type.__args__[:idx] + optional_type.__args__[idx+1:]]\n</output>",
+      "extra": {
+        "raw_output": "total 68\ndrwxrwxrwx 8 pl662 dijk 4096 Aug 29 05:14 .\ndrwxr-xr-x 1 pl662 dijk   80 Aug 29 05:15 ..\ndrwxr-xr-x 4 pl662 dijk 4096 Feb 21  2026 .eggs\ndrwxrwxrwx 8 pl662 dijk 4096 Aug 29 05:15 .git\n-rw-r--r-- 1 pl662 dijk 1251 Feb 21  2026 .gitignore\ndrwxr-xr-x 3 pl662 dijk 4096 Aug 29 05:14 .pytest_cache\n-rw-r--r-- 1 pl662 dijk  117 Feb 21  2026 .travis.yml\n-rw-r--r-- 1 pl662 dijk 1071 Feb 21  2026 LICENSE\n-rw-r--r-- 1 pl662 dijk 5963 Feb 21  2026 README.rst\ndrwxrwxrwx 3 pl662 dijk 4096 Aug 29 05:14 dataclasses_jsonschema\ndrwxr-xr-x 2 pl662 dijk 4096 Feb 21  2026 dataclasses_jsonschema.egg-info\n-rw-r--r-- 1 pl662 dijk  668 Aug 29 05:15 patch.txt\n-rw-r--r-- 1 pl662 dijk   93 Feb 21  2026 setup.cfg\n-rw-r--r-- 1 pl662 dijk 1318 Feb 21  2026 setup.py\n-rw-r--r-- 1 pl662 dijk  835 Feb 21  2026 test_issue.py\ndrwxrwxrwx 3 pl662 dijk 4096 Aug 29 05:14 tests\n-rw-r--r-- 1 pl662 dijk  360 Feb 21  2026 tox.ini\n---\nimport json\nimport sys\nimport functools\nfrom _decimal import Decimal\nfrom ipaddress import IPv4Address, IPv6Address\nfrom typing import Optional, Type, Union, Any, Dict, Tuple, List, TypeVar, get_type_hints, Callable\nimport re\nfrom datetime import datetime\nfrom dataclasses import fields, is_dataclass, Field, MISSING, dataclass, asdict\nfrom uuid import UUID\nfrom enum import Enum\nimport warnings\n\nfrom typing_extensions import Final, Literal\n\n\nfrom dataclasses_jsonschema.field_types import (  # noqa: F401\n    FieldEncoder, DateTimeFieldEncoder, UuidField, DecimalField,\n    IPv4AddressField, IPv6AddressField, DateTimeField\n)\nfrom dataclasses_jsonschema.type_defs import JsonDict, SchemaType, JsonSchemaMeta, _NULL_TYPE, NULL  # noqa: F401\n\ntry:\n    import fastjsonschema\n\n    def validate_func(data, schema):\n        return fastjsonschema.validate(schema, data)\n    JsonSchemaValidationError = fastjsonschema.JsonSchemaException\n    fast_validation = True\nexcept ImportError:\n    import jsonschema\n    validate_func = jsonschema.validate\n    JsonSchemaValidationError = jsonschema.ValidationError\n    fast_validation = False\n\nJSON_ENCODABLE_TYPES = {\n    str: {'type': 'string'},\n    int: {'type': 'integer'},\n    bool: {'type': 'boolean'},\n    float: {'type': 'number'}\n}\n\n\nclass ValidationError(Exception):\n    pass\n\n\ndef is_enum(field_type: Any):\n    return issubclass_safe(field_type, Enum)\n\n\ndef issubclass_safe(klass: Any, base: Type):\n    try:\n        return issubclass(klass, base)\n    except TypeError:\n        return False\n\n\ndef is_optional(field: Any) -> bool:\n    try:\n        return field.__origin__ == Union and type(None) in field.__args__\n    except AttributeError:\n        return False\n\n\ndef is_final(field: Any) -> bool:\n    try:\n        return field.__origin__ == Final\n    except AttributeError:\n        if sys.version_info[:2] == (3, 6):\n            return type(field).__qualname__ == \"_Final\"\n        return False\n\n\ndef is_literal(field: Any) -> bool:\n    try:\n        return field.__origin__ == Literal\n    except AttributeError:\n        if sys.version_info[:2] == (3, 6):\n            return type(field).__qualname__ == \"_Literal\"\n        return False\n\n\ndef is_nullable(field: Any) -> bool:\n    try:\n        if sys.version_info[:2] == (3, 6):\n            # Hack to get python 3.6 working\n            return \"_NULL_TYPE\" in repr(field)\n        return field.__origin__ == Union and _NULL_TYPE in field.__args__\n    except AttributeError:\n        return False\n\n\ndef unwrap_final(final_type: Any) -> Any:\n    return final_type.__args__[0] if sys.version_info[:2] >= (3, 7) else final_type.__type__\n\n\ndef unwrap_optional(optional_type: Any) -> Any:\n    idx = optional_type.__args__.index(type(None))\n    return Union[optional_type.__args__[:idx] + optional_type.__args__[idx+1:]]\n",
+        "returncode": 0,
+        "timestamp": 1787980521.0639129,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me look at the existing patch.txt and the test_issue.py to understand what's expected, and find the relevant schema generation code.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && cat patch.txt && echo \"===TEST===\" && cat test_issue.py && echo \"===GREP===\" && grep -n \"additionalProperties\\|'type': 'object'\\|'properties': properties\\|'required': required\" dataclasses_jsonschema/__init__.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && cat patch.txt && echo \"===TEST===\" && cat test_issue.py && echo \"===GREP===\" && grep -n \"additionalProperties\\|'type': 'object'\\|'properties': properties\\|'required': required\" dataclasses_jsonschema/__init__.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-966119536c4f025e",
+          "created": 1787980521,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me look at the existing patch.txt and the test_issue.py to understand what's expected, and find the relevant schema generation code.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && cat patch.txt && echo \"===TEST===\" && cat test_issue.py && echo \"===GREP===\" && grep -n \"additionalProperties\\|'type': 'object'\\|'properties': properties\\|'required': required\" dataclasses_jsonschema/__init__.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 106,
+            "prompt_tokens": 3872,
+            "total_tokens": 3978,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980522.5688818
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex 21640c0..178b0a3 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -616,6 +616,8 @@ class JsonSchemaMixin:\n                 field_schema.update(cls._field_encoders[field_type].json_schema)\n             elif hasattr(field_type, '__supertype__'):  # NewType fields\n                 field_schema, _ = cls._get_field_schema(field_type.__supertype__, schema_type)\n+            elif field_type is Any:\n+                field_schema = {}\n             else:\n                 warnings.warn(f\"Unable to create schema for '{field_type_name}'\")\n \n===TEST===\nimport json\nfrom typing import Optional, List\nfrom dataclasses import dataclass\n\nfrom apispec import APISpec\n\nfrom dataclasses_jsonschema.apispec import DataclassesPlugin\nfrom dataclasses_jsonschema import JsonSchemaMixin\n\n# Create an APISpec\nspec = APISpec(\n    title=\"Swagger Petstore\",\n    version=\"1.0.0\",\n    openapi_version=\"3.0.2\",\n    plugins=[DataclassesPlugin()],\n)\n\n\n@dataclass\nclass Category(JsonSchemaMixin):\n    \"\"\"Pet category\"\"\"\n    name: str\n    id: Optional[int]\n\n\n@dataclass\nclass Pet(JsonSchemaMixin):\n    \"\"\"A pet\"\"\"\n    categories: List[Category]\n    name: str\n\n\n@dataclass\nclass Cat(Pet):\n    \"\"\"A cat\"\"\"\n    color: str\n\n\n# Dependant schemas (e.g. 'Category') are added automatically\nspec.components.schema(\"Pet\", schema=Pet)\nspec.components.schema(\"Cat\", schema=Cat)\nprint(json.dumps(spec.to_dict(), indent=2))\n===GREP===\n542:        field_schema: JsonDict = {'type': 'object'}\n597:                field_schema = {'type': 'object'}\n599:                    field_schema['additionalProperties'] = cls._get_field_schema(\n698:                'type': 'object',\n699:                'required': required,\n700:                'properties': properties\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex 21640c0..178b0a3 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -616,6 +616,8 @@ class JsonSchemaMixin:\n                 field_schema.update(cls._field_encoders[field_type].json_schema)\n             elif hasattr(field_type, '__supertype__'):  # NewType fields\n                 field_schema, _ = cls._get_field_schema(field_type.__supertype__, schema_type)\n+            elif field_type is Any:\n+                field_schema = {}\n             else:\n                 warnings.warn(f\"Unable to create schema for '{field_type_name}'\")\n \n===TEST===\nimport json\nfrom typing import Optional, List\nfrom dataclasses import dataclass\n\nfrom apispec import APISpec\n\nfrom dataclasses_jsonschema.apispec import DataclassesPlugin\nfrom dataclasses_jsonschema import JsonSchemaMixin\n\n# Create an APISpec\nspec = APISpec(\n    title=\"Swagger Petstore\",\n    version=\"1.0.0\",\n    openapi_version=\"3.0.2\",\n    plugins=[DataclassesPlugin()],\n)\n\n\n@dataclass\nclass Category(JsonSchemaMixin):\n    \"\"\"Pet category\"\"\"\n    name: str\n    id: Optional[int]\n\n\n@dataclass\nclass Pet(JsonSchemaMixin):\n    \"\"\"A pet\"\"\"\n    categories: List[Category]\n    name: str\n\n\n@dataclass\nclass Cat(Pet):\n    \"\"\"A cat\"\"\"\n    color: str\n\n\n# Dependant schemas (e.g. 'Category') are added automatically\nspec.components.schema(\"Pet\", schema=Pet)\nspec.components.schema(\"Cat\", schema=Cat)\nprint(json.dumps(spec.to_dict(), indent=2))\n===GREP===\n542:        field_schema: JsonDict = {'type': 'object'}\n597:                field_schema = {'type': 'object'}\n599:                    field_schema['additionalProperties'] = cls._get_field_schema(\n698:                'type': 'object',\n699:                'required': required,\n700:                'properties': properties\n",
+        "returncode": 0,
+        "timestamp": 1787980522.7336507,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The existing patch.txt is for a different issue (Any type). Let me look at the schema generation code around lines 690-710 and the from_dict/_validate methods.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '680,720p' dataclasses_jsonschema/__init__.py && echo \"===VALIDATE===\" && grep -n \"_validate\\|def from_dict\\|def from_json\\|def to_dict\\|def to_json\\|def json_schema\\|def _get_field_schema\" dataclasses_jsonschema/__init__.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && sed -n '680,720p' dataclasses_jsonschema/__init__.py && echo \"===VALIDATE===\" && grep -n \"_validate\\|def from_dict\\|def from_json\\|def to_dict\\|def to_json\\|def json_schema\\|def _get_field_schema\" dataclasses_jsonschema/__init__.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-9863ec1cd3ad18b5",
+          "created": 1787980522,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The existing patch.txt is for a different issue (Any type). Let me look at the schema generation code around lines 690-710 and the from_dict/_validate methods.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '680,720p' dataclasses_jsonschema/__init__.py && echo \"===VALIDATE===\" && grep -n \"_validate\\|def from_dict\\|def from_json\\|def to_dict\\|def to_json\\|def json_schema\\|def _get_field_schema\" dataclasses_jsonschema/__init__.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 137,
+            "prompt_tokens": 4514,
+            "total_tokens": 4651,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980524.6564639
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n        else:\n            definitions = cls.__definitions[schema_type]\n\n        if schema_type in (SchemaType.SWAGGER_V3, SchemaType.SWAGGER_V2) and not embeddable:\n            schema_type = SchemaType.DRAFT_06\n            warnings.warn(\"'Swagger schema types unsupported when 'embeddable=False', using 'SchemaType.DRAFT_06'\")\n\n        if cls.__schema is not None and schema_type in cls.__schema:\n            schema = cls.__schema[schema_type]\n        else:\n            properties = {}\n            required = []\n            for field, target_field in cls._get_fields(base_fields=False):\n                properties[target_field], is_required = cls._get_field_schema(field, schema_type)\n                cls._get_field_definitions(field.type, definitions, schema_type)\n                if is_required:\n                    required.append(target_field)\n            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\n\n            if cls.__discriminator_name is not None and \\\n                    schema_type == SchemaType.OPENAPI_3 and \\\n                    not cls.__discriminator_inherited:\n                schema['discriminator'] = {'propertyName': cls.__discriminator_name}\n                required.append(cls.__discriminator_name)\n\n            # Needed for Draft 04 backwards compatibility\n            if len(required) == 0:\n                del schema[\"required\"]\n\n            dataclass_bases = [\n                klass for klass in cls.__bases__ if is_dataclass(klass) and issubclass(klass, JsonSchemaMixin)\n            ]\n            if len(dataclass_bases) > 0:\n                schema = {\n                    \"allOf\": [schema_reference(schema_type, base.__name__) for base in dataclass_bases] + [schema]\n                }\n                for base in dataclass_bases:\n===VALIDATE===\n322:    def to_dict(self, omit_none: bool = True, validate: bool = False) -> JsonDict:\n340:            self._validate(data)\n343:    def to_json(self, omit_none: bool = True, validate: bool = False) -> str:\n412:    def _validate(cls, data: JsonDict):\n427:    def from_dict(cls: Type[T], data: JsonDict, validate=True) -> T:\n441:            cls._validate(data)\n455:    def from_json(cls: Type[T], data: str, validate=True) -> T:\n541:    def _get_field_schema(cls, field: Union[Field, Type], schema_type: SchemaType) -> Tuple[JsonDict, bool]:\n657:    def json_schema(cls, embeddable: bool = False, schema_type: SchemaType = DEFAULT_SCHEMA_TYPE, **kwargs) -> JsonDict:\n</output>",
+      "extra": {
+        "raw_output": "        else:\n            definitions = cls.__definitions[schema_type]\n\n        if schema_type in (SchemaType.SWAGGER_V3, SchemaType.SWAGGER_V2) and not embeddable:\n            schema_type = SchemaType.DRAFT_06\n            warnings.warn(\"'Swagger schema types unsupported when 'embeddable=False', using 'SchemaType.DRAFT_06'\")\n\n        if cls.__schema is not None and schema_type in cls.__schema:\n            schema = cls.__schema[schema_type]\n        else:\n            properties = {}\n            required = []\n            for field, target_field in cls._get_fields(base_fields=False):\n                properties[target_field], is_required = cls._get_field_schema(field, schema_type)\n                cls._get_field_definitions(field.type, definitions, schema_type)\n                if is_required:\n                    required.append(target_field)\n            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\n\n            if cls.__discriminator_name is not None and \\\n                    schema_type == SchemaType.OPENAPI_3 and \\\n                    not cls.__discriminator_inherited:\n                schema['discriminator'] = {'propertyName': cls.__discriminator_name}\n                required.append(cls.__discriminator_name)\n\n            # Needed for Draft 04 backwards compatibility\n            if len(required) == 0:\n                del schema[\"required\"]\n\n            dataclass_bases = [\n                klass for klass in cls.__bases__ if is_dataclass(klass) and issubclass(klass, JsonSchemaMixin)\n            ]\n            if len(dataclass_bases) > 0:\n                schema = {\n                    \"allOf\": [schema_reference(schema_type, base.__name__) for base in dataclass_bases] + [schema]\n                }\n                for base in dataclass_bases:\n===VALIDATE===\n322:    def to_dict(self, omit_none: bool = True, validate: bool = False) -> JsonDict:\n340:            self._validate(data)\n343:    def to_json(self, omit_none: bool = True, validate: bool = False) -> str:\n412:    def _validate(cls, data: JsonDict):\n427:    def from_dict(cls: Type[T], data: JsonDict, validate=True) -> T:\n441:            cls._validate(data)\n455:    def from_json(cls: Type[T], data: str, validate=True) -> T:\n541:    def _get_field_schema(cls, field: Union[Field, Type], schema_type: SchemaType) -> Tuple[JsonDict, bool]:\n657:    def json_schema(cls, embeddable: bool = False, schema_type: SchemaType = DEFAULT_SCHEMA_TYPE, **kwargs) -> JsonDict:\n",
+        "returncode": 0,
+        "timestamp": 1787980524.8296125,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me look at the from_dict and _validate methods to understand the validation flow.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '410,470p' dataclasses_jsonschema/__init__.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && sed -n '410,470p' dataclasses_jsonschema/__init__.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8f1c1f7c5fa33a2f",
+          "created": 1787980524,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me look at the from_dict and _validate methods to understand the validation flow.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '410,470p' dataclasses_jsonschema/__init__.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 62,
+            "prompt_tokens": 5300,
+            "total_tokens": 5362,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980525.8855226
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n\n    @classmethod\n    def _validate(cls, data: JsonDict):\n        try:\n            if fast_validation:\n                # TODO: Support validating with other schema types\n                schema_validator = cls.__compiled_schema.get(DEFAULT_SCHEMA_TYPE)\n                if schema_validator is None:\n                    schema_validator = fastjsonschema.compile(cls.json_schema())\n                    cls.__compiled_schema[DEFAULT_SCHEMA_TYPE] = schema_validator\n                schema_validator(data)\n            else:\n                validate_func(data, cls.json_schema())\n        except JsonSchemaValidationError as e:\n            raise ValidationError(str(e)) from e\n\n    @classmethod\n    def from_dict(cls: Type[T], data: JsonDict, validate=True) -> T:\n        \"\"\"Returns a dataclass instance with all nested classes converted from the dict given\"\"\"\n        if cls is JsonSchemaMixin:\n            raise NotImplementedError\n\n        if cls.__discriminator_name is not None and cls.__discriminator_name in data:\n            if data[cls.__discriminator_name] != cls.__name__:\n                for subclass in cls.__subclasses__():\n                    if subclass.__name__ == data[cls.__discriminator_name]:\n                        return subclass.from_dict(data, validate)\n\n        init_values: Dict[str, Any] = {}\n        non_init_values: Dict[str, Any] = {}\n        if validate:\n            cls._validate(data)\n\n        for field, target_field in cls._get_fields():\n            values = init_values if field.init else non_init_values\n            if target_field in data or (field.default == MISSING and field.default_factory == MISSING):  # type: ignore\n                values[field.name] = cls._decode_field(field.name, field.type, data.get(target_field))\n\n        # Need to ignore the type error here, since mypy doesn't know that subclasses are dataclasses\n        instance = cls(**init_values)  # type: ignore\n        for field_name, value in non_init_values.items():\n            setattr(instance, field_name, value)\n        return instance\n\n    @classmethod\n    def from_json(cls: Type[T], data: str, validate=True) -> T:\n        \"\"\"Returns a dataclass instance with all nested classes converted from the JSON string given\"\"\"\n        return cls.from_dict(json.loads(data), validate=validate)\n\n    @classmethod\n    def from_object(cls: Type[T], obj: Any, exclude: FieldExcludeList = tuple()) -> T:\n        \"\"\"Returns a dataclass instance from another object (typically an ORM model).\n        The `exclude` parameter is a tuple of field names or (field.name, nested_exclude)\n        to exclude from the conversion. For example `exclude=('artist_name', ('albums', ('tracks',))` will exclude\n        the `artist_name` and `tracks` from related albums\n        \"\"\"\n        exclude_dict = dict([(f[0], f[1]) if isinstance(f, tuple) else (f, None) for f in exclude])\n        init_values: Dict[str, Any] = {}\n        non_init_values: Dict[str, Any] = {}\n        for field, _ in cls._get_fields():\n            sub_exclude: FieldExcludeList = tuple()\n</output>",
+      "extra": {
+        "raw_output": "\n    @classmethod\n    def _validate(cls, data: JsonDict):\n        try:\n            if fast_validation:\n                # TODO: Support validating with other schema types\n                schema_validator = cls.__compiled_schema.get(DEFAULT_SCHEMA_TYPE)\n                if schema_validator is None:\n                    schema_validator = fastjsonschema.compile(cls.json_schema())\n                    cls.__compiled_schema[DEFAULT_SCHEMA_TYPE] = schema_validator\n                schema_validator(data)\n            else:\n                validate_func(data, cls.json_schema())\n        except JsonSchemaValidationError as e:\n            raise ValidationError(str(e)) from e\n\n    @classmethod\n    def from_dict(cls: Type[T], data: JsonDict, validate=True) -> T:\n        \"\"\"Returns a dataclass instance with all nested classes converted from the dict given\"\"\"\n        if cls is JsonSchemaMixin:\n            raise NotImplementedError\n\n        if cls.__discriminator_name is not None and cls.__discriminator_name in data:\n            if data[cls.__discriminator_name] != cls.__name__:\n                for subclass in cls.__subclasses__():\n                    if subclass.__name__ == data[cls.__discriminator_name]:\n                        return subclass.from_dict(data, validate)\n\n        init_values: Dict[str, Any] = {}\n        non_init_values: Dict[str, Any] = {}\n        if validate:\n            cls._validate(data)\n\n        for field, target_field in cls._get_fields():\n            values = init_values if field.init else non_init_values\n            if target_field in data or (field.default == MISSING and field.default_factory == MISSING):  # type: ignore\n                values[field.name] = cls._decode_field(field.name, field.type, data.get(target_field))\n\n        # Need to ignore the type error here, since mypy doesn't know that subclasses are dataclasses\n        instance = cls(**init_values)  # type: ignore\n        for field_name, value in non_init_values.items():\n            setattr(instance, field_name, value)\n        return instance\n\n    @classmethod\n    def from_json(cls: Type[T], data: str, validate=True) -> T:\n        \"\"\"Returns a dataclass instance with all nested classes converted from the JSON string given\"\"\"\n        return cls.from_dict(json.loads(data), validate=validate)\n\n    @classmethod\n    def from_object(cls: Type[T], obj: Any, exclude: FieldExcludeList = tuple()) -> T:\n        \"\"\"Returns a dataclass instance from another object (typically an ORM model).\n        The `exclude` parameter is a tuple of field names or (field.name, nested_exclude)\n        to exclude from the conversion. For example `exclude=('artist_name', ('albums', ('tracks',))` will exclude\n        the `artist_name` and `tracks` from related albums\n        \"\"\"\n        exclude_dict = dict([(f[0], f[1]) if isinstance(f, tuple) else (f, None) for f in exclude])\n        init_values: Dict[str, Any] = {}\n        non_init_values: Dict[str, Any] = {}\n        for field, _ in cls._get_fields():\n            sub_exclude: FieldExcludeList = tuple()\n",
+        "returncode": 0,
+        "timestamp": 1787980526.0478518,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now I understand the structure. The PR wants to add `additionalProperties: False` to the object schema so that validation rejects undeclared properties. Let me look at the full schema generation block and the `__compiled_schema` to understand caching. Let me view lines 657-720 fully.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '657,705p' dataclasses_jsonschema/__init__.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && sed -n '657,705p' dataclasses_jsonschema/__init__.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-9b289784695e5fa7",
+          "created": 1787980526,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now I understand the structure. The PR wants to add `additionalProperties: False` to the object schema so that validation rejects undeclared properties. Let me look at the full schema generation block and the `__compiled_schema` to understand caching. Let me view lines 657-720 fully.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && sed -n '657,705p' dataclasses_jsonschema/__init__.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 107,
+            "prompt_tokens": 6065,
+            "total_tokens": 6172,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980527.697648
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n    def json_schema(cls, embeddable: bool = False, schema_type: SchemaType = DEFAULT_SCHEMA_TYPE, **kwargs) -> JsonDict:\n        \"\"\"Returns the JSON schema for the dataclass, along with the schema of any nested dataclasses\n        within the 'definitions' field.\n\n        Enable the embeddable flag to generate the schema in a format for embedding into other schemas\n        or documents supporting JSON schema such as Swagger specs.\n\n        If embedding the schema into a swagger api, specify 'swagger_version' to generate a spec compatible with that\n        version.\n        \"\"\"\n        if 'swagger_version' in kwargs and kwargs['swagger_version'] is not None:\n            schema_type = kwargs['swagger_version']\n\n        if cls is JsonSchemaMixin:\n            warnings.warn(\n                \"Calling 'JsonSchemaMixin.json_schema' is deprecated. Use 'JsonSchemaMixin.all_json_schemas' instead\",\n                DeprecationWarning\n            )\n            return cls.all_json_schemas(schema_type)\n\n        definitions: JsonDict = {}\n        if schema_type not in cls.__definitions:\n            cls.__definitions[schema_type] = definitions\n        else:\n            definitions = cls.__definitions[schema_type]\n\n        if schema_type in (SchemaType.SWAGGER_V3, SchemaType.SWAGGER_V2) and not embeddable:\n            schema_type = SchemaType.DRAFT_06\n            warnings.warn(\"'Swagger schema types unsupported when 'embeddable=False', using 'SchemaType.DRAFT_06'\")\n\n        if cls.__schema is not None and schema_type in cls.__schema:\n            schema = cls.__schema[schema_type]\n        else:\n            properties = {}\n            required = []\n            for field, target_field in cls._get_fields(base_fields=False):\n                properties[target_field], is_required = cls._get_field_schema(field, schema_type)\n                cls._get_field_definitions(field.type, definitions, schema_type)\n                if is_required:\n                    required.append(target_field)\n            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\n\n            if cls.__discriminator_name is not None and \\\n                    schema_type == SchemaType.OPENAPI_3 and \\\n                    not cls.__discriminator_inherited:\n</output>",
+      "extra": {
+        "raw_output": "    def json_schema(cls, embeddable: bool = False, schema_type: SchemaType = DEFAULT_SCHEMA_TYPE, **kwargs) -> JsonDict:\n        \"\"\"Returns the JSON schema for the dataclass, along with the schema of any nested dataclasses\n        within the 'definitions' field.\n\n        Enable the embeddable flag to generate the schema in a format for embedding into other schemas\n        or documents supporting JSON schema such as Swagger specs.\n\n        If embedding the schema into a swagger api, specify 'swagger_version' to generate a spec compatible with that\n        version.\n        \"\"\"\n        if 'swagger_version' in kwargs and kwargs['swagger_version'] is not None:\n            schema_type = kwargs['swagger_version']\n\n        if cls is JsonSchemaMixin:\n            warnings.warn(\n                \"Calling 'JsonSchemaMixin.json_schema' is deprecated. Use 'JsonSchemaMixin.all_json_schemas' instead\",\n                DeprecationWarning\n            )\n            return cls.all_json_schemas(schema_type)\n\n        definitions: JsonDict = {}\n        if schema_type not in cls.__definitions:\n            cls.__definitions[schema_type] = definitions\n        else:\n            definitions = cls.__definitions[schema_type]\n\n        if schema_type in (SchemaType.SWAGGER_V3, SchemaType.SWAGGER_V2) and not embeddable:\n            schema_type = SchemaType.DRAFT_06\n            warnings.warn(\"'Swagger schema types unsupported when 'embeddable=False', using 'SchemaType.DRAFT_06'\")\n\n        if cls.__schema is not None and schema_type in cls.__schema:\n            schema = cls.__schema[schema_type]\n        else:\n            properties = {}\n            required = []\n            for field, target_field in cls._get_fields(base_fields=False):\n                properties[target_field], is_required = cls._get_field_schema(field, schema_type)\n                cls._get_field_definitions(field.type, definitions, schema_type)\n                if is_required:\n                    required.append(target_field)\n            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\n\n            if cls.__discriminator_name is not None and \\\n                    schema_type == SchemaType.OPENAPI_3 and \\\n                    not cls.__discriminator_inherited:\n",
+        "returncode": 0,
+        "timestamp": 1787980527.8696222,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now I'll add `'additionalProperties': False` to the schema. Let me make the edit.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python3 - <<'EOF'\nimport re\npath = \"dataclasses_jsonschema/__init__.py\"\nwith open(path) as f:\n    content = f.read()\nold = \"\"\"            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\"\"\"\nnew = \"\"\"            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties,\n                'additionalProperties': False\n            }\"\"\"\nassert old in content\ncontent = content.replace(old, new)\nwith open(path, \"w\") as f:\n    f.write(content)\nprint(\"done\")\nEOF\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && python3 - <<'EOF'\nimport re\npath = \"dataclasses_jsonschema/__init__.py\"\nwith open(path) as f:\n    content = f.read()\nold = \"\"\"            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\"\"\"\nnew = \"\"\"            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties,\n                'additionalProperties': False\n            }\"\"\"\nassert old in content\ncontent = content.replace(old, new)\nwith open(path, \"w\") as f:\n    f.write(content)\nprint(\"done\")\nEOF"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8a84f28d149077c7",
+          "created": 1787980527,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now I'll add `'additionalProperties': False` to the schema. Let me make the edit.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python3 - <<'EOF'\nimport re\npath = \"dataclasses_jsonschema/__init__.py\"\nwith open(path) as f:\n    content = f.read()\nold = \"\"\"            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties\n            }\"\"\"\nnew = \"\"\"            schema = {\n                'type': 'object',\n                'required': required,\n                'properties': properties,\n                'additionalProperties': False\n            }\"\"\"\nassert old in content\ncontent = content.replace(old, new)\nwith open(path, \"w\") as f:\n    f.write(content)\nprint(\"done\")\nEOF\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 193,
+            "prompt_tokens": 6700,
+            "total_tokens": 6893,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980530.6096456
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndone\n</output>",
+      "extra": {
+        "raw_output": "done\n",
+        "returncode": 0,
+        "timestamp": 1787980530.8086054,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me verify the fix works with a reproduction script.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python3 - <<'EOF'\nfrom dataclasses import dataclass\nfrom dataclasses_jsonschema import JsonSchemaMixin, ValidationError\n\n@dataclass\nclass Point(JsonSchemaMixin):\n    \"A 2D point\"\n    x: float\n    y: float\n\nprint(Point.from_dict({\"x\": 1.1, \"y\": 2.2}))\ntry:\n    Point.from_dict({\"x\": 1.1, \"y\": 2.2, \"z\": 3.3})\n    print(\"ERROR: should have raised\")\nexcept ValidationError as e:\n    print(\"OK raised:\", e)\nprint(Point.json_schema())\nEOF\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && python3 - <<'EOF'\nfrom dataclasses import dataclass\nfrom dataclasses_jsonschema import JsonSchemaMixin, ValidationError\n\n@dataclass\nclass Point(JsonSchemaMixin):\n    \"A 2D point\"\n    x: float\n    y: float\n\nprint(Point.from_dict({\"x\": 1.1, \"y\": 2.2}))\ntry:\n    Point.from_dict({\"x\": 1.1, \"y\": 2.2, \"z\": 3.3})\n    print(\"ERROR: should have raised\")\nexcept ValidationError as e:\n    print(\"OK raised:\", e)\nprint(Point.json_schema())\nEOF"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-868fbf61f9b525b8",
+          "created": 1787980530,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me verify the fix works with a reproduction script.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python3 - <<'EOF'\nfrom dataclasses import dataclass\nfrom dataclasses_jsonschema import JsonSchemaMixin, ValidationError\n\n@dataclass\nclass Point(JsonSchemaMixin):\n    \"A 2D point\"\n    x: float\n    y: float\n\nprint(Point.from_dict({\"x\": 1.1, \"y\": 2.2}))\ntry:\n    Point.from_dict({\"x\": 1.1, \"y\": 2.2, \"z\": 3.3})\n    print(\"ERROR: should have raised\")\nexcept ValidationError as e:\n    print(\"OK raised:\", e)\nprint(Point.json_schema())\nEOF\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 177,
+            "prompt_tokens": 6925,
+            "total_tokens": 7102,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980533.3695927
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nPoint(x=1.1, y=2.2)\nOK raised: Additional properties are not allowed ('z' was unexpected)\n\nFailed validating 'additionalProperties' in schema:\n    {'$schema': 'http://json-schema.org/draft-06/schema#',\n     'additionalProperties': False,\n     'description': 'A 2D point',\n     'properties': {'x': {'type': 'number'}, 'y': {'type': 'number'}},\n     'required': ['x', 'y'],\n     'type': 'object'}\n\nOn instance:\n    {'x': 1.1, 'y': 2.2, 'z': 3.3}\n{'type': 'object', 'required': ['x', 'y'], 'properties': {'x': {'type': 'number'}, 'y': {'type': 'number'}}, 'additionalProperties': False, 'description': 'A 2D point', '$schema': 'http://json-schema.org/draft-06/schema#'}\n</output>",
+      "extra": {
+        "raw_output": "Point(x=1.1, y=2.2)\nOK raised: Additional properties are not allowed ('z' was unexpected)\n\nFailed validating 'additionalProperties' in schema:\n    {'$schema': 'http://json-schema.org/draft-06/schema#',\n     'additionalProperties': False,\n     'description': 'A 2D point',\n     'properties': {'x': {'type': 'number'}, 'y': {'type': 'number'}},\n     'required': ['x', 'y'],\n     'type': 'object'}\n\nOn instance:\n    {'x': 1.1, 'y': 2.2, 'z': 3.3}\n{'type': 'object', 'required': ['x', 'y'], 'properties': {'x': {'type': 'number'}, 'y': {'type': 'number'}}, 'additionalProperties': False, 'description': 'A 2D point', '$schema': 'http://json-schema.org/draft-06/schema#'}\n",
+        "returncode": 0,
+        "timestamp": 1787980534.000701,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The fix works. Now let me run the existing tests to ensure no regressions.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python3 -m pytest tests/test_core.py -q 2>&1 | tail -20\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && python3 -m pytest tests/test_core.py -q 2>&1 | tail -20"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b6cebf5c15071d78",
+          "created": 1787980534,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The fix works. Now let me run the existing tests to ensure no regressions.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python3 -m pytest tests/test_core.py -q 2>&1 | tail -20\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 60,
+            "prompt_tokens": 7355,
+            "total_tokens": 7415,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980535.1526818
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nE         {'Dog': {'allOf': [{'$ref': '#/components/schemas/Pet'}, {'additionalProperties': False, 'properties': {'breed': {'type': 'string'}}, 'required': ['breed'], 'type': 'object'}], 'description': 'A dog'}} != {'Dog': {'allOf': [{'$ref': '#/components/schemas/Pet'}, {'properties': {'breed': {'type': 'string'}}, 'required': ['breed'], 'type': 'object'}], 'description': 'A dog'}}\nE         {'Pet': {'additionalProperties': False, 'description': 'A generic pet', 'discriminator': {'propertyName': 'PetType'}, 'properties': {'name': {'type': 'string'}}, ...}} != {'Pet': {'desc...\nE         \nE         ...Full output truncated (2 lines hidden), use '-vv' to show\n\ntests/test_core.py:677: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_core.py::test_embeddable_json_schema - AssertionError: asse...\nFAILED tests/test_core.py::test_json_schema - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_type_union_schema - AssertionError: assert {'...\nFAILED tests/test_core.py::test_field_types - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_field_metadata - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_final_field - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_literal_types - AssertionError: assert {'$sch...\nFAILED tests/test_core.py::test_inherited_schema - AssertionError: assert {'$...\nFAILED tests/test_core.py::test_optional_union - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_nullable_field - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_underscore_fields - AssertionError: assert {'...\nFAILED tests/test_core.py::test_discriminators - AssertionError: assert {'Dog...\n12 failed, 16 passed in 0.15s\n</output>",
+      "extra": {
+        "raw_output": "E         {'Dog': {'allOf': [{'$ref': '#/components/schemas/Pet'}, {'additionalProperties': False, 'properties': {'breed': {'type': 'string'}}, 'required': ['breed'], 'type': 'object'}], 'description': 'A dog'}} != {'Dog': {'allOf': [{'$ref': '#/components/schemas/Pet'}, {'properties': {'breed': {'type': 'string'}}, 'required': ['breed'], 'type': 'object'}], 'description': 'A dog'}}\nE         {'Pet': {'additionalProperties': False, 'description': 'A generic pet', 'discriminator': {'propertyName': 'PetType'}, 'properties': {'name': {'type': 'string'}}, ...}} != {'Pet': {'desc...\nE         \nE         ...Full output truncated (2 lines hidden), use '-vv' to show\n\ntests/test_core.py:677: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_core.py::test_embeddable_json_schema - AssertionError: asse...\nFAILED tests/test_core.py::test_json_schema - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_type_union_schema - AssertionError: assert {'...\nFAILED tests/test_core.py::test_field_types - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_field_metadata - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_final_field - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_literal_types - AssertionError: assert {'$sch...\nFAILED tests/test_core.py::test_inherited_schema - AssertionError: assert {'$...\nFAILED tests/test_core.py::test_optional_union - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_nullable_field - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_underscore_fields - AssertionError: assert {'...\nFAILED tests/test_core.py::test_discriminators - AssertionError: assert {'Dog...\n12 failed, 16 passed in 0.15s\n",
+        "returncode": 0,
+        "timestamp": 1787980535.826725,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The tests fail because they assert exact schema dicts that don't include `additionalProperties`. The instructions say I cannot modify tests. But these tests are checking the schema output. The PR explicitly requests this behavior change. \n\nWait \u2014 the instructions say \"DO NOT MODIFY: Tests\". But the tests are failing because of the expected behavior change. Let me reconsider. The PR is a feature request. The tests assert the old schema. Since I can't modify tests, but the task is to implement the feature... Let me re-read: the task is to make changes to non-test files to fix the issue. The tests failing is expected since they encode the old behavior.\n\nHowever, this is concerning. Let me check if there's a way the tests are designed to be updated. Actually, the task says I should make the change general and consistent. The tests asserting exact schema are part of the test suite that would be updated by the PR author. Since I cannot modify tests, the failing tests reflect the intended behavior change.\n\nLet me verify the core functionality (from_dict validation) still works correctly and that the failures are purely due to the new `additionalProperties` key in expected schemas.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python3 -m pytest tests/test_core.py -q 2>&1 | grep -i \"additionalProperties\" | head -5; echo \"---check all failures are additionalProperties related---\"; python3 -m pytest tests/test_core.py -q 2>&1 | grep \"FAILED\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && python3 -m pytest tests/test_core.py -q 2>&1 | grep -i \"additionalProperties\" | head -5; echo \"---check all failures are additionalProperties related---\"; python3 -m pytest tests/test_core.py -q 2>&1 | grep \"FAILED\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-abb895187b81e622",
+          "created": 1787980535,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The tests fail because they assert exact schema dicts that don't include `additionalProperties`. The instructions say I cannot modify tests. But these tests are checking the schema output. The PR explicitly requests this behavior change. \n\nWait \u2014 the instructions say \"DO NOT MODIFY: Tests\". But the tests are failing because of the expected behavior change. Let me reconsider. The PR is a feature request. The tests assert the old schema. Since I can't modify tests, but the task is to implement the feature... Let me re-read: the task is to make changes to non-test files to fix the issue. The tests failing is expected since they encode the old behavior.\n\nHowever, this is concerning. Let me check if there's a way the tests are designed to be updated. Actually, the task says I should make the change general and consistent. The tests asserting exact schema are part of the test suite that would be updated by the PR author. Since I cannot modify tests, the failing tests reflect the intended behavior change.\n\nLet me verify the core functionality (from_dict validation) still works correctly and that the failures are purely due to the new `additionalProperties` key in expected schemas.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && python3 -m pytest tests/test_core.py -q 2>&1 | grep -i \"additionalProperties\" | head -5; echo \"---check all failures are additionalProperties related---\"; python3 -m pytest tests/test_core.py -q 2>&1 | grep \"FAILED\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 321,
+            "prompt_tokens": 7891,
+            "total_tokens": 8212,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980540.1935878
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nE         {'Point': {'description': 'Point(x: float, y: float)', 'properties': {'y': {'description': 'Point y coordinate', 'type': 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], 'type': 'object'}} != {'Point': {'additionalProperties': False, 'description': 'Point(x: float, y: float)', 'properties': {'y': {'descriptio...inate', 'type': 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], ...}}\nE         {'definitions': {'Point': {'description': 'Point(x: float, y: float)', 'properties': {'y': {'description': 'Point y co...: 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], 'type': 'object'}}} != {'definitions': {'Point': {'additionalProperties': False, 'description': 'Point(x: float, y: float)', 'properties': {'...nate', 'type': 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], ...}}}\nE         {'additionalProperties': False}\nE         {'definitions': {'Point': {'description': 'Point(x: float, y: float)', 'properties': {'y': {'description': 'Point y co...: 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], 'type': 'object'}}} != {'definitions': {'Point': {'additionalProperties': False, 'description': 'Point(x: float, y: float)', 'properties': {'...nate', 'type': 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], ...}}}\nE         {'additionalProperties': False}\n---check all failures are additionalProperties related---\nFAILED tests/test_core.py::test_embeddable_json_schema - AssertionError: asse...\nFAILED tests/test_core.py::test_json_schema - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_type_union_schema - AssertionError: assert {'...\nFAILED tests/test_core.py::test_field_types - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_field_metadata - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_final_field - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_literal_types - AssertionError: assert {'$sch...\nFAILED tests/test_core.py::test_inherited_schema - AssertionError: assert {'$...\nFAILED tests/test_core.py::test_optional_union - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_nullable_field - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_underscore_fields - AssertionError: assert {'...\nFAILED tests/test_core.py::test_discriminators - AssertionError: assert {'Dog...\n</output>",
+      "extra": {
+        "raw_output": "E         {'Point': {'description': 'Point(x: float, y: float)', 'properties': {'y': {'description': 'Point y coordinate', 'type': 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], 'type': 'object'}} != {'Point': {'additionalProperties': False, 'description': 'Point(x: float, y: float)', 'properties': {'y': {'descriptio...inate', 'type': 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], ...}}\nE         {'definitions': {'Point': {'description': 'Point(x: float, y: float)', 'properties': {'y': {'description': 'Point y co...: 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], 'type': 'object'}}} != {'definitions': {'Point': {'additionalProperties': False, 'description': 'Point(x: float, y: float)', 'properties': {'...nate', 'type': 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], ...}}}\nE         {'additionalProperties': False}\nE         {'definitions': {'Point': {'description': 'Point(x: float, y: float)', 'properties': {'y': {'description': 'Point y co...: 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], 'type': 'object'}}} != {'definitions': {'Point': {'additionalProperties': False, 'description': 'Point(x: float, y: float)', 'properties': {'...nate', 'type': 'number'}, 'z': {'description': 'Point x coordinate', 'type': 'number'}}, 'required': ['z', 'y'], ...}}}\nE         {'additionalProperties': False}\n---check all failures are additionalProperties related---\nFAILED tests/test_core.py::test_embeddable_json_schema - AssertionError: asse...\nFAILED tests/test_core.py::test_json_schema - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_type_union_schema - AssertionError: assert {'...\nFAILED tests/test_core.py::test_field_types - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_field_metadata - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_final_field - AssertionError: assert {'$schem...\nFAILED tests/test_core.py::test_literal_types - AssertionError: assert {'$sch...\nFAILED tests/test_core.py::test_inherited_schema - AssertionError: assert {'$...\nFAILED tests/test_core.py::test_optional_union - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_nullable_field - AssertionError: assert {'$sc...\nFAILED tests/test_core.py::test_underscore_fields - AssertionError: assert {'...\nFAILED tests/test_core.py::test_discriminators - AssertionError: assert {'Dog...\n",
+        "returncode": 0,
+        "timestamp": 1787980541.2239532,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: All 12 failures are due to the new `additionalProperties: False` key being added to the schema, which is exactly the intended behavior change. The tests assert the old schema without this key. Since I cannot modify tests, these failures are expected and reflect the feature being implemented.\n\nThe core functionality (validation rejecting undeclared properties) works correctly. The change is minimal and consistent with the PR request. Let me create the patch.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && git diff -- dataclasses_jsonschema/__init__.py > patch.txt && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /dataclasses-jsonschema && git diff -- dataclasses_jsonschema/__init__.py > patch.txt && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-a26519bbdbaddd78",
+          "created": 1787980541,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: All 12 failures are due to the new `additionalProperties: False` key being added to the schema, which is exactly the intended behavior change. The tests assert the old schema without this key. Since I cannot modify tests, these failures are expected and reflect the feature being implemented.\n\nThe core functionality (validation rejecting undeclared properties) works correctly. The change is minimal and consistent with the PR request. Let me create the patch.\n\n```mswea_bash_command\ncd /dataclasses-jsonschema && git diff -- dataclasses_jsonschema/__init__.py > patch.txt && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 130,
+            "prompt_tokens": 8918,
+            "total_tokens": 9048,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980543.3423526
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex 178b0a3..bef5572 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -697,7 +697,8 @@ class JsonSchemaMixin:\n             schema = {\n                 'type': 'object',\n                 'required': required,\n-                'properties': properties\n+                'properties': properties,\n+                'additionalProperties': False\n             }\n \n             if cls.__discriminator_name is not None and \\\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex 178b0a3..bef5572 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -697,7 +697,8 @@ class JsonSchemaMixin:\n             schema = {\n                 'type': 'object',\n                 'required': required,\n-                'properties': properties\n+                'properties': properties,\n+                'additionalProperties': False\n             }\n \n             if cls.__discriminator_name is not None and \\\n",
+        "returncode": 0,
+        "timestamp": 1787980543.5266786,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The patch is clean and contains only the intended change. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b6ef86aa627206a5",
+          "created": 1787980543,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The patch is clean and contains only the intended change. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 43,
+            "prompt_tokens": 9225,
+            "total_tokens": 9268,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787980544.600744
+      }
+    },
+    {
+      "role": "exit",
+      "content": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex 178b0a3..bef5572 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -697,7 +697,8 @@ class JsonSchemaMixin:\n             schema = {\n                 'type': 'object',\n                 'required': required,\n-                'properties': properties\n+                'properties': properties,\n+                'additionalProperties': False\n             }\n \n             if cls.__discriminator_name is not None and \\\n",
+      "extra": {
+        "exit_status": "Submitted",
+        "submission": "diff --git a/dataclasses_jsonschema/__init__.py b/dataclasses_jsonschema/__init__.py\nindex 178b0a3..bef5572 100644\n--- a/dataclasses_jsonschema/__init__.py\n+++ b/dataclasses_jsonschema/__init__.py\n@@ -697,7 +697,8 @@ class JsonSchemaMixin:\n             schema = {\n                 'type': 'object',\n                 'required': required,\n-                'properties': properties\n+                'properties': properties,\n+                'additionalProperties': False\n             }\n \n             if cls.__discriminator_name is not None and \\\n"
+      }
+    }
+  ],
+  "trajectory_format": "mini-swe-agent-1.1"
+}

@@ -1,0 +1,864 @@
+{
+  "info": {
+    "model_stats": {
+      "instance_cost": 0.0,
+      "api_calls": 11
+    },
+    "config": {
+      "agent": {
+        "system_template": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history.",
+        "instance_template": "<pr_description>\nConsider the following PR description:\n{{task}}\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /testbed (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>\n",
+        "step_limit": 100,
+        "cost_limit": 1000000000.0,
+        "wall_time_limit_seconds": 0,
+        "max_consecutive_format_errors": 3,
+        "output_path": "/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory/chainswe/runs/v3main100/reata_sqllineage_20190812__s0__mem_fusednote/traj_2_reata__sqllineage-40.json"
+      },
+      "agent_type": "minisweagent.agents.default.DefaultAgent",
+      "model": {
+        "model_name": "openai/coder-next",
+        "model_kwargs": {
+          "api_key": "EMPTY",
+          "temperature": 0.0,
+          "max_tokens": 16384,
+          "extra_body": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "api_base": "http://127.0.0.1:8864/v1"
+        },
+        "litellm_model_registry": null,
+        "set_cache_control": null,
+        "cost_tracking": "ignore_errors",
+        "format_error_template": "{% if finish_reason is defined and finish_reason in [\"length\", \"tool_calls\"] -%}\nYour previous response reached the output token limit (finish_reason={{ finish_reason }}) before you produced a complete action, so it was cut off. Respond more concisely and provide exactly one action in the required format. If you need to think more, do so briefly.\n{%- else -%}\nFormat error:\n\n<error>\n{{error}}\n</error>\n\nHere is general guidance on how to format your response:\n\nPlease always provide EXACTLY ONE action in triple backticks, found {{actions|length}} actions.\n\nPlease format your action in triple backticks as shown in <response_example>.\n\n<response_example>\nHere are some thoughts about why you want to perform the action.\n\n```mswea_bash_command\n<action>\n```\n</response_example>\n\nIf you have completed your assignment, please consult the first message about how to\nsubmit your solution (you will not be able to continue working on this task after that).\n{%- endif %}\n",
+        "observation_template": "{% if output.exception_info -%}\n<exception>{{output.exception_info}}</exception>\n{% endif -%}\n<returncode>{{output.returncode}}</returncode>\n{% if output.output | length < 10000 -%}\n<output>\n{{ output.output -}}\n</output>\n{%- else -%}\n<warning>\nThe output of your last command was too long.\nPlease try a different command that produces less output.\nIf you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.\nIf you're using grep or find and it produced too much output, you can use a more selective search pattern.\nIf you really need to see something from the full command's output, you can redirect output to a file and then search in that file.\n</warning>\n{%- set elided_chars = output.output | length - 10000 -%}\n<output_head>\n{{ output.output[:5000] }}\n</output_head>\n<elided_chars>\n{{ elided_chars }} characters elided\n</elided_chars>\n<output_tail>\n{{ output.output[-5000:] }}\n</output_tail>\n{%- endif -%}\n",
+        "multimodal_regex": "",
+        "action_regex": "```mswea_bash_command\\s*\\n(.*?)\\n```"
+      },
+      "model_type": "minisweagent.models.litellm_textbased_model.LitellmTextbasedModel",
+      "environment": {
+        "image": "/gpfs/radev/scratch/dijk/pl662/chainswe_sifs/swerebench__sweb.eval.x86_64.reata_1776_sqllineage-38.sif",
+        "cwd": "/testbed",
+        "env": {},
+        "forward_env": [],
+        "timeout": 300,
+        "executable": "apptainer",
+        "sandbox_build_retries": 3,
+        "global_args": [
+          "--quiet"
+        ],
+        "exec_args": [
+          "--contain",
+          "--cleanenv",
+          "--fakeroot"
+        ]
+      },
+      "environment_type": "harness.env.RepoEnv"
+    },
+    "mini_version": "2.4.5",
+    "exit_status": "Submitted",
+    "submission": "diff --git a/sqllineage/core.py b/sqllineage/core.py\nindex b78b163..24020db 100644\n--- a/sqllineage/core.py\n+++ b/sqllineage/core.py\n@@ -1,4 +1,5 @@\n import argparse\n+import re\n import sys\n from typing import List, Set\n \n@@ -59,11 +60,12 @@ Target Tables:\n             if isinstance(sub_token, TokenList):\n                 self._extract_from_token(sub_token)\n             if sub_token.ttype in Keyword:\n-                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n+                normalized = re.sub(r'\\s+', ' ', sub_token.normalized)\n+                if normalized in SOURCE_TABLE_TOKENS:\n                     source_table_token_flag = True\n-                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n+                elif normalized in TARGET_TABLE_TOKENS:\n                     target_table_token_flag = True\n-                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n+                elif normalized in TEMP_TABLE_TOKENS:\n                     temp_table_token_flag = True\n                 continue\n             elif isinstance(sub_token, Identifier) and sub_token.normalized == \"OVERWRITE\" \\\n"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history."
+    },
+    {
+      "role": "user",
+      "content": "<pr_description>\nConsider the following PR description:\n<memory_context>\nNotes from earlier work sessions on this repository:\n[reata__sqllineage-38]\nDID: Fixed AssertionError on inline SQL comments by adding `isinstance(sub_token, Comment)` skip in all 3 flag branches and importing Comment | WHERE: sqllineage/core.py:6,75,88,101 (_extract_from_token) | VERIFY: python -m pytest tests -q [last exit 0]\nCONTEXT: sqllineage is a small SQL lineage parser; core logic lives in sqllineage/core.py (LineageParser._extract_from_token walks sqlparse tokens), tests in tests/ (49 tests) | WHERE: sqllineage/core.py:1-120\nCONTEXT: sqlparse emits Comment tokens (ttype None, class Comment) between FROM/INTO and the table name; is_whitespace does NOT catch them, so they must be skipped explicitly | WHERE: sqllineage/core.py:75\nLESSON: Do not rely on `sub_token.is_whitespace` to skip non-identifier tokens after FROM/INTO/WITH; Comment tokens pass through and trip the `assert isinstance(sub_token, Identifier)` at core.py:78\n</memory_context>\n\nwhite space in left join\n```sql\r\nselect * from tab_a\r\nleft  join tab_b\r\non tab_a.x = tab_b.x\r\n```\r\nan extra whitespace in \"left  join\" make tab_b undetectable.\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /testbed (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>"
+    },
+    {
+      "content": "THOUGHT: Let me start by exploring the repository structure to understand the codebase.\n\n```mswea_bash_command\ncd /testbed && ls -la && cat sqllineage/core.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && ls -la && cat sqllineage/core.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-ace26356cb627a83",
+          "created": 1787951837,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me start by exploring the repository structure to understand the codebase.\n\n```mswea_bash_command\ncd /testbed && ls -la && cat sqllineage/core.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 46,
+            "prompt_tokens": 1773,
+            "total_tokens": 1819,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951838.1663513
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ntotal 72\ndrwxr-xr-x 9 pl662 dijk 4096 Aug 28 17:17 .\ndrwxr-xr-x 1 pl662 dijk   80 Aug 28 17:17 ..\ndrwxr-xr-x 2 pl662 dijk 4096 Aug 28 17:17 .benchmarks\n-rw-r--r-- 1 pl662 dijk   41 Nov 18  2024 .coveragerc\ndrwxr-xr-x 8 pl662 dijk 4096 Aug 28 17:17 .git\n-rw-r--r-- 1 pl662 dijk 1221 Nov 18  2024 .gitignore\ndrwxr-xr-x 3 pl662 dijk 4096 Aug 28 17:17 .pytest_cache\n-rw-r--r-- 1 pl662 dijk  496 Nov 18  2024 .readthedocs.yml\n-rw-r--r-- 1 pl662 dijk  213 Nov 18  2024 .travis.yml\n-rw-r--r-- 1 pl662 dijk 1057 Nov 18  2024 LICENSE\n-rw-r--r-- 1 pl662 dijk 1731 Nov 18  2024 README.md\ndrwxr-xr-x 2 pl662 dijk 4096 Nov 18  2024 docs\n-rw-r--r-- 1 pl662 dijk  122 Nov 18  2024 issue.md\n-rw-r--r-- 1 pl662 dijk 1900 Aug 28 17:17 patch.txt\n-rw-r--r-- 1 pl662 dijk 1423 Nov 18  2024 setup.py\ndrwxr-xr-x 3 pl662 dijk 4096 Nov 18  2024 sqllineage\ndrwxr-xr-x 2 pl662 dijk 4096 Nov 18  2024 sqllineage.egg-info\ndrwxr-xr-x 3 pl662 dijk 4096 Aug 28 17:17 tests\n-rw-r--r-- 1 pl662 dijk  272 Nov 18  2024 tox.ini\nimport argparse\nimport sys\nfrom typing import List, Set\n\nimport sqlparse\nfrom sqlparse.sql import Comment, Function, Identifier, Parenthesis, Statement, TokenList\nfrom sqlparse.tokens import Keyword, Token\n\nSOURCE_TABLE_TOKENS = ('FROM', 'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'LEFT OUTER JOIN', 'RIGHT OUTER JOIN',\n                       'FULL OUTER JOIN', 'CROSS JOIN')\nTARGET_TABLE_TOKENS = ('INTO', 'OVERWRITE', 'TABLE')\nTEMP_TABLE_TOKENS = ('WITH', )\n\n\nclass LineageParser(object):\n\n    def __init__(self, sql: str, encoding=None):\n        self._encoding = encoding\n        self._source_tables = set()\n        self._target_tables = set()\n        self._stmt = [s for s in sqlparse.parse(sql.strip(), self._encoding) if s.token_first(skip_cm=True)]\n        for stmt in self._stmt:\n            if stmt.get_type() == \"DROP\":\n                self._target_tables -= {t.get_real_name() for t in stmt.tokens if isinstance(t, Identifier)}\n            else:\n                self._extract_from_token(stmt)\n...[output truncated]...\nill be parsed as Function\n                    # referring https://github.com/andialbrecht/sqlparse/issues/483 for further information\n                    assert isinstance(sub_token.token_first(skip_cm=True), Identifier)\n                    self._target_tables.add(sub_token.token_first(skip_cm=True).get_real_name())\n                    target_table_token_flag = False\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    self._target_tables.add(sub_token.get_real_name())\n                    target_table_token_flag = False\n            elif temp_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    self._source_tables.add(sub_token.get_real_name())\n                    self._target_tables.add(sub_token.get_real_name())\n                    self._extract_from_token(sub_token)\n                    temp_table_token_flag = False\n\n\ndef main():\n    parser = argparse.ArgumentParser(prog='sqllineage', description='SQL Lineage Parser.')\n    parser.add_argument('-e', metavar='<quoted-query-string>', help='SQL from command line')\n    parser.add_argument('-f', metavar='<filename>', help='SQL from files')\n    args = parser.parse_args()\n    if args.e and args.f:\n        print(\"WARNING: Both -e and -f options are specified. -e option will be ignored\", file=sys.stderr)\n    if args.f:\n        try:\n            with open(args.f) as f:\n                sql = f.read()\n            print(LineageParser(sql))\n        except FileNotFoundError:\n            print(\"ERROR: No such file: {}\".format(args.f), file=sys.stderr)\n        except PermissionError:\n            print(\"ERROR: Permission denied when reading file '{}'\".format(args.f), file=sys.stderr)\n    elif args.e:\n        print(LineageParser(args.e))\n    else:\n        parser.print_help()\n\n\nif __name__ == \"__main__\":\n    main()\n</output>",
+      "extra": {
+        "raw_output": "total 72\ndrwxr-xr-x 9 pl662 dijk 4096 Aug 28 17:17 .\ndrwxr-xr-x 1 pl662 dijk   80 Aug 28 17:17 ..\ndrwxr-xr-x 2 pl662 dijk 4096 Aug 28 17:17 .benchmarks\n-rw-r--r-- 1 pl662 dijk   41 Nov 18  2024 .coveragerc\ndrwxr-xr-x 8 pl662 dijk 4096 Aug 28 17:17 .git\n-rw-r--r-- 1 pl662 dijk 1221 Nov 18  2024 .gitignore\ndrwxr-xr-x 3 pl662 dijk 4096 Aug 28 17:17 .pytest_cache\n-rw-r--r-- 1 pl662 dijk  496 Nov 18  2024 .readthedocs.yml\n-rw-r--r-- 1 pl662 dijk  213 Nov 18  2024 .travis.yml\n-rw-r--r-- 1 pl662 dijk 1057 Nov 18  2024 LICENSE\n-rw-r--r-- 1 pl662 dijk 1731 Nov 18  2024 README.md\ndrwxr-xr-x 2 pl662 dijk 4096 Nov 18  2024 docs\n-rw-r--r-- 1 pl662 dijk  122 Nov 18  2024 issue.md\n-rw-r--r-- 1 pl662 dijk 1900 Aug 28 17:17 patch.txt\n-rw-r--r-- 1 pl662 dijk 1423 Nov 18  2024 setup.py\ndrwxr-xr-x 3 pl662 dijk 4096 Nov 18  2024 sqllineage\ndrwxr-xr-x 2 pl662 dijk 4096 Nov 18  2024 sqllineage.egg-info\ndrwxr-xr-x 3 pl662 dijk 4096 Aug 28 17:17 tests\n-rw-r--r-- 1 pl662 dijk  272 Nov 18  2024 tox.ini\nimport argparse\nimport sys\nfrom typing import List, Set\n\nimport sqlparse\nfrom sqlparse.sql import Comment, Function, Identifier, Parenthesis, Statement, TokenList\nfrom sqlparse.tokens import Keyword, Token\n\nSOURCE_TABLE_TOKENS = ('FROM', 'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'LEFT OUTER JOIN', 'RIGHT OUTER JOIN',\n                       'FULL OUTER JOIN', 'CROSS JOIN')\nTARGET_TABLE_TOKENS = ('INTO', 'OVERWRITE', 'TABLE')\nTEMP_TABLE_TOKENS = ('WITH', )\n\n\nclass LineageParser(object):\n\n    def __init__(self, sql: str, encoding=None):\n        self._encoding = encoding\n        self._source_tables = set()\n        self._target_tables = set()\n        self._stmt = [s for s in sqlparse.parse(sql.strip(), self._encoding) if s.token_first(skip_cm=True)]\n        for stmt in self._stmt:\n            if stmt.get_type() == \"DROP\":\n                self._target_tables -= {t.get_real_name() for t in stmt.tokens if isinstance(t, Identifier)}\n            else:\n                self._extract_from_token(stmt)\n...[output truncated]...\nill be parsed as Function\n                    # referring https://github.com/andialbrecht/sqlparse/issues/483 for further information\n                    assert isinstance(sub_token.token_first(skip_cm=True), Identifier)\n                    self._target_tables.add(sub_token.token_first(skip_cm=True).get_real_name())\n                    target_table_token_flag = False\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    self._target_tables.add(sub_token.get_real_name())\n                    target_table_token_flag = False\n            elif temp_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    self._source_tables.add(sub_token.get_real_name())\n                    self._target_tables.add(sub_token.get_real_name())\n                    self._extract_from_token(sub_token)\n                    temp_table_token_flag = False\n\n\ndef main():\n    parser = argparse.ArgumentParser(prog='sqllineage', description='SQL Lineage Parser.')\n    parser.add_argument('-e', metavar='<quoted-query-string>', help='SQL from command line')\n    parser.add_argument('-f', metavar='<filename>', help='SQL from files')\n    args = parser.parse_args()\n    if args.e and args.f:\n        print(\"WARNING: Both -e and -f options are specified. -e option will be ignored\", file=sys.stderr)\n    if args.f:\n        try:\n            with open(args.f) as f:\n                sql = f.read()\n            print(LineageParser(sql))\n        except FileNotFoundError:\n            print(\"ERROR: No such file: {}\".format(args.f), file=sys.stderr)\n        except PermissionError:\n            print(\"ERROR: Permission denied when reading file '{}'\".format(args.f), file=sys.stderr)\n    elif args.e:\n        print(LineageParser(args.e))\n    else:\n        parser.print_help()\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "returncode": 0,
+        "timestamp": 1787951838.86769,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me see the full core.py file, especially the `_extract_from_token` method.\n\n```mswea_bash_command\ncd /testbed && sed -n '20,120p' sqllineage/core.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && sed -n '20,120p' sqllineage/core.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8b42ad04c5fa3339",
+          "created": 1787951838,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me see the full core.py file, especially the `_extract_from_token` method.\n\n```mswea_bash_command\ncd /testbed && sed -n '20,120p' sqllineage/core.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 57,
+            "prompt_tokens": 3148,
+            "total_tokens": 3205,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951839.738633
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n        self._target_tables = set()\n        self._stmt = [s for s in sqlparse.parse(sql.strip(), self._encoding) if s.token_first(skip_cm=True)]\n        for stmt in self._stmt:\n            if stmt.get_type() == \"DROP\":\n                self._target_tables -= {t.get_real_name() for t in stmt.tokens if isinstance(t, Identifier)}\n            else:\n                self._extract_from_token(stmt)\n        self._tmp_tables = self._source_tables.intersection(self._target_tables)\n        self._source_tables -= self._tmp_tables\n        self._target_tables -= self._tmp_tables\n\n    def __str__(self):\n        return \"\"\"Statements(#): {stmt_cnt}\nSource Tables:\n    {source_tables}\nTarget Tables:\n    {target_tables}\n\"\"\".format(stmt_cnt=len(self.statements), source_tables=\"\\n    \".join(self.source_tables),\n           target_tables=\"\\n    \".join(self.target_tables))\n\n    @property\n    def statements_parsed(self) -> List[Statement]:\n        return self._stmt\n\n    @property\n    def statements(self) -> List[str]:\n        return [sqlparse.format(s.value) for s in self.statements_parsed]\n\n    @property\n    def source_tables(self) -> Set[str]:\n        return self._source_tables\n\n    @property\n    def target_tables(self) -> Set[str]:\n        return self._target_tables\n\n    def _extract_from_token(self, token: Token):\n        source_table_token_flag = target_table_token_flag = temp_table_token_flag = False\n        for sub_token in token.tokens:\n            if isinstance(sub_token, TokenList):\n                self._extract_from_token(sub_token)\n            if sub_token.ttype in Keyword:\n                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\n            elif isinstance(sub_token, Identi\n...[output truncated]...\n              pass\n                    else:\n                        self._source_tables.add(sub_token.get_real_name())\n                    source_table_token_flag = False\n            elif target_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                elif isinstance(sub_token, Function):\n                    # insert into tab (col1, col2), tab (col1, col2) will be parsed as Function\n                    # referring https://github.com/andialbrecht/sqlparse/issues/483 for further information\n                    assert isinstance(sub_token.token_first(skip_cm=True), Identifier)\n                    self._target_tables.add(sub_token.token_first(skip_cm=True).get_real_name())\n                    target_table_token_flag = False\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    self._target_tables.add(sub_token.get_real_name())\n                    target_table_token_flag = False\n            elif temp_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    self._source_tables.add(sub_token.get_real_name())\n                    self._target_tables.add(sub_token.get_real_name())\n                    self._extract_from_token(sub_token)\n                    temp_table_token_flag = False\n\n\ndef main():\n    parser = argparse.ArgumentParser(prog='sqllineage', description='SQL Lineage Parser.')\n    parser.add_argument('-e', metavar='<quoted-query-string>', help='SQL from command line')\n    parser.add_argument('-f', metavar='<filename>', help='SQL from files')\n    args = parser.parse_args()\n    if args.e and args.f:\n        print(\"WARNING: Both -e and -f options are specified. -e option will be ignored\", file=sys.stderr)\n    if args.f:\n        try:\n            with open(args.f) as f:\n</output>",
+      "extra": {
+        "raw_output": "        self._target_tables = set()\n        self._stmt = [s for s in sqlparse.parse(sql.strip(), self._encoding) if s.token_first(skip_cm=True)]\n        for stmt in self._stmt:\n            if stmt.get_type() == \"DROP\":\n                self._target_tables -= {t.get_real_name() for t in stmt.tokens if isinstance(t, Identifier)}\n            else:\n                self._extract_from_token(stmt)\n        self._tmp_tables = self._source_tables.intersection(self._target_tables)\n        self._source_tables -= self._tmp_tables\n        self._target_tables -= self._tmp_tables\n\n    def __str__(self):\n        return \"\"\"Statements(#): {stmt_cnt}\nSource Tables:\n    {source_tables}\nTarget Tables:\n    {target_tables}\n\"\"\".format(stmt_cnt=len(self.statements), source_tables=\"\\n    \".join(self.source_tables),\n           target_tables=\"\\n    \".join(self.target_tables))\n\n    @property\n    def statements_parsed(self) -> List[Statement]:\n        return self._stmt\n\n    @property\n    def statements(self) -> List[str]:\n        return [sqlparse.format(s.value) for s in self.statements_parsed]\n\n    @property\n    def source_tables(self) -> Set[str]:\n        return self._source_tables\n\n    @property\n    def target_tables(self) -> Set[str]:\n        return self._target_tables\n\n    def _extract_from_token(self, token: Token):\n        source_table_token_flag = target_table_token_flag = temp_table_token_flag = False\n        for sub_token in token.tokens:\n            if isinstance(sub_token, TokenList):\n                self._extract_from_token(sub_token)\n            if sub_token.ttype in Keyword:\n                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\n            elif isinstance(sub_token, Identi\n...[output truncated]...\n              pass\n                    else:\n                        self._source_tables.add(sub_token.get_real_name())\n                    source_table_token_flag = False\n            elif target_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                elif isinstance(sub_token, Function):\n                    # insert into tab (col1, col2), tab (col1, col2) will be parsed as Function\n                    # referring https://github.com/andialbrecht/sqlparse/issues/483 for further information\n                    assert isinstance(sub_token.token_first(skip_cm=True), Identifier)\n                    self._target_tables.add(sub_token.token_first(skip_cm=True).get_real_name())\n                    target_table_token_flag = False\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    self._target_tables.add(sub_token.get_real_name())\n                    target_table_token_flag = False\n            elif temp_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    self._source_tables.add(sub_token.get_real_name())\n                    self._target_tables.add(sub_token.get_real_name())\n                    self._extract_from_token(sub_token)\n                    temp_table_token_flag = False\n\n\ndef main():\n    parser = argparse.ArgumentParser(prog='sqllineage', description='SQL Lineage Parser.')\n    parser.add_argument('-e', metavar='<quoted-query-string>', help='SQL from command line')\n    parser.add_argument('-f', metavar='<filename>', help='SQL from files')\n    args = parser.parse_args()\n    if args.e and args.f:\n        print(\"WARNING: Both -e and -f options are specified. -e option will be ignored\", file=sys.stderr)\n    if args.f:\n        try:\n            with open(args.f) as f:\n",
+        "returncode": 0,
+        "timestamp": 1787951840.4309618,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me see the full source_table_token_flag branch which is truncated.\n\n```mswea_bash_command\ncd /testbed && sed -n '55,95p' sqllineage/core.py\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && sed -n '55,95p' sqllineage/core.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8db7966669597d7c",
+          "created": 1787951840,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me see the full source_table_token_flag branch which is truncated.\n\n```mswea_bash_command\ncd /testbed && sed -n '55,95p' sqllineage/core.py\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 52,
+            "prompt_tokens": 4084,
+            "total_tokens": 4136,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951841.289003
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n\n    def _extract_from_token(self, token: Token):\n        source_table_token_flag = target_table_token_flag = temp_table_token_flag = False\n        for sub_token in token.tokens:\n            if isinstance(sub_token, TokenList):\n                self._extract_from_token(sub_token)\n            if sub_token.ttype in Keyword:\n                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\n            elif isinstance(sub_token, Identifier) and sub_token.normalized == \"OVERWRITE\" \\\n                    and sub_token.get_alias() is not None:\n                # overwrite can't be parsed as Keyword, manual walk around\n                self._target_tables.add(sub_token.get_alias())\n                continue\n            if source_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    if isinstance(sub_token.token_first(skip_cm=True), Parenthesis):\n                        # SELECT col1 FROM (SELECT col2 FROM tab1) dt, the subquery will be parsed as Identifier\n                        # and this Identifier's get_real_name method would return alias name dt\n                        # referring https://github.com/andialbrecht/sqlparse/issues/218 for further information\n                        pass\n                    else:\n                        self._source_tables.add(sub_token.get_real_name())\n                    source_table_token_flag = False\n            elif target_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                elif isinstance(sub_token, Function):\n                    # insert into tab (col1, col2), tab (col1, col2) will be parsed as Function\n                    # referring https://github.com/andialbrecht/sqlparse/issues/483 for further information\n                    assert isinstance(sub_token.token_first(skip_cm=True), Identifier)\n                    self._target_tables.add(sub_token.token_first(skip_cm=True).get_real_name())\n                    target_table_token_flag = False\n</output>",
+      "extra": {
+        "raw_output": "\n    def _extract_from_token(self, token: Token):\n        source_table_token_flag = target_table_token_flag = temp_table_token_flag = False\n        for sub_token in token.tokens:\n            if isinstance(sub_token, TokenList):\n                self._extract_from_token(sub_token)\n            if sub_token.ttype in Keyword:\n                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\n            elif isinstance(sub_token, Identifier) and sub_token.normalized == \"OVERWRITE\" \\\n                    and sub_token.get_alias() is not None:\n                # overwrite can't be parsed as Keyword, manual walk around\n                self._target_tables.add(sub_token.get_alias())\n                continue\n            if source_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                else:\n                    assert isinstance(sub_token, Identifier)\n                    if isinstance(sub_token.token_first(skip_cm=True), Parenthesis):\n                        # SELECT col1 FROM (SELECT col2 FROM tab1) dt, the subquery will be parsed as Identifier\n                        # and this Identifier's get_real_name method would return alias name dt\n                        # referring https://github.com/andialbrecht/sqlparse/issues/218 for further information\n                        pass\n                    else:\n                        self._source_tables.add(sub_token.get_real_name())\n                    source_table_token_flag = False\n            elif target_table_token_flag:\n                if sub_token.is_whitespace or isinstance(sub_token, Comment):\n                    continue\n                elif isinstance(sub_token, Function):\n                    # insert into tab (col1, col2), tab (col1, col2) will be parsed as Function\n                    # referring https://github.com/andialbrecht/sqlparse/issues/483 for further information\n                    assert isinstance(sub_token.token_first(skip_cm=True), Identifier)\n                    self._target_tables.add(sub_token.token_first(skip_cm=True).get_real_name())\n                    target_table_token_flag = False\n",
+        "returncode": 0,
+        "timestamp": 1787951841.9847138,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me reproduce the issue. The problem is \"left  join\" with extra whitespace. Let me check how sqlparse tokenizes it.\n\n```mswea_bash_command\ncd /testbed && python -c \"\nimport sqlparse\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\nfor t in sqlparse.parse(sql)[0].tokens:\n    print(repr(t.ttype), repr(t.value))\n\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && python -c \"\nimport sqlparse\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\nfor t in sqlparse.parse(sql)[0].tokens:\n    print(repr(t.ttype), repr(t.value))\n\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-ad69ddd695e4889c",
+          "created": 1787951841,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me reproduce the issue. The problem is \"left  join\" with extra whitespace. Let me check how sqlparse tokenizes it.\n\n```mswea_bash_command\ncd /testbed && python -c \"\nimport sqlparse\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\nfor t in sqlparse.parse(sql)[0].tokens:\n    print(repr(t.ttype), repr(t.value))\n\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 110,
+            "prompt_tokens": 4628,
+            "total_tokens": 4738,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951843.5855916
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nToken.Keyword.DML 'select'\nToken.Text.Whitespace ' '\nToken.Wildcard '*'\nToken.Text.Whitespace ' '\nToken.Keyword 'from'\nToken.Text.Whitespace ' '\nNone 'tab_a'\nToken.Text.Whitespace.Newline '\\n'\nToken.Keyword 'left  join'\nToken.Text.Whitespace ' '\nNone 'tab_b'\nToken.Text.Whitespace.Newline '\\n'\nToken.Keyword 'on'\nToken.Text.Whitespace ' '\nNone 'tab_a.x = tab_b.x'\n</output>",
+      "extra": {
+        "raw_output": "Token.Keyword.DML 'select'\nToken.Text.Whitespace ' '\nToken.Wildcard '*'\nToken.Text.Whitespace ' '\nToken.Keyword 'from'\nToken.Text.Whitespace ' '\nNone 'tab_a'\nToken.Text.Whitespace.Newline '\\n'\nToken.Keyword 'left  join'\nToken.Text.Whitespace ' '\nNone 'tab_b'\nToken.Text.Whitespace.Newline '\\n'\nToken.Keyword 'on'\nToken.Text.Whitespace ' '\nNone 'tab_a.x = tab_b.x'\n",
+        "returncode": 0,
+        "timestamp": 1787951844.3417175,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The keyword is normalized to 'left  join' (with double space). The `sub_token.normalized` likely preserves the double space. Let me check.\n\n```mswea_bash_command\ncd /testbed && python -c \"\nimport sqlparse\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\nfor t in sqlparse.parse(sql)[0].tokens:\n    if t.ttype in sqlparse.tokens.Keyword:\n        print(repr(t.value), '->', repr(t.normalized))\n\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && python -c \"\nimport sqlparse\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\nfor t in sqlparse.parse(sql)[0].tokens:\n    if t.ttype in sqlparse.tokens.Keyword:\n        print(repr(t.value), '->', repr(t.normalized))\n\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-ab0fd4f569ad9943",
+          "created": 1787951844,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The keyword is normalized to 'left  join' (with double space). The `sub_token.normalized` likely preserves the double space. Let me check.\n\n```mswea_bash_command\ncd /testbed && python -c \"\nimport sqlparse\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\nfor t in sqlparse.parse(sql)[0].tokens:\n    if t.ttype in sqlparse.tokens.Keyword:\n        print(repr(t.value), '->', repr(t.normalized))\n\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 126,
+            "prompt_tokens": 4880,
+            "total_tokens": 5006,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951846.1482525
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n'select' -> 'SELECT'\n'from' -> 'FROM'\n'left  join' -> 'LEFT  JOIN'\n'on' -> 'ON'\n</output>",
+      "extra": {
+        "raw_output": "'select' -> 'SELECT'\n'from' -> 'FROM'\n'left  join' -> 'LEFT  JOIN'\n'on' -> 'ON'\n",
+        "returncode": 0,
+        "timestamp": 1787951846.9178753,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The normalized value is 'LEFT  JOIN' with double space, which doesn't match 'LEFT JOIN' in SOURCE_TABLE_TOKENS. I should normalize whitespace in the comparison. Let me fix by collapsing whitespace when comparing.\n\n```mswea_bash_command\ncd /testbed && python - <<'EOF'\nimport re\nwith open('sqllineage/core.py') as f:\n    content = f.read()\n\nold = \"\"\"            if sub_token.ttype in Keyword:\n                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\"\"\"\n\nnew = \"\"\"            if sub_token.ttype in Keyword:\n                normalized = re.sub(r'\\\\s+', ' ', sub_token.normalized)\n                if normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\"\"\"\n\nassert old in content\ncontent = content.replace(old, new)\n\n# add re import\ncontent = content.replace(\"import argparse\\nimport sys\", \"import argparse\\nimport re\\nimport sys\")\n\nwith open('sqllineage/core.py','w') as f:\n    f.write(content)\nprint(\"done\")\nEOF\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && python - <<'EOF'\nimport re\nwith open('sqllineage/core.py') as f:\n    content = f.read()\n\nold = \"\"\"            if sub_token.ttype in Keyword:\n                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\"\"\"\n\nnew = \"\"\"            if sub_token.ttype in Keyword:\n                normalized = re.sub(r'\\\\s+', ' ', sub_token.normalized)\n                if normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\"\"\"\n\nassert old in content\ncontent = content.replace(old, new)\n\n# add re import\ncontent = content.replace(\"import argparse\\nimport sys\", \"import argparse\\nimport re\\nimport sys\")\n\nwith open('sqllineage/core.py','w') as f:\n    f.write(content)\nprint(\"done\")\nEOF"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-9765fa07f5d50eaa",
+          "created": 1787951846,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The normalized value is 'LEFT  JOIN' with double space, which doesn't match 'LEFT JOIN' in SOURCE_TABLE_TOKENS. I should normalize whitespace in the comparison. Let me fix by collapsing whitespace when comparing.\n\n```mswea_bash_command\ncd /testbed && python - <<'EOF'\nimport re\nwith open('sqllineage/core.py') as f:\n    content = f.read()\n\nold = \"\"\"            if sub_token.ttype in Keyword:\n                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\"\"\"\n\nnew = \"\"\"            if sub_token.ttype in Keyword:\n                normalized = re.sub(r'\\\\s+', ' ', sub_token.normalized)\n                if normalized in SOURCE_TABLE_TOKENS:\n                    source_table_token_flag = True\n                elif normalized in TARGET_TABLE_TOKENS:\n                    target_table_token_flag = True\n                elif normalized in TEMP_TABLE_TOKENS:\n                    temp_table_token_flag = True\n                continue\"\"\"\n\nassert old in content\ncontent = content.replace(old, new)\n\n# add re import\ncontent = content.replace(\"import argparse\\nimport sys\", \"import argparse\\nimport re\\nimport sys\")\n\nwith open('sqllineage/core.py','w') as f:\n    f.write(content)\nprint(\"done\")\nEOF\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 330,
+            "prompt_tokens": 5071,
+            "total_tokens": 5401,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951851.211154
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndone\n</output>",
+      "extra": {
+        "raw_output": "done\n",
+        "returncode": 0,
+        "timestamp": 1787951851.942685,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me verify the fix works.\n\n```mswea_bash_command\ncd /testbed && python -c \"\nfrom sqllineage.core import LineageParser\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\np=LineageParser(sql)\nprint(p)\nprint('sources:', p.source_tables)\n\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && python -c \"\nfrom sqllineage.core import LineageParser\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\np=LineageParser(sql)\nprint(p)\nprint('sources:', p.source_tables)\n\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8d13ae0897abdd22",
+          "created": 1787951851,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me verify the fix works.\n\n```mswea_bash_command\ncd /testbed && python -c \"\nfrom sqllineage.core import LineageParser\nsql='select * from tab_a\\nleft  join tab_b\\non tab_a.x = tab_b.x'\np=LineageParser(sql)\nprint(p)\nprint('sources:', p.source_tables)\n\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 91,
+            "prompt_tokens": 5433,
+            "total_tokens": 5524,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951853.3619888
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nStatements(#): 1\nSource Tables:\n    tab_a\n    tab_b\nTarget Tables:\n    \n\nsources: {'tab_a', 'tab_b'}\n</output>",
+      "extra": {
+        "raw_output": "Statements(#): 1\nSource Tables:\n    tab_a\n    tab_b\nTarget Tables:\n    \n\nsources: {'tab_a', 'tab_b'}\n",
+        "returncode": 0,
+        "timestamp": 1787951854.127713,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The fix works. Now let me run the full test suite to ensure nothing is broken.\n\n```mswea_bash_command\ncd /testbed && python -m pytest tests -q 2>&1 | tail -20\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && python -m pytest tests -q 2>&1 | tail -20"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-af30f06bf8c254d2",
+          "created": 1787951854,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The fix works. Now let me run the full test suite to ensure nothing is broken.\n\n```mswea_bash_command\ncd /testbed && python -m pytest tests -q 2>&1 | tail -20\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 55,
+            "prompt_tokens": 5588,
+            "total_tokens": 5643,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951855.1132834
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n/opt/conda/envs/testbed/lib/python3.9/site-packages/pytest_asyncio/plugin.py:208: PytestDeprecationWarning: The configuration option \"asyncio_default_fixture_loop_scope\" is unset.\nThe event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: \"function\", \"class\", \"module\", \"package\", \"session\"\n\n  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))\n.................................................                        [100%]\n49 passed in 0.41s\n</output>",
+      "extra": {
+        "raw_output": "/opt/conda/envs/testbed/lib/python3.9/site-packages/pytest_asyncio/plugin.py:208: PytestDeprecationWarning: The configuration option \"asyncio_default_fixture_loop_scope\" is unset.\nThe event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: \"function\", \"class\", \"module\", \"package\", \"session\"\n\n  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))\n.................................................                        [100%]\n49 passed in 0.41s\n",
+        "returncode": 0,
+        "timestamp": 1787951856.83573,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: All 49 tests pass. Let me test a few edge cases with various whitespace variations.\n\n```mswea_bash_command\ncd /testbed && python -c \"\nfrom sqllineage.core import LineageParser\nfor sql in ['select * from a left\\tjoin b on a.x=b.x', 'select * from a left   join b on a.x=b.x', 'select * from a inner  join b on a.x=b.x', 'select * from a left outer  join b on a.x=b.x']:\n    p=LineageParser(sql)\n    print(repr(sql), '->', p.source_tables)\n\"\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && python -c \"\nfrom sqllineage.core import LineageParser\nfor sql in ['select * from a left\\tjoin b on a.x=b.x', 'select * from a left   join b on a.x=b.x', 'select * from a inner  join b on a.x=b.x', 'select * from a left outer  join b on a.x=b.x']:\n    p=LineageParser(sql)\n    print(repr(sql), '->', p.source_tables)\n\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-80434e1b9535ba45",
+          "created": 1787951856,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: All 49 tests pass. Let me test a few edge cases with various whitespace variations.\n\n```mswea_bash_command\ncd /testbed && python -c \"\nfrom sqllineage.core import LineageParser\nfor sql in ['select * from a left\\tjoin b on a.x=b.x', 'select * from a left   join b on a.x=b.x', 'select * from a inner  join b on a.x=b.x', 'select * from a left outer  join b on a.x=b.x']:\n    p=LineageParser(sql)\n    print(repr(sql), '->', p.source_tables)\n\"\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 145,
+            "prompt_tokens": 5834,
+            "total_tokens": 5979,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951858.9249666
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n'select * from a left\\tjoin b on a.x=b.x' -> {'b', 'a'}\n'select * from a left   join b on a.x=b.x' -> {'b', 'a'}\n'select * from a inner  join b on a.x=b.x' -> {'b', 'a'}\n'select * from a left outer  join b on a.x=b.x' -> {'b', 'a'}\n</output>",
+      "extra": {
+        "raw_output": "'select * from a left\\tjoin b on a.x=b.x' -> {'b', 'a'}\n'select * from a left   join b on a.x=b.x' -> {'b', 'a'}\n'select * from a inner  join b on a.x=b.x' -> {'b', 'a'}\n'select * from a left outer  join b on a.x=b.x' -> {'b', 'a'}\n",
+        "returncode": 0,
+        "timestamp": 1787951859.6816995,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: All edge cases work. Let me create the patch and verify it.\n\n```mswea_bash_command\ncd /testbed && git diff -- sqllineage/core.py > patch.txt && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /testbed && git diff -- sqllineage/core.py > patch.txt && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8d2edb8c084bbcae",
+          "created": 1787951859,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: All edge cases work. Let me create the patch and verify it.\n\n```mswea_bash_command\ncd /testbed && git diff -- sqllineage/core.py > patch.txt && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 51,
+            "prompt_tokens": 6102,
+            "total_tokens": 6153,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951860.6491873
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/sqllineage/core.py b/sqllineage/core.py\nindex b78b163..24020db 100644\n--- a/sqllineage/core.py\n+++ b/sqllineage/core.py\n@@ -1,4 +1,5 @@\n import argparse\n+import re\n import sys\n from typing import List, Set\n \n@@ -59,11 +60,12 @@ Target Tables:\n             if isinstance(sub_token, TokenList):\n                 self._extract_from_token(sub_token)\n             if sub_token.ttype in Keyword:\n-                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n+                normalized = re.sub(r'\\s+', ' ', sub_token.normalized)\n+                if normalized in SOURCE_TABLE_TOKENS:\n                     source_table_token_flag = True\n-                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n+                elif normalized in TARGET_TABLE_TOKENS:\n                     target_table_token_flag = True\n-                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n+                elif normalized in TEMP_TABLE_TOKENS:\n                     temp_table_token_flag = True\n                 continue\n             elif isinstance(sub_token, Identifier) and sub_token.normalized == \"OVERWRITE\" \\\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/sqllineage/core.py b/sqllineage/core.py\nindex b78b163..24020db 100644\n--- a/sqllineage/core.py\n+++ b/sqllineage/core.py\n@@ -1,4 +1,5 @@\n import argparse\n+import re\n import sys\n from typing import List, Set\n \n@@ -59,11 +60,12 @@ Target Tables:\n             if isinstance(sub_token, TokenList):\n                 self._extract_from_token(sub_token)\n             if sub_token.ttype in Keyword:\n-                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n+                normalized = re.sub(r'\\s+', ' ', sub_token.normalized)\n+                if normalized in SOURCE_TABLE_TOKENS:\n                     source_table_token_flag = True\n-                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n+                elif normalized in TARGET_TABLE_TOKENS:\n                     target_table_token_flag = True\n-                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n+                elif normalized in TEMP_TABLE_TOKENS:\n                     temp_table_token_flag = True\n                 continue\n             elif isinstance(sub_token, Identifier) and sub_token.normalized == \"OVERWRITE\" \\\n",
+        "returncode": 0,
+        "timestamp": 1787951861.3588796,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The patch looks correct and only modifies the source file. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8ef0eb719a26d6ab",
+          "created": 1787951861,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The patch looks correct and only modifies the source file. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "routed_experts": null,
+                "stop_reason": null,
+                "token_ids": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 43,
+            "prompt_tokens": 6457,
+            "total_tokens": 6500,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787951862.2510357
+      }
+    },
+    {
+      "role": "exit",
+      "content": "diff --git a/sqllineage/core.py b/sqllineage/core.py\nindex b78b163..24020db 100644\n--- a/sqllineage/core.py\n+++ b/sqllineage/core.py\n@@ -1,4 +1,5 @@\n import argparse\n+import re\n import sys\n from typing import List, Set\n \n@@ -59,11 +60,12 @@ Target Tables:\n             if isinstance(sub_token, TokenList):\n                 self._extract_from_token(sub_token)\n             if sub_token.ttype in Keyword:\n-                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n+                normalized = re.sub(r'\\s+', ' ', sub_token.normalized)\n+                if normalized in SOURCE_TABLE_TOKENS:\n                     source_table_token_flag = True\n-                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n+                elif normalized in TARGET_TABLE_TOKENS:\n                     target_table_token_flag = True\n-                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n+                elif normalized in TEMP_TABLE_TOKENS:\n                     temp_table_token_flag = True\n                 continue\n             elif isinstance(sub_token, Identifier) and sub_token.normalized == \"OVERWRITE\" \\\n",
+      "extra": {
+        "exit_status": "Submitted",
+        "submission": "diff --git a/sqllineage/core.py b/sqllineage/core.py\nindex b78b163..24020db 100644\n--- a/sqllineage/core.py\n+++ b/sqllineage/core.py\n@@ -1,4 +1,5 @@\n import argparse\n+import re\n import sys\n from typing import List, Set\n \n@@ -59,11 +60,12 @@ Target Tables:\n             if isinstance(sub_token, TokenList):\n                 self._extract_from_token(sub_token)\n             if sub_token.ttype in Keyword:\n-                if sub_token.normalized in SOURCE_TABLE_TOKENS:\n+                normalized = re.sub(r'\\s+', ' ', sub_token.normalized)\n+                if normalized in SOURCE_TABLE_TOKENS:\n                     source_table_token_flag = True\n-                elif sub_token.normalized in TARGET_TABLE_TOKENS:\n+                elif normalized in TARGET_TABLE_TOKENS:\n                     target_table_token_flag = True\n-                elif sub_token.normalized in TEMP_TABLE_TOKENS:\n+                elif normalized in TEMP_TABLE_TOKENS:\n                     temp_table_token_flag = True\n                 continue\n             elif isinstance(sub_token, Identifier) and sub_token.normalized == \"OVERWRITE\" \\\n"
+      }
+    }
+  ],
+  "trajectory_format": "mini-swe-agent-1.1"
+}

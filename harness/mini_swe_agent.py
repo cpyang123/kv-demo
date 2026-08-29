@@ -274,6 +274,7 @@ class ChainRunner:
                     delta = self.env.raw(f"git diff {task_base} HEAD")["output"] \
                         if self.mode not in ("indep", "oracle") else ""
                     if self.mem:
+                        spec["_rsm_resolved"] = rec.get("resolved")   # RB 臂成败分支桥(grade 先于 write)
                         rec["mem_nodes"] = self.mem.write(spec, self._material(agent, delta),
                                                           delta, self.env)
                         rec["mem_write_secs"] = round(time.time() - t_add0, 1)

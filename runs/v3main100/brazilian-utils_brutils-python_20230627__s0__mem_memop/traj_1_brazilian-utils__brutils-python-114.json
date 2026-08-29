@@ -1,0 +1,792 @@
+{
+  "info": {
+    "model_stats": {
+      "instance_cost": 0.0,
+      "api_calls": 10
+    },
+    "config": {
+      "agent": {
+        "system_template": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history.",
+        "instance_template": "<pr_description>\nConsider the following PR description:\n{{task}}\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /brutils-python (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>\n",
+        "step_limit": 100,
+        "cost_limit": 1000000000.0,
+        "wall_time_limit_seconds": 0,
+        "max_consecutive_format_errors": 3,
+        "output_path": "/gpfs/radev/pi/dijk/pl662/swe_explore/repo-state-memory/chainswe/runs/v3main100/brazilian-utils_brutils-python_20230627__s0__mem_memop/traj_1_brazilian-utils__brutils-python-114.json"
+      },
+      "agent_type": "minisweagent.agents.default.DefaultAgent",
+      "model": {
+        "model_name": "openai/coder-next",
+        "model_kwargs": {
+          "api_key": "EMPTY",
+          "temperature": 0.0,
+          "max_tokens": 16384,
+          "extra_body": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "api_base": "http://127.0.0.1:8860/v1"
+        },
+        "litellm_model_registry": null,
+        "set_cache_control": null,
+        "cost_tracking": "ignore_errors",
+        "format_error_template": "{% if finish_reason is defined and finish_reason in [\"length\", \"tool_calls\"] -%}\nYour previous response reached the output token limit (finish_reason={{ finish_reason }}) before you produced a complete action, so it was cut off. Respond more concisely and provide exactly one action in the required format. If you need to think more, do so briefly.\n{%- else -%}\nFormat error:\n\n<error>\n{{error}}\n</error>\n\nHere is general guidance on how to format your response:\n\nPlease always provide EXACTLY ONE action in triple backticks, found {{actions|length}} actions.\n\nPlease format your action in triple backticks as shown in <response_example>.\n\n<response_example>\nHere are some thoughts about why you want to perform the action.\n\n```mswea_bash_command\n<action>\n```\n</response_example>\n\nIf you have completed your assignment, please consult the first message about how to\nsubmit your solution (you will not be able to continue working on this task after that).\n{%- endif %}\n",
+        "observation_template": "{% if output.exception_info -%}\n<exception>{{output.exception_info}}</exception>\n{% endif -%}\n<returncode>{{output.returncode}}</returncode>\n{% if output.output | length < 10000 -%}\n<output>\n{{ output.output -}}\n</output>\n{%- else -%}\n<warning>\nThe output of your last command was too long.\nPlease try a different command that produces less output.\nIf you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.\nIf you're using grep or find and it produced too much output, you can use a more selective search pattern.\nIf you really need to see something from the full command's output, you can redirect output to a file and then search in that file.\n</warning>\n{%- set elided_chars = output.output | length - 10000 -%}\n<output_head>\n{{ output.output[:5000] }}\n</output_head>\n<elided_chars>\n{{ elided_chars }} characters elided\n</elided_chars>\n<output_tail>\n{{ output.output[-5000:] }}\n</output_tail>\n{%- endif -%}\n",
+        "multimodal_regex": "",
+        "action_regex": "```mswea_bash_command\\s*\\n(.*?)\\n```"
+      },
+      "model_type": "minisweagent.models.litellm_textbased_model.LitellmTextbasedModel",
+      "environment": {
+        "image": "/gpfs/radev/scratch/dijk/pl662/chainswe_sifs/swerebenchv2__brazilian-utils-brutils-python__114-1b12ebf.sif",
+        "cwd": "/brutils-python",
+        "env": {},
+        "forward_env": [],
+        "timeout": 300,
+        "executable": "apptainer",
+        "sandbox_build_retries": 3,
+        "global_args": [
+          "--quiet"
+        ],
+        "exec_args": [
+          "--contain",
+          "--cleanenv",
+          "--fakeroot"
+        ]
+      },
+      "environment_type": "harness.env.RepoEnv"
+    },
+    "mini_version": "2.4.5",
+    "exit_status": "Submitted",
+    "submission": "diff --git a/brutils/cnpj.py b/brutils/cnpj.py\nindex efca157..1d1a8f5 100644\n--- a/brutils/cnpj.py\n+++ b/brutils/cnpj.py\n@@ -87,13 +87,11 @@ def validate(cnpj):  # type: (str) -> bool\n \n def is_valid(cnpj):  # type: (str) -> bool\n     \"\"\"\n-    Returns whether or not the verifying checksum digits of the\n-    given `cnpj` match it's base number. Input should be a digit\n-    string of proper length.\n-    Using this method name to match with the js library  api.\n+    Evaluates that cnpj is String and calls validate.\n+    Using this method name to match with the js library api.\n     Using the same method to ensure backwards compatibility.\n     \"\"\"\n-    return validate(cnpj)\n+    return isinstance(cnpj, str) and validate(cnpj)\n \n \n def generate(branch=1):  # type: (int) -> str\n"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.\nYour response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).\n\nInclude a THOUGHT section before your command where you explain your reasoning process.\nFormat your response as shown in <format_example>.\n\n<format_example>\nTHOUGHT: Your reasoning and analysis here\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nFailure to follow these rules will cause your response to be rejected.\n\n\nGIT PROTOCOL RULE: NEVER run `git commit`, `git reset`, `git rebase`, `git stash` or `git checkout` that moves HEAD or a branch. Leave ALL your changes uncommitted in the working tree; the harness manages git history."
+    },
+    {
+      "role": "user",
+      "content": "<pr_description>\nConsider the following PR description:\nCriar mais testes para o utilit\u00e1rio is_valid_cnpj\nCriar mais casos de teste para o utilit\u00e1rio is_valid_cnpj.\r\n\r\nAlguns exemplos:\r\n* testar quando o input n\u00e3o \u00e9 uma string\r\n* testar quando o input n\u00e3o tem o tamanho correto\r\n* testar quando o input n\u00e3o cont\u00e9m apenas d\u00edgitos\r\n\r\nVoc\u00ea pode utilizar o exemplo do CPF como base: https://github.com/brazilian-utils/brutils-python/blob/1b12ebfcbdef3715a1969139549d1038074f42aa/tests/test_cpf.py#L64\r\n\r\nO algoritmo considerado para valida\u00e7\u00e3o \u00e9 este: https://www.geradorcnpj.com/algoritmo_do_cnpj.htm\r\n\r\nLembre-se tamb\u00e9m que voc\u00ea pode consultar como foi feita a implementa\u00e7\u00e3o na biblioteca JS: https://github.com/brazilian-utils/brazilian-utils/tree/main/src/utilities/cnpj\n</pr_description>\n\n<instructions>\n# Task Instructions\n\n## Overview\n\nYou're a software engineer interacting continuously with a computer by submitting commands.\nYou'll be helping implement necessary changes to meet requirements in the PR description.\nYour task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.\n\n<IMPORTANT>This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.</IMPORTANT>\n\nFor each response:\n\n1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish\n2. Provide exactly ONE bash command to execute\n\n## Important Boundaries\n\n- MODIFY: Regular source code files in /brutils-python (this is the working directory for all your subsequent commands)\n- DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)\n\n## Recommended Workflow\n\n1. Analyze the codebase by finding and reading relevant files\n2. Create a script to reproduce the issue\n3. Edit the source code to resolve the issue\n4. Verify your fix works by running your script again\n5. Test edge cases to ensure your fix is robust\n\n## Command Execution Rules\n\nYou are operating in an environment where\n\n1. You write a single command\n2. The system executes that command in a subshell\n3. You see the result\n4. You write your next command\n\nEach response should include:\n\n1. A **THOUGHT** section where you explain your reasoning and plan\n2. A single bash code block with your command\n\nFormat your responses like demonstrated within the <format_example> block:\n\n<format_example>\nTHOUGHT: Here I explain my reasoning process, analysis of the current situation,\nand what I'm trying to accomplish with the command below.\n\n```mswea_bash_command\nyour_command_here\n```\n</format_example>\n\nCommands must be specified in a single bash code block:\n\n```mswea_bash_command\nyour_command_here\n```\n\n**CRITICAL REQUIREMENTS:**\n\n- Your response SHOULD include a THOUGHT section explaining your reasoning\n- Your response MUST include EXACTLY ONE bash code block\n- This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)\n- If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL\n- Do NOT try to run multiple independent commands in separate blocks in one response\n- Directory or environment variable changes are not persistent. Every action is executed in a new subshell.\n- However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files\n\nExample of a CORRECT response:\n<example_response>\nTHOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.\n\n```mswea_bash_command\nls -la\n```\n</example_response>\n\nExample of an INCORRECT response:\n\n<example_response>\nTHOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.\n\n```mswea_bash_command\nls -la\n```\n\nNow I'll read the file:\n\n```mswea_bash_command\ncat file.txt\n```\n</example_response>\n\nIf you need to run multiple commands, either:\n\n1. Combine them in one block using && or ||\n```mswea_bash_command\ncommand1 && command2 || echo \"Error occurred\"\n```\n\n2. Wait for the first command to complete, see its output, then issue the next command in your following response.\n\n## Environment Details\n\n- You have a full Linux shell environment\n- Always use non-interactive flags (-y, -f) for commands\n- Avoid interactive tools like vi, nano, or any that require user input\n- You can use bash commands or invoke any tool that is available in the environment\n- You can also create new tools or scripts to help you with the task\n- If a tool isn't available, you can also install it\n\n## Submission\n\nWhen you've completed your work, you MUST submit your changes as a git patch.\nFollow these steps IN ORDER, with SEPARATE commands:\n\nStep 1: Create the patch file\nRun `git diff -- path/to/file1 path/to/file2 > patch.txt` listing only the source files you modified.\nDo NOT commit your changes.\n\n<IMPORTANT>\nThe patch must only contain changes to the specific source files you modified to fix the issue.\nDo not submit file creations or changes to any of the following files:\n\n- test and reproduction files\n- helper scripts, tests, or tools that you created\n- installation, build, packaging, configuration, or setup scripts unless they are directly part of the issue you were fixing (you can assume that the environment is already set up for your client)\n- binary or compiled files\n</IMPORTANT>\n\nStep 2: Verify your patch\nInspect patch.txt to confirm it only contains your intended changes and headers show `--- a/` and `+++ b/` paths.\n\nStep 3: Submit (EXACT command required)\nYou MUST use this EXACT command to submit:\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n\nIf the command fails (nonzero exit status), it will not submit.\n\n<CRITICAL>\n- Creating/viewing the patch and submitting it MUST be separate commands (not combined with &&).\n- If you modify patch.txt after verifying, you SHOULD verify again before submitting.\n- You CANNOT continue working (reading, editing, testing) in any way on this task after submitting.\n</CRITICAL>\n</instructions>"
+    },
+    {
+      "content": "THOUGHT: Let me start by exploring the repository structure to understand the codebase.\n\n```mswea_bash_command\ncd /brutils-python && ls -la && find . -name \"*.py\" | grep -i cnpj\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && ls -la && find . -name \"*.py\" | grep -i cnpj"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-942c092ab24dc787",
+          "created": 1787973352,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me start by exploring the repository structure to understand the codebase.\n\n```mswea_bash_command\ncd /brutils-python && ls -la && find . -name \"*.py\" | grep -i cnpj\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 57,
+            "prompt_tokens": 1663,
+            "total_tokens": 1720,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973353.4531314
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ntotal 116\ndrwxrwxrwx 8 pl662 dijk  4096 Feb 22  2026 .\ndrwxr-xr-x 1 pl662 dijk    80 Aug 29 03:15 ..\ndrwxrwxrwx 8 pl662 dijk  4096 Feb 22  2026 .git\ndrwxrwxrwx 3 pl662 dijk  4096 Feb 22  2026 .github\n-rw-r--r-- 1 pl662 dijk 11630 Feb 22  2026 .gitignore\n-rw-r--r-- 1 pl662 dijk   149 Feb 22  2026 .pre-commit-config.yaml\n-rw-r--r-- 1 pl662 dijk   344 Feb 22  2026 CHANGELOG.md\n-rw-r--r-- 1 pl662 dijk   922 Feb 22  2026 CONTRIBUTING.md\n-rw-r--r-- 1 pl662 dijk   922 Feb 22  2026 CONTRIBUTING_EN.md\n-rw-r--r-- 1 pl662 dijk  1072 Feb 22  2026 LICENSE\n-rw-r--r-- 1 pl662 dijk   324 Feb 22  2026 Makefile\n-rw-r--r-- 1 pl662 dijk  3361 Feb 22  2026 README.md\n-rw-r--r-- 1 pl662 dijk  3253 Feb 22  2026 README_EN.md\ndrwxrwxrwx 2 pl662 dijk  4096 Feb 22  2026 brutils\n-rw-r--r-- 1 pl662 dijk    22 Feb 22  2026 codecov.yml\ndrwxr-xr-x 2 pl662 dijk  4096 Feb 22  2026 documentation v1.0.1\n-rw-r--r-- 1 pl662 dijk 36251 Feb 22  2026 poetry.lock\n-rw-r--r-- 1 pl662 dijk  1283 Feb 22  2026 pyproject.toml\ndrwxr-xr-x 2 pl662 dijk  4096 Feb 22  2026 scripts\ndrwxrwxrwx 2 pl662 dijk  4096 Feb 22  2026 tests\n./brutils/cnpj.py\n./tests/test_cnpj.py\n</output>",
+      "extra": {
+        "raw_output": "total 116\ndrwxrwxrwx 8 pl662 dijk  4096 Feb 22  2026 .\ndrwxr-xr-x 1 pl662 dijk    80 Aug 29 03:15 ..\ndrwxrwxrwx 8 pl662 dijk  4096 Feb 22  2026 .git\ndrwxrwxrwx 3 pl662 dijk  4096 Feb 22  2026 .github\n-rw-r--r-- 1 pl662 dijk 11630 Feb 22  2026 .gitignore\n-rw-r--r-- 1 pl662 dijk   149 Feb 22  2026 .pre-commit-config.yaml\n-rw-r--r-- 1 pl662 dijk   344 Feb 22  2026 CHANGELOG.md\n-rw-r--r-- 1 pl662 dijk   922 Feb 22  2026 CONTRIBUTING.md\n-rw-r--r-- 1 pl662 dijk   922 Feb 22  2026 CONTRIBUTING_EN.md\n-rw-r--r-- 1 pl662 dijk  1072 Feb 22  2026 LICENSE\n-rw-r--r-- 1 pl662 dijk   324 Feb 22  2026 Makefile\n-rw-r--r-- 1 pl662 dijk  3361 Feb 22  2026 README.md\n-rw-r--r-- 1 pl662 dijk  3253 Feb 22  2026 README_EN.md\ndrwxrwxrwx 2 pl662 dijk  4096 Feb 22  2026 brutils\n-rw-r--r-- 1 pl662 dijk    22 Feb 22  2026 codecov.yml\ndrwxr-xr-x 2 pl662 dijk  4096 Feb 22  2026 documentation v1.0.1\n-rw-r--r-- 1 pl662 dijk 36251 Feb 22  2026 poetry.lock\n-rw-r--r-- 1 pl662 dijk  1283 Feb 22  2026 pyproject.toml\ndrwxr-xr-x 2 pl662 dijk  4096 Feb 22  2026 scripts\ndrwxrwxrwx 2 pl662 dijk  4096 Feb 22  2026 tests\n./brutils/cnpj.py\n./tests/test_cnpj.py\n",
+        "returncode": 0,
+        "timestamp": 1787973353.6536958,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Let me look at the cnpj.py implementation and the test files.\n\n```mswea_bash_command\ncd /brutils-python && cat brutils/cnpj.py && echo \"=====TEST=====\" && cat tests/test_cnpj.py\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && cat brutils/cnpj.py && echo \"=====TEST=====\" && cat tests/test_cnpj.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-b2a3cdfc590f6a9d",
+          "created": 1787973353,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Let me look at the cnpj.py implementation and the test files.\n\n```mswea_bash_command\ncd /brutils-python && cat brutils/cnpj.py && echo \"=====TEST=====\" && cat tests/test_cnpj.py\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 60,
+            "prompt_tokens": 2433,
+            "total_tokens": 2493,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973354.5507503
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nfrom itertools import chain\nfrom random import randint\n\n\n# FORMATTING\n############\n\n\ndef sieve(dirty):  # type: (str) -> str\n    \"\"\"\n    Filters out CNPJ formatting symbols. Symbols that are not used\n    in the CNPJ formatting are left unfiltered on purpose so that\n    if fails other tests, because their presence indicate that the\n    input was somehow corrupted.\n    \"\"\"\n    return \"\".join(filter(lambda char: char not in \"./-\", dirty))\n\n\ndef remove_symbols(dirty):  # type: (str) -> str\n    \"\"\"Alias to the function `sieve`. Better naming.\"\"\"\n    return sieve(dirty)\n\n\ndef display(cnpj):  # type: (str) -> str\n    \"\"\"\n    Will format an adequately formatted numbers-only CNPJ string,\n    adding in standard formatting visual aid symbols for display.\n    \"\"\"\n    if not cnpj.isdigit() or len(cnpj) != 14 or len(set(cnpj)) == 1:\n        return None\n    return \"{}.{}.{}/{}-{}\".format(\n        cnpj[:2], cnpj[2:5], cnpj[5:8], cnpj[8:12], cnpj[12:]\n    )\n\n\ndef format_cnpj(cnpj):  # type: (str) -> str\n    \"\"\"\n    Will format an adequately formatted numbers-only CNPJ string,\n    adding in standard formatting visual aid symbols for display.\n    \"\"\"\n    return display(cnpj)\n\n\n# CALCULATORS\n#############\n\n\ndef hashdigit(cnpj, position):  # type: (str, int) -> int\n    \"\"\"\n    Will compute the given `position` checksum digit for the `cnpj`\n    input. The input needs to contain all elements previous to\n    `position` else computation will yield the wrong result.\n    \"\"\"\n    weightgen = chain(range(position - 8, 1, -1), range(9, 1, -1))\n    val = (\n        sum(int(digit) * weight for digit, weight in zip(cnpj, weightgen)) % 11\n    )\n    return 0 if val < 2 else 11 - val\n\n\ndef checksum(basenum):  # type: (str) -> str\n    \"\"\"\n    Will compute the checksum digits for a given CNPJ base number.\n    `basenum` needs to be a digit-string of adequate length.\n    \"\"\"\n    verifying_digits = str(hashdigit(basenum, 13))\n    verifying_digits += str(hashdigit(basenum + verifying_digits, 14))\n    return \n...[output truncated]...\n    def test_sieve(self):\n        assert sieve(\"00000000000\") == \"00000000000\"\n        assert sieve(\"12.345.678/0001-90\") == \"12345678000190\"\n        assert sieve(\"134..2435/.-1892.-\") == \"13424351892\"\n        assert sieve(\"abc1230916*!*&#\") == \"abc1230916*!*&#\"\n        assert sieve(\"ab.c1.--.2-3/09.-1-./6/-.*.-!*&#\") == \"abc1230916*!*&#\"\n        assert sieve(\"/...---.../\") == \"\"\n\n    def test_remove_symbols(self):\n        with patch(\"brutils.cnpj.sieve\") as mock_sieve:\n            # When call remove_symbols, it calls sieve\n            remove_symbols(\"12.345.678/0001-90\")\n            mock_sieve.assert_called()\n\n    def test_display(self):\n        assert display(\"00000000000109\") == \"00.000.000/0001-09\"\n        assert display(\"00000000000000\") is None\n        assert display(\"0000000000000a\") is None\n        assert display(\"0000000000000\") is None\n\n    def test_format_cnpj(self):\n        assert format_cnpj(\"00000000000109\") == \"00.000.000/0001-09\"\n        assert format_cnpj(\"00000000000000\") is None\n        assert format_cnpj(\"0000000000000a\") is None\n        assert format_cnpj(\"0000000000000\") is None\n\n    def test_hashdigit(self):\n        assert hashdigit(\"00000000000000\", 13) == 0\n        assert hashdigit(\"00000000000000\", 14) == 0\n        assert hashdigit(\"52513127000292\", 13) == 9\n        assert hashdigit(\"52513127000292\", 14) == 9\n\n    def test_checksum(self):\n        assert checksum(\"00000000000000\") == \"00\"\n        assert checksum(\"52513127000299\") == \"99\"\n\n    def test_validate(self):\n        assert validate(\"34665388000161\")\n        assert not validate(\"52599927000100\")\n        assert not validate(\"00000000000\")\n\n    def test_is_valid(self):\n        assert is_valid(\"34665388000161\")\n        assert not is_valid(\"52599927000100\")\n        assert not is_valid(\"00000000000\")\n\n    def test_generate(self):\n        for i in range(1000):\n            assert validate(generate())\n            assert display(generate()) is not None\n\n\nif __name__ == \"__main__\":\n    main()\n</output>",
+      "extra": {
+        "raw_output": "from itertools import chain\nfrom random import randint\n\n\n# FORMATTING\n############\n\n\ndef sieve(dirty):  # type: (str) -> str\n    \"\"\"\n    Filters out CNPJ formatting symbols. Symbols that are not used\n    in the CNPJ formatting are left unfiltered on purpose so that\n    if fails other tests, because their presence indicate that the\n    input was somehow corrupted.\n    \"\"\"\n    return \"\".join(filter(lambda char: char not in \"./-\", dirty))\n\n\ndef remove_symbols(dirty):  # type: (str) -> str\n    \"\"\"Alias to the function `sieve`. Better naming.\"\"\"\n    return sieve(dirty)\n\n\ndef display(cnpj):  # type: (str) -> str\n    \"\"\"\n    Will format an adequately formatted numbers-only CNPJ string,\n    adding in standard formatting visual aid symbols for display.\n    \"\"\"\n    if not cnpj.isdigit() or len(cnpj) != 14 or len(set(cnpj)) == 1:\n        return None\n    return \"{}.{}.{}/{}-{}\".format(\n        cnpj[:2], cnpj[2:5], cnpj[5:8], cnpj[8:12], cnpj[12:]\n    )\n\n\ndef format_cnpj(cnpj):  # type: (str) -> str\n    \"\"\"\n    Will format an adequately formatted numbers-only CNPJ string,\n    adding in standard formatting visual aid symbols for display.\n    \"\"\"\n    return display(cnpj)\n\n\n# CALCULATORS\n#############\n\n\ndef hashdigit(cnpj, position):  # type: (str, int) -> int\n    \"\"\"\n    Will compute the given `position` checksum digit for the `cnpj`\n    input. The input needs to contain all elements previous to\n    `position` else computation will yield the wrong result.\n    \"\"\"\n    weightgen = chain(range(position - 8, 1, -1), range(9, 1, -1))\n    val = (\n        sum(int(digit) * weight for digit, weight in zip(cnpj, weightgen)) % 11\n    )\n    return 0 if val < 2 else 11 - val\n\n\ndef checksum(basenum):  # type: (str) -> str\n    \"\"\"\n    Will compute the checksum digits for a given CNPJ base number.\n    `basenum` needs to be a digit-string of adequate length.\n    \"\"\"\n    verifying_digits = str(hashdigit(basenum, 13))\n    verifying_digits += str(hashdigit(basenum + verifying_digits, 14))\n    return \n...[output truncated]...\n    def test_sieve(self):\n        assert sieve(\"00000000000\") == \"00000000000\"\n        assert sieve(\"12.345.678/0001-90\") == \"12345678000190\"\n        assert sieve(\"134..2435/.-1892.-\") == \"13424351892\"\n        assert sieve(\"abc1230916*!*&#\") == \"abc1230916*!*&#\"\n        assert sieve(\"ab.c1.--.2-3/09.-1-./6/-.*.-!*&#\") == \"abc1230916*!*&#\"\n        assert sieve(\"/...---.../\") == \"\"\n\n    def test_remove_symbols(self):\n        with patch(\"brutils.cnpj.sieve\") as mock_sieve:\n            # When call remove_symbols, it calls sieve\n            remove_symbols(\"12.345.678/0001-90\")\n            mock_sieve.assert_called()\n\n    def test_display(self):\n        assert display(\"00000000000109\") == \"00.000.000/0001-09\"\n        assert display(\"00000000000000\") is None\n        assert display(\"0000000000000a\") is None\n        assert display(\"0000000000000\") is None\n\n    def test_format_cnpj(self):\n        assert format_cnpj(\"00000000000109\") == \"00.000.000/0001-09\"\n        assert format_cnpj(\"00000000000000\") is None\n        assert format_cnpj(\"0000000000000a\") is None\n        assert format_cnpj(\"0000000000000\") is None\n\n    def test_hashdigit(self):\n        assert hashdigit(\"00000000000000\", 13) == 0\n        assert hashdigit(\"00000000000000\", 14) == 0\n        assert hashdigit(\"52513127000292\", 13) == 9\n        assert hashdigit(\"52513127000292\", 14) == 9\n\n    def test_checksum(self):\n        assert checksum(\"00000000000000\") == \"00\"\n        assert checksum(\"52513127000299\") == \"99\"\n\n    def test_validate(self):\n        assert validate(\"34665388000161\")\n        assert not validate(\"52599927000100\")\n        assert not validate(\"00000000000\")\n\n    def test_is_valid(self):\n        assert is_valid(\"34665388000161\")\n        assert not is_valid(\"52599927000100\")\n        assert not is_valid(\"00000000000\")\n\n    def test_generate(self):\n        for i in range(1000):\n            assert validate(generate())\n            assert display(generate()) is not None\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "returncode": 0,
+        "timestamp": 1787973354.7286286,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The output was truncated. Let me see the full cnpj.py file, especially the is_valid function.\n\n```mswea_bash_command\ncd /brutils-python && sed -n '60,120p' brutils/cnpj.py\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && sed -n '60,120p' brutils/cnpj.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-84e8cb8ba4f9f903",
+          "created": 1787973354,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The output was truncated. Let me see the full cnpj.py file, especially the is_valid function.\n\n```mswea_bash_command\ncd /brutils-python && sed -n '60,120p' brutils/cnpj.py\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 64,
+            "prompt_tokens": 3963,
+            "total_tokens": 4027,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973355.7593062
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n\ndef checksum(basenum):  # type: (str) -> str\n    \"\"\"\n    Will compute the checksum digits for a given CNPJ base number.\n    `basenum` needs to be a digit-string of adequate length.\n    \"\"\"\n    verifying_digits = str(hashdigit(basenum, 13))\n    verifying_digits += str(hashdigit(basenum + verifying_digits, 14))\n    return verifying_digits\n\n\n# OPERATIONS\n############\n\n\ndef validate(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cnpj` match it's base number. Input should be a digit\n    string of proper length.\n    \"\"\"\n    if not cnpj.isdigit() or len(cnpj) != 14 or len(set(cnpj)) == 1:\n        return False\n    return all(\n        hashdigit(cnpj, i + 13) == int(v) for i, v in enumerate(cnpj[12:])\n    )\n\n\ndef is_valid(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cnpj` match it's base number. Input should be a digit\n    string of proper length.\n    Using this method name to match with the js library  api.\n    Using the same method to ensure backwards compatibility.\n    \"\"\"\n    return validate(cnpj)\n\n\ndef generate(branch=1):  # type: (int) -> str\n    \"\"\"\n    Generates a random valid CNPJ digit string. An optional branch\n    number parameter can be given, it defaults to 1.\n    \"\"\"\n    branch %= 10000\n    branch += int(branch == 0)\n    branch = str(branch).zfill(4)\n    base = str(randint(0, 99999999)).zfill(8) + branch\n    while len(set(base)) == 1:\n        base = str(randint(0, 99999999)).zfill(8) + branch\n    return base + checksum(base)\n</output>",
+      "extra": {
+        "raw_output": "\ndef checksum(basenum):  # type: (str) -> str\n    \"\"\"\n    Will compute the checksum digits for a given CNPJ base number.\n    `basenum` needs to be a digit-string of adequate length.\n    \"\"\"\n    verifying_digits = str(hashdigit(basenum, 13))\n    verifying_digits += str(hashdigit(basenum + verifying_digits, 14))\n    return verifying_digits\n\n\n# OPERATIONS\n############\n\n\ndef validate(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cnpj` match it's base number. Input should be a digit\n    string of proper length.\n    \"\"\"\n    if not cnpj.isdigit() or len(cnpj) != 14 or len(set(cnpj)) == 1:\n        return False\n    return all(\n        hashdigit(cnpj, i + 13) == int(v) for i, v in enumerate(cnpj[12:])\n    )\n\n\ndef is_valid(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cnpj` match it's base number. Input should be a digit\n    string of proper length.\n    Using this method name to match with the js library  api.\n    Using the same method to ensure backwards compatibility.\n    \"\"\"\n    return validate(cnpj)\n\n\ndef generate(branch=1):  # type: (int) -> str\n    \"\"\"\n    Generates a random valid CNPJ digit string. An optional branch\n    number parameter can be given, it defaults to 1.\n    \"\"\"\n    branch %= 10000\n    branch += int(branch == 0)\n    branch = str(branch).zfill(4)\n    base = str(randint(0, 99999999)).zfill(8) + branch\n    while len(set(base)) == 1:\n        base = str(randint(0, 99999999)).zfill(8) + branch\n    return base + checksum(base)\n",
+        "returncode": 0,
+        "timestamp": 1787973355.938604,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me look at the CPF implementation to understand the pattern for handling non-string inputs, since the PR references the CPF test as a base.\n\n```mswea_bash_command\ncd /brutils-python && cat brutils/cpf.py && echo \"=====TEST CPF=====\" && cat tests/test_cpf.py\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && cat brutils/cpf.py && echo \"=====TEST CPF=====\" && cat tests/test_cpf.py"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-a38842cb7bfeea6d",
+          "created": 1787973355,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me look at the CPF implementation to understand the pattern for handling non-string inputs, since the PR references the CPF test as a base.\n\n```mswea_bash_command\ncd /brutils-python && cat brutils/cpf.py && echo \"=====TEST CPF=====\" && cat tests/test_cpf.py\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 76,
+            "prompt_tokens": 4529,
+            "total_tokens": 4605,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973357.157723
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nfrom random import randint\n\n\n# FORMATTING\n############\n\n\ndef sieve(dirty):  # type: (str) -> str\n    \"\"\"\n    Filters out CPF formatting symbols.\n\n    Symbols that are not used in the CPF formatting are left\n    unfiltered on purpose so that if fails other tests,\n    because their presence indicate that the input was somehow corrupted.\n    \"\"\"\n\n    return \"\".join(filter(lambda char: char not in \".-\", dirty))\n\n\ndef remove_symbols(dirty):  # type: (str) -> str\n    \"\"\"Alias to the function `sieve`. Better naming.\"\"\"\n    return sieve(dirty)\n\n\ndef display(cpf):  # type: (str) -> str\n    \"\"\"\n    Format an adequately formatted numbers-only CPF string,\n    adding in standard formatting visual aid symbols for display.\n    Backcompatibility for Version 1.0.1.\n    \"\"\"\n\n    if not cpf.isdigit() or len(cpf) != 11 or len(set(cpf)) == 1:\n        return None\n\n    return \"{}.{}.{}-{}\".format(cpf[:3], cpf[3:6], cpf[6:9], cpf[9:])\n\n\ndef format_cpf(cpf):  # type: (str) -> str\n    \"\"\"\n    Format an adequately formatted numbers-only CPF string,\n    Returns a cpf formatted with standard visual aid symbols.\n    Returns None if cpf is invalid.\n    \"\"\"\n\n    if not is_valid(cpf):\n        return None\n\n    return \"{}.{}.{}-{}\".format(cpf[:3], cpf[3:6], cpf[6:9], cpf[9:])\n\n\n# OPERATIONS\n############\n\n\ndef validate(cpf):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cpf` match it's base number. Input should be a digit\n    string of proper length.\n\n    Source: https://www.geradorcpf.com/algoritmo_do_cpf.htm\n    Backcompatibility for Version 1.0.1.\n    \"\"\"\n\n    if not cpf.isdigit() or len(cpf) != 11 or len(set(cpf)) == 1:\n        return False\n\n    return all(_hashdigit(cpf, i + 10) == int(v) for i, v in enumerate(cpf[9:]))\n\n\ndef is_valid(cpf):  # type: (str) -> bool\n    \"\"\"\n    Evaluates that cpf is String and calls validate.\n    \"\"\"\n\n    return isinstance(cpf, str) and validate(cpf)\n\n\ndef generate():  # type: () -> str\n    \"\"\"Generates a r\n...[output truncated]...\n        # Checks if function is_valid_cpf is called\n        mock_is_valid.assert_called_once_with(\"11144477735\")\n\n        with patch(\"brutils.cpf.is_valid\", return_value=False) as mock_is_valid:\n            # When cpf isn't valid, returns None\n            assert format_cpf(\"11144477735\") is None\n\n    def test_validate(self):\n        assert validate(\"52513127765\")\n        assert validate(\"52599927765\")\n        assert not validate(\"00000000000\")\n\n    def test_is_valid(self):\n        # When cpf is not string, returns False\n        assert not is_valid(1)\n\n        # When cpf's len is different of 11, returns False\n        assert not is_valid(\"1\")\n\n        # When cpf does not contain only digits, returns False\n        assert not is_valid(\"1112223334-\")\n\n        # When CPF has only the same digit, returns false\n        assert not is_valid(\"11111111111\")\n\n        # When rest_1 is lt 2 and the 10th digit is not 0, returns False\n        assert not is_valid(\"11111111215\")\n\n        # When rest_1 is gte 2 and the 10th digit is not (11 - rest), returns False\n        assert not is_valid(\"11144477705\")\n\n        # When rest_2 is lt 2 and the 11th digit is not 0, returns False\n        assert not is_valid(\"11111111204\")\n\n        # When rest_2 is gte 2 and the 11th digit is not (11 - rest), returns False\n        assert not is_valid(\"11144477732\")\n\n        # When cpf is valid\n        assert is_valid(\"11144477735\")\n        assert is_valid(\"11111111200\")\n\n    def test_generate(self):\n        for _ in range(10_000):\n            assert validate(generate())\n            assert display(generate()) is not None\n\n    def test__hashdigit(self):\n        assert _hashdigit(\"000000000\", 10) == 0\n        assert _hashdigit(\"0000000000\", 11) == 0\n        assert _hashdigit(\"52513127765\", 10) == 6\n        assert _hashdigit(\"52513127765\", 11) == 5\n\n    def test_checksum(self):\n        assert _checksum(\"000000000\") == \"00\"\n        assert _checksum(\"525131277\") == \"65\"\n\n\nif __name__ == \"__main__\":\n    main()\n</output>",
+      "extra": {
+        "raw_output": "from random import randint\n\n\n# FORMATTING\n############\n\n\ndef sieve(dirty):  # type: (str) -> str\n    \"\"\"\n    Filters out CPF formatting symbols.\n\n    Symbols that are not used in the CPF formatting are left\n    unfiltered on purpose so that if fails other tests,\n    because their presence indicate that the input was somehow corrupted.\n    \"\"\"\n\n    return \"\".join(filter(lambda char: char not in \".-\", dirty))\n\n\ndef remove_symbols(dirty):  # type: (str) -> str\n    \"\"\"Alias to the function `sieve`. Better naming.\"\"\"\n    return sieve(dirty)\n\n\ndef display(cpf):  # type: (str) -> str\n    \"\"\"\n    Format an adequately formatted numbers-only CPF string,\n    adding in standard formatting visual aid symbols for display.\n    Backcompatibility for Version 1.0.1.\n    \"\"\"\n\n    if not cpf.isdigit() or len(cpf) != 11 or len(set(cpf)) == 1:\n        return None\n\n    return \"{}.{}.{}-{}\".format(cpf[:3], cpf[3:6], cpf[6:9], cpf[9:])\n\n\ndef format_cpf(cpf):  # type: (str) -> str\n    \"\"\"\n    Format an adequately formatted numbers-only CPF string,\n    Returns a cpf formatted with standard visual aid symbols.\n    Returns None if cpf is invalid.\n    \"\"\"\n\n    if not is_valid(cpf):\n        return None\n\n    return \"{}.{}.{}-{}\".format(cpf[:3], cpf[3:6], cpf[6:9], cpf[9:])\n\n\n# OPERATIONS\n############\n\n\ndef validate(cpf):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cpf` match it's base number. Input should be a digit\n    string of proper length.\n\n    Source: https://www.geradorcpf.com/algoritmo_do_cpf.htm\n    Backcompatibility for Version 1.0.1.\n    \"\"\"\n\n    if not cpf.isdigit() or len(cpf) != 11 or len(set(cpf)) == 1:\n        return False\n\n    return all(_hashdigit(cpf, i + 10) == int(v) for i, v in enumerate(cpf[9:]))\n\n\ndef is_valid(cpf):  # type: (str) -> bool\n    \"\"\"\n    Evaluates that cpf is String and calls validate.\n    \"\"\"\n\n    return isinstance(cpf, str) and validate(cpf)\n\n\ndef generate():  # type: () -> str\n    \"\"\"Generates a r\n...[output truncated]...\n        # Checks if function is_valid_cpf is called\n        mock_is_valid.assert_called_once_with(\"11144477735\")\n\n        with patch(\"brutils.cpf.is_valid\", return_value=False) as mock_is_valid:\n            # When cpf isn't valid, returns None\n            assert format_cpf(\"11144477735\") is None\n\n    def test_validate(self):\n        assert validate(\"52513127765\")\n        assert validate(\"52599927765\")\n        assert not validate(\"00000000000\")\n\n    def test_is_valid(self):\n        # When cpf is not string, returns False\n        assert not is_valid(1)\n\n        # When cpf's len is different of 11, returns False\n        assert not is_valid(\"1\")\n\n        # When cpf does not contain only digits, returns False\n        assert not is_valid(\"1112223334-\")\n\n        # When CPF has only the same digit, returns false\n        assert not is_valid(\"11111111111\")\n\n        # When rest_1 is lt 2 and the 10th digit is not 0, returns False\n        assert not is_valid(\"11111111215\")\n\n        # When rest_1 is gte 2 and the 10th digit is not (11 - rest), returns False\n        assert not is_valid(\"11144477705\")\n\n        # When rest_2 is lt 2 and the 11th digit is not 0, returns False\n        assert not is_valid(\"11111111204\")\n\n        # When rest_2 is gte 2 and the 11th digit is not (11 - rest), returns False\n        assert not is_valid(\"11144477732\")\n\n        # When cpf is valid\n        assert is_valid(\"11144477735\")\n        assert is_valid(\"11111111200\")\n\n    def test_generate(self):\n        for _ in range(10_000):\n            assert validate(generate())\n            assert display(generate()) is not None\n\n    def test__hashdigit(self):\n        assert _hashdigit(\"000000000\", 10) == 0\n        assert _hashdigit(\"0000000000\", 11) == 0\n        assert _hashdigit(\"52513127765\", 10) == 6\n        assert _hashdigit(\"52513127765\", 11) == 5\n\n    def test_checksum(self):\n        assert _checksum(\"000000000\") == \"00\"\n        assert _checksum(\"525131277\") == \"65\"\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "returncode": 0,
+        "timestamp": 1787973357.3426478,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now I understand the pattern. The CPF's `is_valid` checks `isinstance(cpf, str)` before calling `validate`. The CNPJ's `is_valid` just calls `validate` directly without checking if input is a string. The PR wants me to make `is_valid` handle non-string inputs gracefully (returning False instead of raising AttributeError).\n\nLet me update the CNPJ `is_valid` to match the CPF pattern.\n\n```mswea_bash_command\ncd /brutils-python && python -c \"from brutils.cnpj import is_valid; print(is_valid(1))\"\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && python -c \"from brutils.cnpj import is_valid; print(is_valid(1))\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-a8334f7deb2e79bd",
+          "created": 1787973357,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now I understand the pattern. The CPF's `is_valid` checks `isinstance(cpf, str)` before calling `validate`. The CNPJ's `is_valid` just calls `validate` directly without checking if input is a string. The PR wants me to make `is_valid` handle non-string inputs gracefully (returning False instead of raising AttributeError).\n\nLet me update the CNPJ `is_valid` to match the CPF pattern.\n\n```mswea_bash_command\ncd /brutils-python && python -c \"from brutils.cnpj import is_valid; print(is_valid(1))\"\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 136,
+            "prompt_tokens": 5918,
+            "total_tokens": 6054,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973359.395238
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>1</returncode>\n<output>\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/brutils-python/brutils/cnpj.py\", line 96, in is_valid\n    return validate(cnpj)\n  File \"/brutils-python/brutils/cnpj.py\", line 81, in validate\n    if not cnpj.isdigit() or len(cnpj) != 14 or len(set(cnpj)) == 1:\nAttributeError: 'int' object has no attribute 'isdigit'\n</output>",
+      "extra": {
+        "raw_output": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/brutils-python/brutils/cnpj.py\", line 96, in is_valid\n    return validate(cnpj)\n  File \"/brutils-python/brutils/cnpj.py\", line 81, in validate\n    if not cnpj.isdigit() or len(cnpj) != 14 or len(set(cnpj)) == 1:\nAttributeError: 'int' object has no attribute 'isdigit'\n",
+        "returncode": 1,
+        "timestamp": 1787973359.8196297,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Confirmed the issue. Now let me update the `is_valid` function in cnpj.py to check `isinstance(cnpj, str)` like the CPF does.\n\n```mswea_bash_command\ncd /brutils-python && python - <<'EOF'\nimport re\nwith open('brutils/cnpj.py') as f:\n    content = f.read()\n\nold = '''def is_valid(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cnpj` match it's base number. Input should be a digit\n    string of proper length.\n    Using this method name to match with the js library  api.\n    Using the same method to ensure backwards compatibility.\n    \"\"\"\n    return validate(cnpj)'''\n\nnew = '''def is_valid(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Evaluates that cnpj is String and calls validate.\n    Using this method name to match with the js library api.\n    Using the same method to ensure backwards compatibility.\n    \"\"\"\n    return isinstance(cnpj, str) and validate(cnpj)'''\n\nassert old in content\ncontent = content.replace(old, new)\nwith open('brutils/cnpj.py', 'w') as f:\n    f.write(content)\nprint(\"done\")\nEOF\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && python - <<'EOF'\nimport re\nwith open('brutils/cnpj.py') as f:\n    content = f.read()\n\nold = '''def is_valid(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cnpj` match it's base number. Input should be a digit\n    string of proper length.\n    Using this method name to match with the js library  api.\n    Using the same method to ensure backwards compatibility.\n    \"\"\"\n    return validate(cnpj)'''\n\nnew = '''def is_valid(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Evaluates that cnpj is String and calls validate.\n    Using this method name to match with the js library api.\n    Using the same method to ensure backwards compatibility.\n    \"\"\"\n    return isinstance(cnpj, str) and validate(cnpj)'''\n\nassert old in content\ncontent = content.replace(old, new)\nwith open('brutils/cnpj.py', 'w') as f:\n    f.write(content)\nprint(\"done\")\nEOF"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-99544a19762c7cc3",
+          "created": 1787973359,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Confirmed the issue. Now let me update the `is_valid` function in cnpj.py to check `isinstance(cnpj, str)` like the CPF does.\n\n```mswea_bash_command\ncd /brutils-python && python - <<'EOF'\nimport re\nwith open('brutils/cnpj.py') as f:\n    content = f.read()\n\nold = '''def is_valid(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Returns whether or not the verifying checksum digits of the\n    given `cnpj` match it's base number. Input should be a digit\n    string of proper length.\n    Using this method name to match with the js library  api.\n    Using the same method to ensure backwards compatibility.\n    \"\"\"\n    return validate(cnpj)'''\n\nnew = '''def is_valid(cnpj):  # type: (str) -> bool\n    \"\"\"\n    Evaluates that cnpj is String and calls validate.\n    Using this method name to match with the js library api.\n    Using the same method to ensure backwards compatibility.\n    \"\"\"\n    return isinstance(cnpj, str) and validate(cnpj)'''\n\nassert old in content\ncontent = content.replace(old, new)\nwith open('brutils/cnpj.py', 'w') as f:\n    f.write(content)\nprint(\"done\")\nEOF\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 306,
+            "prompt_tokens": 6198,
+            "total_tokens": 6504,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973364.0388148
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndone\n</output>",
+      "extra": {
+        "raw_output": "done\n",
+        "returncode": 0,
+        "timestamp": 1787973364.249663,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: Now let me verify the fix works for the various edge cases.\n\n```mswea_bash_command\ncd /brutils-python && python -c \"\nfrom brutils.cnpj import is_valid\nprint('non-string int:', is_valid(1))\nprint('non-string list:', is_valid([1,2,3]))\nprint('wrong length:', is_valid('123'))\nprint('non-digits:', is_valid('1234567890123a'))\nprint('valid:', is_valid('34665388000161'))\nprint('invalid:', is_valid('52599927000100'))\n\"\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && python -c \"\nfrom brutils.cnpj import is_valid\nprint('non-string int:', is_valid(1))\nprint('non-string list:', is_valid([1,2,3]))\nprint('wrong length:', is_valid('123'))\nprint('non-digits:', is_valid('1234567890123a'))\nprint('valid:', is_valid('34665388000161'))\nprint('invalid:', is_valid('52599927000100'))\n\""
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-89f6e6066d51f57c",
+          "created": 1787973364,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: Now let me verify the fix works for the various edge cases.\n\n```mswea_bash_command\ncd /brutils-python && python -c \"\nfrom brutils.cnpj import is_valid\nprint('non-string int:', is_valid(1))\nprint('non-string list:', is_valid([1,2,3]))\nprint('wrong length:', is_valid('123'))\nprint('non-digits:', is_valid('1234567890123a'))\nprint('valid:', is_valid('34665388000161'))\nprint('invalid:', is_valid('52599927000100'))\n\"\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 166,
+            "prompt_tokens": 6536,
+            "total_tokens": 6702,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973366.714021
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\nnon-string int: False\nnon-string list: False\nwrong length: False\nnon-digits: False\nvalid: True\ninvalid: False\n</output>",
+      "extra": {
+        "raw_output": "non-string int: False\nnon-string list: False\nwrong length: False\nnon-digits: False\nvalid: True\ninvalid: False\n",
+        "returncode": 0,
+        "timestamp": 1787973366.9356654,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: All edge cases work correctly. Let me run the existing test suite to make sure nothing is broken.\n\n```mswea_bash_command\ncd /brutils-python && python -m pytest tests/test_cnpj.py -q 2>&1 | tail -20\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && python -m pytest tests/test_cnpj.py -q 2>&1 | tail -20"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-86145c78cedd8488",
+          "created": 1787973366,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: All edge cases work correctly. Let me run the existing test suite to make sure nothing is broken.\n\n```mswea_bash_command\ncd /brutils-python && python -m pytest tests/test_cnpj.py -q 2>&1 | tail -20\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 66,
+            "prompt_tokens": 6763,
+            "total_tokens": 6829,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973368.159509
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\n.........                                                                [100%]\n9 passed in 0.09s\n</output>",
+      "extra": {
+        "raw_output": ".........                                                                [100%]\n9 passed in 0.09s\n",
+        "returncode": 0,
+        "timestamp": 1787973368.9519126,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: All tests pass. Let me create the patch and verify it.\n\n```mswea_bash_command\ncd /brutils-python && git diff -- brutils/cnpj.py > patch.txt && cat patch.txt\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "cd /brutils-python && git diff -- brutils/cnpj.py > patch.txt && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-908f84ef6b8758e4",
+          "created": 1787973368,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: All tests pass. Let me create the patch and verify it.\n\n```mswea_bash_command\ncd /brutils-python && git diff -- brutils/cnpj.py > patch.txt && cat patch.txt\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 54,
+            "prompt_tokens": 6878,
+            "total_tokens": 6932,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973370.029455
+      }
+    },
+    {
+      "role": "user",
+      "content": "<returncode>0</returncode>\n<output>\ndiff --git a/brutils/cnpj.py b/brutils/cnpj.py\nindex efca157..1d1a8f5 100644\n--- a/brutils/cnpj.py\n+++ b/brutils/cnpj.py\n@@ -87,13 +87,11 @@ def validate(cnpj):  # type: (str) -> bool\n \n def is_valid(cnpj):  # type: (str) -> bool\n     \"\"\"\n-    Returns whether or not the verifying checksum digits of the\n-    given `cnpj` match it's base number. Input should be a digit\n-    string of proper length.\n-    Using this method name to match with the js library  api.\n+    Evaluates that cnpj is String and calls validate.\n+    Using this method name to match with the js library api.\n     Using the same method to ensure backwards compatibility.\n     \"\"\"\n-    return validate(cnpj)\n+    return isinstance(cnpj, str) and validate(cnpj)\n \n \n def generate(branch=1):  # type: (int) -> str\n</output>",
+      "extra": {
+        "raw_output": "diff --git a/brutils/cnpj.py b/brutils/cnpj.py\nindex efca157..1d1a8f5 100644\n--- a/brutils/cnpj.py\n+++ b/brutils/cnpj.py\n@@ -87,13 +87,11 @@ def validate(cnpj):  # type: (str) -> bool\n \n def is_valid(cnpj):  # type: (str) -> bool\n     \"\"\"\n-    Returns whether or not the verifying checksum digits of the\n-    given `cnpj` match it's base number. Input should be a digit\n-    string of proper length.\n-    Using this method name to match with the js library  api.\n+    Evaluates that cnpj is String and calls validate.\n+    Using this method name to match with the js library api.\n     Using the same method to ensure backwards compatibility.\n     \"\"\"\n-    return validate(cnpj)\n+    return isinstance(cnpj, str) and validate(cnpj)\n \n \n def generate(branch=1):  # type: (int) -> str\n",
+        "returncode": 0,
+        "timestamp": 1787973370.2306714,
+        "exception_info": ""
+      }
+    },
+    {
+      "content": "THOUGHT: The patch looks correct and only contains the intended change to `brutils/cnpj.py`. The fix makes `is_valid` handle non-string inputs gracefully (returning False instead of raising AttributeError), consistent with the CPF implementation. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n</parameter>",
+      "role": "assistant",
+      "tool_calls": null,
+      "function_call": null,
+      "provider_specific_fields": {
+        "refusal": null,
+        "reasoning": null
+      },
+      "extra": {
+        "actions": [
+          {
+            "command": "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt"
+          }
+        ],
+        "response": {
+          "id": "chatcmpl-8cea43769f048237",
+          "created": 1787973370,
+          "model": "coder-next",
+          "object": "chat.completion",
+          "system_fingerprint": "vllm-0.27.1-ac9de9ec",
+          "choices": [
+            {
+              "finish_reason": "stop",
+              "index": 0,
+              "message": {
+                "content": "THOUGHT: The patch looks correct and only contains the intended change to `brutils/cnpj.py`. The fix makes `is_valid` handle non-string inputs gracefully (returning False instead of raising AttributeError), consistent with the CPF implementation. Let me submit.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && cat patch.txt\n```\n</parameter>",
+                "role": "assistant",
+                "tool_calls": null,
+                "function_call": null,
+                "provider_specific_fields": {
+                  "refusal": null,
+                  "reasoning": null
+                }
+              },
+              "provider_specific_fields": {
+                "token_ids": null,
+                "stop_reason": null,
+                "routed_experts": null
+              }
+            }
+          ],
+          "usage": {
+            "completion_tokens": 81,
+            "prompt_tokens": 7207,
+            "total_tokens": 7288,
+            "completion_tokens_details": null,
+            "prompt_tokens_details": null
+          },
+          "moderation": null,
+          "service_tier": null,
+          "prompt_logprobs": null,
+          "prompt_token_ids": null,
+          "prompt_text": null,
+          "kv_transfer_params": null,
+          "ec_transfer_params": null,
+          "metrics": null
+        },
+        "cost": 0.0,
+        "timestamp": 1787973371.6694956
+      }
+    },
+    {
+      "role": "exit",
+      "content": "diff --git a/brutils/cnpj.py b/brutils/cnpj.py\nindex efca157..1d1a8f5 100644\n--- a/brutils/cnpj.py\n+++ b/brutils/cnpj.py\n@@ -87,13 +87,11 @@ def validate(cnpj):  # type: (str) -> bool\n \n def is_valid(cnpj):  # type: (str) -> bool\n     \"\"\"\n-    Returns whether or not the verifying checksum digits of the\n-    given `cnpj` match it's base number. Input should be a digit\n-    string of proper length.\n-    Using this method name to match with the js library  api.\n+    Evaluates that cnpj is String and calls validate.\n+    Using this method name to match with the js library api.\n     Using the same method to ensure backwards compatibility.\n     \"\"\"\n-    return validate(cnpj)\n+    return isinstance(cnpj, str) and validate(cnpj)\n \n \n def generate(branch=1):  # type: (int) -> str\n",
+      "extra": {
+        "exit_status": "Submitted",
+        "submission": "diff --git a/brutils/cnpj.py b/brutils/cnpj.py\nindex efca157..1d1a8f5 100644\n--- a/brutils/cnpj.py\n+++ b/brutils/cnpj.py\n@@ -87,13 +87,11 @@ def validate(cnpj):  # type: (str) -> bool\n \n def is_valid(cnpj):  # type: (str) -> bool\n     \"\"\"\n-    Returns whether or not the verifying checksum digits of the\n-    given `cnpj` match it's base number. Input should be a digit\n-    string of proper length.\n-    Using this method name to match with the js library  api.\n+    Evaluates that cnpj is String and calls validate.\n+    Using this method name to match with the js library api.\n     Using the same method to ensure backwards compatibility.\n     \"\"\"\n-    return validate(cnpj)\n+    return isinstance(cnpj, str) and validate(cnpj)\n \n \n def generate(branch=1):  # type: (int) -> str\n"
+      }
+    }
+  ],
+  "trajectory_format": "mini-swe-agent-1.1"
+}
