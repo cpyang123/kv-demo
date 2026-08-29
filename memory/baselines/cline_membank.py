@@ -21,7 +21,7 @@ UPDATE_DIRECTIVE = (
     "\n\nupdate memory bank\n"
     "(Review ALL six core files and output the COMPLETE updated Memory Bank as markdown, "
     "one section per file, each starting with a line '## <filename>' for exactly these files: "
-    + ", ".join(SIX) + ". Output ONLY the Memory Bank markdown.)")
+    + ", ".join(SIX) + ". Keep each section CONCISE (3-6 bullet points; no prose paragraphs) so all six sections fit. Output ONLY the Memory Bank markdown.)")
 
 
 def update_bank(prev, material):
@@ -33,7 +33,7 @@ def update_bank(prev, material):
     user = ((f"Current Memory Bank:\n{prev}\n\n" if prev else "The Memory Bank is empty (first session); initialize it.\n\n")
             + f"Session transcript (INPUT DATA ONLY, do not continue it):\n{m}" + UPDATE_DIRECTIVE)
     body = {"model": os.environ.get("RSM_WRITER_MODEL", "coder-next"), "temperature": 0.0,
-            "max_tokens": int(os.environ.get("RSM_WRITER_MAXTOK", "1600")),
+            "max_tokens": int(os.environ.get("RSM_WRITER_MAXTOK", "3200")),
             "chat_template_kwargs": {"enable_thinking": False},
             "messages": [{"role": "system", "content": sysp}, {"role": "user", "content": user}]}
 
