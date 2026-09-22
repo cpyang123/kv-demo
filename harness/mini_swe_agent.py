@@ -16,6 +16,13 @@ from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel  #
 import memory                                                           # noqa: E402 (import 即注册全部插件)
 from memory import base as mem_base                                     # noqa: E402
 
+# 2026-09-22 精确 token 台账(DESIGN_inline_ledger_0921.md §B):**默认关**。
+# 不设 RSM_LEDGER=1 时 _LEDGER 恒为 None,下面每一处钩子都是 `if _LEDGER:` 的假分支,
+# 模块甚至不被 import —— 旧臂的请求字节/采样/控制流/输出字段逐字不变(keep-original A/B)。
+_LEDGER = None
+if os.environ.get("RSM_LEDGER") == "1":
+    from harness import ledger as _LEDGER                                   # noqa: E402
+
 INFRA_EXC = ("Timeout", "Connection", "ServiceUnavailable", "InternalServer",
              "APIError", "RateLimit", "BadGateway")   # 真基建故障:中止链留待重跑
 CONFIG_EXC = ("Authentication", "NotFound", "PermissionDenied")   # 配置错:FATAL 杀整个 lane,人必须看见(P0-2b)
@@ -127,7 +134,23 @@ class ChainRunner:
         self.env = RepoEnv(image=str(self.sif), host_repo=str(self.host),
                            repo_path=self.repo_path, prefix=self.prefix)
         self.mem = mem_base.REGISTRY[mode]() if mode in mem_base.REGISTRY else None
+        # 2026-09-15:把链号挂到 layer 上。打乱便签臂(v5shuf)要按链做固定 seed 的错位映射,
+        # 而 layer 的构造签名是零参的(base.py 的接入合同),不改合同就只能挂属性。
+        # 对**所有既有臂是惰性的**:没有任何一个旧 layer 读这两个属性。
+        if self.mem is not None:
+            self.mem.chain_id = chain.get("continuous_id") or out.name.split("__")[0]
+            self.mem.task_idx = 0
+            # 2026-09-17:把本链 out 目录也挂上(rbankj 的写手调用台账 writer_calls.jsonl 落在这)。
+            # 同样对**所有既有臂惰性**:没有任何一个旧 layer 读这个属性。
+            self.mem.out_dir = out
         self.run_tag = run_id
+        # 2026-09-06:每题独立 base 的语料(SCB)。链上带 per_task_commit=true 时,
+        # 每题先 reset 到本题自己的 commit_hash —— 因为两题是同仓库的两个独立上游实例,
+        # 后题的 base_commit 在真实历史上已经包含前题的修复,不该继承前题的工作区改动。
+        # ChainSWE 的链不带这个键,走原路径,行为逐字不变。
+        self.per_task = bool(chain.get("per_task_commit"))
+        self.task_oid = None
+        if _LEDGER: _LEDGER.install()
 
     # -- 基线臂工作区协议 --
     def reset_workspace(self):
@@ -203,13 +226,25 @@ class ChainRunner:
                         atomic_results(self.out, recs)
                         self.reset_workspace()   # 清掉 3way 失败残留,别让污染级联到下一题(P2)
                         continue
+                if self.per_task:
+                    tgt = spec.get("commit_hash") or ""
+                    r = self.env.raw(f"git reset -q --hard {tgt} && git clean -fdq")
+                    if r["returncode"] != 0:
+                        recs.append(self._blank_rec(idx, spec,
+                                    error=f"per-task reset to {tgt[:12]} failed: {r['output'][-200:]}"))
+                        atomic_results(self.out, recs)
+                        continue
+                    self.task_oid = self._head()
                 task_base = self._head()         # 本题起点(=base+前题 harness commits)
                 t_wrap0 = time.time()
+                if _LEDGER: _LEDGER.begin_session(run_id=self.run_tag, chain=self.c.get("continuous_id"), slot=idx, instance=spec["swebench_instance_id"], arm=self.arm, out=self.out)
                 if self.mem:
+                    self.mem.task_idx = idx          # 2026-09-15:见 __init__ 的说明,旧臂不读
                     w = self.mem.wrap(spec["problem_statement"], self.env)
                 else:
                     w = mem_base.WrapResult(spec["problem_statement"])
                 wrap_secs = round(time.time() - t_wrap0, 1)
+                if _LEDGER: _LEDGER.note_injected(w)
                 mk = dict(self.model_kwargs)
                 if ep_file:
                     mk["api_base"] = G.wait_endpoint(ep_file)
@@ -238,6 +273,11 @@ class ChainRunner:
                         raise ChainAbort(err) from e           # F9:基建故障不固化
                     else:
                         exit_s = f"error:{name}"
+                # 2026-09-22 会话内自写便签(v5inline):**位置 = 会话末尾、判分之前**,越早发命中率越高;
+                # 便签轮不执行任何命令、不经过 agent.query(),n_steps 逐字不变。旧臂 getattr -> False。
+                if self.mem is not None and getattr(self.mem, "inline_self_write", False):
+                    from harness import inline_note as INL
+                    self.mem.pending_inline = INL.run_inline_turn(agent=agent, model=model, exit_status=exit_s, out=self.out, chain=getattr(self.mem, "chain_id", None), order=idx, instance=spec["swebench_instance_id"], arm=self.arm, run_id=self.run_tag)
                 rec = {"order": idx, "instance": spec["swebench_instance_id"], "arm": self.arm,
                        "proto": K.PROTO_TAG,
                        "exit": exit_s, "secs": round(time.time() - t0, 1), "wrap_secs": wrap_secs,
@@ -264,7 +304,8 @@ class ChainRunner:
                     return recs
                 g = G.grade(self.host, self.sif, self.repo_path, self.prefix,
                             self.tasks, idx, self.out.name, run_tag=self.run_tag,
-                            base_oid=self.base_oid)
+                            base_oid=(self.task_oid if self.per_task else self.base_oid),
+                            only_k=self.per_task)
                 # F7 补:agent 错误不被判分结果的 error=None 覆盖,两侧都有则拼接
                 g["error"] = "; ".join(x for x in (rec.get("error"), g.get("error")) if x) or None
                 rec.update(g)
@@ -278,6 +319,9 @@ class ChainRunner:
                         rec["mem_nodes"] = self.mem.write(spec, self._material(agent, delta),
                                                           delta, self.env)
                         rec["mem_write_secs"] = round(time.time() - t_add0, 1)
+                        # 2026-09-17:插件回填结果字段(rbankj 的 rb_judge/rb_judge_agree)。
+                        # 旧臂没有 rec_extra 属性 -> getattr 取 None -> 空 dict,行为逐字不变。
+                        rec.update(getattr(self.mem, "rec_extra", None) or {})
                 except (ImportError, ModuleNotFoundError, NameError, AttributeError) as e:
                     print(f"FATAL memory-layer config error, killing lane: {e}", flush=True)
                     raise SystemExit(2)   # F17:缺包/缺名=代码配置错,人必须看见,不得静默退化成 seq
@@ -289,6 +333,8 @@ class ChainRunner:
                     mem_zero_streak = mem_zero_streak + 1 if rec.get("mem_write_error") else 0
                     if mem_zero_streak >= 3:
                         raise ChainAbort("memory writer errored 3x in a row (endpoint down?)")
+                if _LEDGER: _LEDGER.harvest_actor(agent)
+                if _LEDGER: rec.update(_LEDGER.session_summary())
                 recs.append(rec)
                 atomic_results(self.out, recs)
                 print(f"  [{self.c['continuous_id']}|{self.arm}] pos{idx} "

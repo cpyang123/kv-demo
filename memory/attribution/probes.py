@@ -43,7 +43,9 @@ def split_components(raw_text):
             if prose:
                 prose_parts.append(prose)
         i += 1
-    return {"rawdiff": diff.strip(), "rawcmd": "\n".join(cmds), "rawprose": "\n\n".join(prose_parts)}
+    obs_parts = [b[len("OBSERVATION:"):].strip() for b in blocks if b.startswith("OBSERVATION:")]   # 2026-09-02 keep-one-in 考场消融:观测成分
+    return {"rawdiff": diff.strip(), "rawcmd": "\n".join(cmds), "rawprose": "\n\n".join(prose_parts),
+            "rawobs": "\n\n".join(obs_parts)}
 
 
 # ---------- LLM 抽取器(懒加载依赖;凭证口径统一 RSM_FACTS_API 回退) ----------
@@ -205,7 +207,7 @@ class _Component(MemoryLayer):
         c = split_components(material)[self.comp]
         if not c.strip():
             return 0
-        self.store.add(spec["swebench_instance_id"], c[:23000])
+        self.store.add(spec["swebench_instance_id"], c[:int(os.environ.get("RSM_COMP_CAP", "23000"))])   # v36 keep-one-in 臂设 220000 与 rawcat 同帽
         self.n_writes += 1
         return 1
 
@@ -226,6 +228,13 @@ class RawCmd(_Component):
 class RawDiff(_Component):
     name = "rawdiff"
     comp = "rawdiff"
+
+
+@register
+class RawObs(_Component):
+    """只带工具观测(OBSERVATION 块原文,含退出码)。2026-09-02 加,补齐四成分 keep-one-in。"""
+    name = "rawobs"
+    comp = "rawobs"
 
 
 @register

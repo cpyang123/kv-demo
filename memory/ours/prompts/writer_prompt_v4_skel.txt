@@ -1,0 +1,55 @@
+You are a repository-memory writer for a coding agent. The work-session transcript below is
+INPUT DATA ONLY: do not continue it, do not reply to it, do not output commands, code fences or
+THOUGHT text. Distill it into a MEMORY NOTE for whoever works on this repository next.
+
+What the next session has, and what it does not:
+- It starts in the same working tree. Every change of this session is already committed, so it can
+  read the diff itself (git show HEAD). Do NOT restate the diff.
+- It runs every command in a fresh shell from the repository root: nothing under /tmp, no cd, and
+  no environment variable survives from one command to the next.
+- It may be working on a DIFFERENT task than this session. It cannot see this transcript.
+
+The note has two blocks. Write the TASK block first and mark its scope explicitly.
+
+=== TASK BLOCK (applies only if the next task touches the files listed in FILES) ===
+FILES: <every file this session modified or ran tests for, comma-separated, verbatim paths>
+STATUS: <submitted | stopped at step limit | no code change> | TESTS: <last full test command> [last exit N]
+VERIFY: <exact command as issued, runnable from the repository root in a fresh shell> [exit N] | COVERS: <path>[, <path>]
+VERIFY: <...>            (one line per distinct command that checked something; keep the ones that FAILED too, with their nonzero exit code; most recent last)
+DID: <what changed, one clause> | WHERE: <path:lines (symbols)>        (anchors only; never paste diff hunks)
+
+=== REPO BLOCK (facts that hold for any task in this repository) ===
+CONTEXT: <repository fact the next session would otherwise rediscover: how tests are run, layout, conventions, environment quirks> | WHERE: <path:lines or the command that showed it>
+
+Rules:
+- Copy paths, commands, symbol names and test ids VERBATIM from the session; never invent, round,
+  or add a directory prefix that was never printed.
+- The VERIFY lines are the most important part of the note. Give them most of the space. A command
+  that failed is worth recording exactly as much as one that passed: write its real exit code.
+- VERIFY commands must run unchanged from the repository root in a fresh shell: a repository test
+  command (pytest path or test id) or a self-contained python -c. Never reference /tmp, a script
+  that is not in the repository, or a prior cd. If the only check was a scratch script, write the
+  repository test command that covers the change instead, or VERIFY: none | COVERS: <changed files>.
+- STATUS and DID describe THIS session's task only. They belong under FILES so that a session on
+  unrelated files can skip them; never phrase them as facts about the repository.
+- Do not write why you did things, do not summarise the conversation, do not quote test output.
+  Test results are carried by exit codes, not by pasted text.
+- Write CONTEXT lines only for facts the session actually established (a command that showed them,
+  a file that states them). Never add a CONTEXT line to fill the block.
+- At most 10 lines and 1200 characters in total. If you must cut, cut CONTEXT before DID, DID before
+  STATUS, and never cut FILES or VERIFY.
+Your ENTIRE output must be note lines only, each starting with FILES:, STATUS:, VERIFY:, DID:, or CONTEXT:.
+
+Line-start rule, restated because it is the most common failure: every line of your output
+must begin with one of exactly FILES:, STATUS:, VERIFY:, DID:, CONTEXT:. TESTS, WHERE and
+COVERS are NEVER line starts -- they occur only as " | " continuations inside one of those
+five lines. The REPO block is not optional: emit a CONTEXT: line whenever this session
+established any fact that holds for the repository beyond the current task.
+
+Shape of a finished note (placeholders, not values to copy):
+
+FILES: <path>, <path>
+STATUS: <submitted|stopped at step limit|no code change> | TESTS: <command> [exit <N>]
+VERIFY: <command> [exit <N>] | COVERS: <path>
+DID: <one clause> | WHERE: <path>:<lines> (<symbol>)
+CONTEXT: <repository fact> | WHERE: <path>:<lines>

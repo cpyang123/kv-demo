@@ -31,7 +31,8 @@ os.environ.setdefault("MSWEA_SINGULARITY_EXECUTABLE", "apptainer")
 
 import yaml  # noqa: E402  (副作用设置之后)
 
-CHAIN_DATA = ROOT / "data/chainswe_data.jsonl"
+# 2026-09-06:外部数据集(SCB)用同一套链抽象,只换语料文件;不传环境变量时行为逐字不变。
+CHAIN_DATA = pathlib.Path(os.environ.get("RSM_CHAIN_DATA", str(ROOT / "data/chainswe_data.jsonl")))
 CHAINS_DIR = ROOT / "data/chains"
 LINK_FLAGS = ROOT / "data/task_link_flags_v2.json"
 SIF_DIR = pathlib.Path(os.environ.get("RSM_SIF_DIR", _SIF_DEF))
@@ -82,7 +83,18 @@ def model_config(model=None, api_key_config=None, served_name="coder-next", endp
         mk = {"api_key": key, "max_tokens": K.API_MAX_TOKENS,
               "reasoning_effort": "low", "num_retries": 10}
         return model, mk, None
-    mk = {"api_key": "EMPTY", "temperature": 0.0, "max_tokens": K.LOCAL_MAX_TOKENS}
+    # 2026-09-15 actor9 GRPO(env 门控,默认 0.0 = 与历史逐字相同):GRPO 需要同一 prompt 上的
+    # 多条**采样**轨迹,温度 0 只有 vLLM 批处理抖动、不是策略分布的样本。只有显式设
+    # RSM_ACTOR_TEMPERATURE 才偏离旧行为;RSM_ACTOR_SEED 同理(不设=不传)。
+    _t = os.environ.get("RSM_ACTOR_TEMPERATURE")
+    mk = {"api_key": "EMPTY", "temperature": (float(_t) if _t else 0.0),
+          "max_tokens": K.LOCAL_MAX_TOKENS}
+    _tp = os.environ.get("RSM_ACTOR_TOP_P")
+    if _tp:
+        mk["top_p"] = float(_tp)
+    _sd = os.environ.get("RSM_ACTOR_SEED")
+    if _sd:
+        mk["seed"] = int(_sd)
     if os.environ.get("RSM_ACTOR_NOTHINK") == "1":
         # v3 修正包(env 门控,默认关):actor 关思考,对齐 Qwen 官方 SWE-bench 非思考口径
         # 与 MemOp/SWE-MeM 的非思考 Instruct actor;经 extra_body 直达 vLLM,litellm 不剥

@@ -121,7 +121,8 @@ def is_gradable(spec):
 
 # ---------- 判分主体 ----------
 
-def grade(host_repo, sif, repo_path, prefix, tasks, k, out_name, run_tag="", base_oid=None):
+def grade(host_repo, sif, repo_path, prefix, tasks, k, out_name, run_tag="", base_oid=None,
+          only_k=False):
     """官方语义:一次性拷贝里重置测试文件 → 累积打 test_patch 1..k → 跑第 k 题 test_cmds。
     返回统一 schema(键恒在):resolved / gradable / f2p / p2p_failed / p2p_missing /
     collection_errors / error / error_stage。F13:任何异常都收敛为 error 行,不上抛。"""
@@ -139,15 +140,18 @@ def grade(host_repo, sif, repo_path, prefix, tasks, k, out_name, run_tag="", bas
         genv = RepoEnv(image=str(sif), host_repo=str(gdir), repo_path=repo_path, prefix=prefix)
         # F3:逐文件重置到链首 base(commit 协议下 HEAD 含前题改动,不能作测试重置锚)
         ref = base_oid or "HEAD"
+        # only_k(SCB 等每题独立 base 的语料):两题是相隔数十天的两个独立实例,
+        # 前题 test_patch 在后题的树上根本不适用,累积打必然失败。此时只处理第 k 题。
+        tscope = [tasks[k - 1]] if only_k else tasks[:k]
         tfiles = []
-        for b in tasks[:k]:
+        for b in tscope:
             tfiles += patch_file_list(b["test_patch"])
         for f in sorted(set(tfiles)):
             genv.raw(f"if git cat-file -e {ref}:'{f}' 2>/dev/null; then git checkout -q {ref} -- '{f}'; else rm -f '{f}'; fi")
         # 累积应用 test_patch 1..k(3way 容错)。F14:空 test_patch = 该任务无测试变更
         # (64/304 任务如此,F2P 测试已在仓库里),跳过而非报错——旧管线把它当 apply 失败,
         # 全臂堵死 81 个 pos>=2 判分槽位(L38/U43)。
-        for b in tasks[:k]:
+        for b in tscope:
             if not (b.get("test_patch") or "").strip():
                 continue
             ok, err = apply_patch(genv, b["test_patch"], f"tp{b['order']}")

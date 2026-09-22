@@ -6,3 +6,4 @@ from .baselines import mem0_official    # noqa: F401
 from .baselines import memop_prompt     # noqa: F401
 from .baselines import reasoningbank    # noqa: F401
 from .baselines import cline_membank    # noqa: F401
+from .ours import inline_note          # noqa: F401  (2026-09-22 v5inline;纯注册,不改任何旧臂)

@@ -28,7 +28,8 @@ class WrapResult:
 
 
 MEM_WRAP_HEAD = "<memory_context>\nNotes from earlier work sessions on this repository:\n"
-STORE_FIFO_CHARS = 30000
+import os as _os
+STORE_FIFO_CHARS = int(_os.environ.get("RSM_STORE_FIFO_CHARS", "30000"))   # 注入库 FIFO 帽:注入 = 最近 30K 字符(rawcat 等原始臂的真实注入量;2026-09-02 核实主表 rawcat 中位 23K/最大 30K)
 
 
 @dataclass
