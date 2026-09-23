@@ -26,6 +26,7 @@ import json
 import math
 import os
 import pathlib
+import sys
 import time
 
 LEDGER_VER = 1
@@ -46,6 +47,7 @@ _CALL_IDX = {"n": 0}
 _FORCED = []          # role_ctx 栈
 _INJ = {"tokens": None, "src": None}
 _INSTALLED = {"done": False}
+_SKIP = {"litellm": 0, "actor_endpoint": 0}   # SDK 补丁让路的次数(见 _caller_is_litellm)
 _PREV_PROMPT = {}     # (role, endpoint) -> 上一条请求的 prompt 文本(cached 估计器用)
 
 
@@ -90,6 +92,15 @@ class role_ctx:
 JUDGE_SYS_PREFIX = "You are a helpful assistant that judges"
 READER_SYS_PREFIX = "You are the memory reader of a coding agent."
 STATENOTE_SYS_PREFIX = "You are a repo-state note-taker for a software-engineering agent."
+# openai SDK 上的抽取通路 = memory/attribution/probes.py 的两个 call site(mem0 两条抽取分支
+# + statenote)。**必须逐条列名**:"走 SDK" 本身不再是判据,否则没有 usage 的调用会掉进
+# memory_extract(2026-09-22 smoke 判据 ④ 的病因)。
+EXTRACT_SYS_PREFIXES = (
+    STATENOTE_SYS_PREFIX,
+    "You are a smart memory manager",              # mem0 记忆更新
+    "You are an Assistant Information Organizer",  # mem0 抽取:agent 分支
+    "You are a Personal Information Organizer",    # mem0 抽取:个人分支
+)
 
 _WRITER_HASHES = None
 
@@ -119,6 +130,10 @@ def _host(url):
     return (url or "").split("//")[-1].split("/")[0]
 
 
+endpoint_host = _host        # 别处(inline_note.py)统一用它写 endpoint,免得同一台服务器
+                             # 在 actor 行上写成 "127.0.0.1:8013/v1"、在 urllib 行上写成 "127.0.0.1:8013"
+
+
 def role_of(system_text, endpoint="", sdk=False):
     """按序匹配;未命中 -> other(绝不丢账)。"""
     if _FORCED:
@@ -134,10 +149,17 @@ def role_of(system_text, endpoint="", sdk=False):
     if (rd and endpoint and rd in endpoint
             and rd not in (_host(os.environ.get("RSM_API_BASE")), _host(os.environ.get("RSM_WRITER_API")))):
         return "memory_retrieve"
-    if sdk or s.startswith(STATENOTE_SYS_PREFIX):
+    if s.startswith(EXTRACT_SYS_PREFIXES):
         return "memory_extract"
     if _h64(s) in writer_prompt_hashes():
         return "note_writer"
+    # 2026-09-22 修:SDK 通路只有"端点确实是另起的抽取器"才算 memory_extract。
+    # 旧规则是 `if sdk or …`,于是任何经 openai SDK 下去的调用都被扣在 memory_extract 头上;
+    # litellm 的 actor 请求正是这样一条,smoke 里每条 actor 调用都多出一条影子行(判据 ④)。
+    if sdk:
+        fa = _host(os.environ.get("RSM_FACTS_API"))
+        if fa and endpoint and fa in endpoint and fa != _host(os.environ.get("RSM_API_BASE")):
+            return "memory_extract"
     return "other"
 
 
@@ -152,7 +174,9 @@ def _lcp_cached(role, endpoint, prompt_text, prompt_tokens):
     取最长公共前缀 -> 估 token -> 向下取整到 block 边界 -> min(lcp, prev_prompt_tokens)。"""
     key = (role, endpoint)
     prev = _PREV_PROMPT.get(key)
-    _PREV_PROMPT[key] = (prompt_text, prompt_tokens)
+    # prompt_tokens 可能是 None(响应没带 usage):存估计值,否则下一条的 min(lcp, ptok or 0)
+    # 恒为 0,估计器整条通路静默失效(2026-09-22 修)。
+    _PREV_PROMPT[key] = (prompt_text, prompt_tokens if prompt_tokens else _tok_est(prompt_text))
     if not prev or not prompt_text:
         return 0
     ptext, ptok = prev
@@ -180,7 +204,13 @@ def record(role, body=None, usage=None, endpoint="", latency_s=None, note_turn=F
         if not isinstance(det, dict):
             det = {k: getattr(det, k, None) for k in ("cached_tokens", "created_cache_tokens")}
         cached = det.get("cached_tokens")
-        if cached is None:
+        if pt is None:
+            # 响应根本没带 usage(litellm 的 raw-response 包装就是):prompt 只能按字符估,
+            # cached **不估**(没有可信的基准),明确记 none —— 绝不假装有读数。
+            if prompt_text is None:
+                prompt_text = "".join(m.get("content") or "" for m in body.get("messages", []))
+            cached, src = 0, "none"
+        elif cached is None:
             if prompt_text is None:
                 prompt_text = "".join(m.get("content") or "" for m in body.get("messages", []))
             cached = _lcp_cached(role, endpoint, prompt_text, pt)
@@ -279,6 +309,31 @@ def _patch_urllib():
     _u.urlopen = wrapped
 
 
+def _caller_is_litellm(max_depth=40):
+    """调用栈里有 litellm 帧 -> 这条 SDK 调用是 actor(或便签轮)发的。
+
+    actor 走 `litellm.completion` -> openai SDK,账由**会话末的 `harvest_actor`** 出;
+    便签轮走 `model._query` -> 同一条路,账由 `harness/inline_note.py` 的显式 `record` 出。
+    两者都已有人认领,SDK 补丁必须让路,否则同一条调用记两次
+    (2026-09-22 smoke:每条 actor 调用多出一条无 usage 的影子行,还被扣到 memory_extract 头上)。
+    `memory/attribution/probes.py` 的抽取器直接用 openai SDK、栈里没有 litellm,照记不误。
+    """
+    f = sys._getframe()
+    for _ in range(max_depth):
+        f = f.f_back
+        if f is None:
+            return False
+        n = f.f_globals.get("__name__") or ""
+        if n == "litellm" or n.startswith("litellm."):
+            return True
+    return False
+
+
+def skipped():
+    """SDK 补丁让路的计数(单测与 smoke 用)。"""
+    return dict(_SKIP)
+
+
 def _patch_openai():
     try:
         from openai.resources.chat import completions as _c
@@ -290,8 +345,13 @@ def _patch_openai():
     orig = cls.create
 
     def wrapped(self, *a, **kw):
+        mine = not _caller_is_litellm()          # 先看栈,再发请求(发完栈就不一样了)
+        if not mine:
+            _SKIP["litellm"] += 1                # actor / 便签轮:别人已经认领,这里不记
         t0 = time.time()
         r = orig(self, *a, **kw)
+        if not mine:
+            return r
         try:
             msgs = kw.get("messages") or []
             sysm = next((m.get("content") or "" for m in msgs if m.get("role") == "system"), "")
@@ -299,7 +359,18 @@ def _patch_openai():
             usage = {}
             if u is not None:
                 usage = u.model_dump() if hasattr(u, "model_dump") else dict(u)
-            ep = str(os.environ.get("RSM_FACTS_API") or "").split("//")[-1]
+            # 端点取客户端自己的 base_url(抽取器可能不经 RSM_FACTS_API);取不到再回落到 env。
+            ep = ""
+            try:
+                ep = _host(str(getattr(getattr(self, "_client", None), "base_url", "") or ""))
+            except Exception:
+                ep = ""
+            ep = ep or _host(os.environ.get("RSM_FACTS_API"))
+            if not usage and ep and ep == _host(os.environ.get("RSM_API_BASE")):
+                # 兜底(litellm 帧没认出来时):打在 actor 那台服务器上、又没有 usage 的 SDK 调用
+                # 只可能是 actor 自己的请求包装,它的账由 harvest_actor 出。
+                _SKIP["actor_endpoint"] += 1
+                return r
             fr = None
             try:
                 fr = r.choices[0].finish_reason
@@ -337,7 +408,7 @@ def harvest_actor(agent, served=None):
             ch = (resp.get("choices") or [{}])[0]
             record("actor", body={"model": resp.get("model"),
                                   "max_tokens": None, "temperature": None},
-                   usage=u, endpoint=str(os.environ.get("RSM_API_BASE", "")).split("//")[-1],
+                   usage=u, endpoint=_host(os.environ.get("RSM_API_BASE", "")),
                    finish_reason=(ch or {}).get("finish_reason"), model=resp.get("model"),
                    prompt_text="")
             n += 1

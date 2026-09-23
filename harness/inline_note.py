@@ -152,7 +152,7 @@ def run_inline_turn(agent, model, exit_status, out, chain, order, instance, arm,
     res = {"note": "", "mode": "fallback_separate", "reason": "unset", "retries": 0,
            "chars": 0, "prompt_tokens": None, "cached_tokens": None, "prompt_sha": sha,
            "n_note_turns": 0, "writer_env_seen": False, "est_prompt_tokens": None,
-           "prev_actor_prompt_tokens": None}
+           "prev_actor_prompt_tokens": None, "suffix_tokens": None}
     try:
         if os.environ.get("RSM_WRITER_API") or os.environ.get("RSM_WRITER_MODEL"):
             res["writer_env_seen"] = True
@@ -204,10 +204,14 @@ def run_inline_turn(agent, model, exit_status, out, chain, order, instance, arm,
             with L.role_ctx("note_writer", note_turn=True):
                 L.record("note_writer", body={"model": d.get("model"), "max_tokens": maxtok,
                                               "messages": api_msgs},
-                         usage=u, endpoint=str(os.environ.get("RSM_API_BASE", "")).split("//")[-1],
+                         usage=u, endpoint=L.endpoint_host(os.environ.get("RSM_API_BASE", "")),
                          latency_s=time.time() - t0, note_turn=True,
                          finish_reason=ch.get("finish_reason"), model=d.get("model"),
                          prompt_text="")
+            if res["prompt_tokens"] and prev_pt:
+                # 便签轮真正的新增前缀 = 最后一条 assistant + 最后一条 observation + 指令。
+                # 它有界(不随会话长度涨),是 ③ 唯一与服务器状态无关的判据。
+                res["suffix_tokens"] = int(res["prompt_tokens"]) - int(prev_pt)
             note, ok = parse_note(raw)
             if ok:
                 res.update(note=note, mode="inline", reason="ok", retries=attempt,

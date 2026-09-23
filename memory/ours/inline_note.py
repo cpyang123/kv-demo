@@ -46,6 +46,10 @@ class V5Inline(ShuffleWrapMixin, V4KNote):
             "note_prompt_tokens": p.get("prompt_tokens"),
             "note_cached_tokens": p.get("cached_tokens"),
             "note_prompt_sha": p.get("prompt_sha"),
+            # 2026-09-22:③ 的判据从"命中率 ≥ 0.95"改成"新增后缀有界 + cached 追得上上一条
+            # actor prompt",两者都要这两个数,放进 results.jsonl 省得回头拼 calls.jsonl。
+            "note_prev_actor_prompt_tokens": p.get("prev_actor_prompt_tokens"),
+            "note_suffix_tokens": p.get("suffix_tokens"),
             "note_writer_env_seen": bool(p.get("writer_env_seen")),
         }
         if not note.strip():

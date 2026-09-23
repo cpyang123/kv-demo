@@ -10,6 +10,9 @@ Covers DESIGN_inline_ledger_0921.md §C.2:
      with RSM_LEDGER unset and with RSM_LEDGER=1 (the ledger only watches)
   6. results.jsonl key set unchanged: every line the patch added to mini_swe_agent.py is guarded
   7. registry: v5inline exists, v5knote is untouched
+  8. one row per call: the openai-SDK patch must stand aside for litellm-originated calls
+     (the actor and the note turn are booked by harvest_actor / the note turn's explicit record),
+     and a call without usage must never fall through to memory_extract  [2026-09-22 fix]
 
 Run:  python test_inline_ledger.py            (plain runner)
       python -m pytest test_inline_ledger.py  (if pytest is installed)
@@ -259,6 +262,11 @@ def test_role_rules():
         (PR.STATENOTE_SYS, "", False, "memory_extract"),                              # statenote
         ("You are a smart memory manager", "", True, "memory_extract"),               # mem0 via openai SDK
         ("something nobody registered", "", False, "other"),
+        # 2026-09-22 修:"走 SDK" 本身不再是 memory_extract 的判据。一条没登记过的 SDK 调用
+        # (litellm 的 actor 请求就长这样:没有 usage、没有 system 提示)必须落到 other。
+        ("", "", True, "other"),
+        ("You are a helpful assistant that can interact multiple times with a computer shell",
+         "127.0.0.1:8013", True, "other"),                                     # actor 的 system
     ]
     for sysm, ep, sdk, want in cases:
         got = L.role_of(sysm, endpoint=ep, sdk=sdk)
@@ -275,6 +283,70 @@ def test_role_rules():
     # explicit context wins
     with L.role_ctx("note_writer", note_turn=True):
         check("role_ctx forces", L.role_of(RB.JUDGE_SYS) == "note_writer")
+
+
+def test_no_double_capture():
+    """一条调用只许记一行(2026-09-22 smoke 判据 ④ 的回归测试)。
+
+    actor 走 `litellm.completion` -> openai SDK。SDK 补丁若照记不误,就与会话末的
+    `harvest_actor` 撞车:每条 actor 调用两行,其中影子行没有 usage、还掉进 memory_extract
+    (smoke 里 seq 臂 342 actor + 342 memory_extract,而 seq 根本没有记忆系统)。
+    这里用 httpx 的 MockTransport 跑**真的** openai SDK 往返,不需要服务器。
+    """
+    import httpx
+    from openai import OpenAI
+    payload = {"id": "1", "object": "chat.completion", "created": 1, "model": "m",
+               "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"},
+                            "finish_reason": "stop"}],
+               "usage": {"prompt_tokens": 100, "completion_tokens": 5, "total_tokens": 105,
+                         "prompt_tokens_details": {"cached_tokens": 64}}}
+    os.environ["RSM_LEDGER"] = "1"
+    os.environ["RSM_API_BASE"] = "http://127.0.0.1:9/v1"
+    _clear_env("RSM_FACTS_API", "RSM_READER_API")
+    L.install()
+    L.begin_session(run_id="t", chain="c", slot=1, instance="i", arm="a", out=None)
+    tr = httpx.MockTransport(lambda req: httpx.Response(200, json=payload))
+    cli = OpenAI(api_key="EMPTY", base_url="http://127.0.0.1:9/v1",
+                 http_client=httpx.Client(transport=tr))
+    before = L.skipped()["litellm"]
+    cli.chat.completions.create(model="m", messages=[
+        {"role": "system", "content": "You are a smart memory manager"},
+        {"role": "user", "content": "x"}])
+    rows = L.rows()
+    check("probes SDK call is booked once", len(rows) == 1, f"rows={len(rows)}")
+    check("probes SDK call role", rows and rows[0]["role"] == "memory_extract",
+          rows[0]["role"] if rows else "")
+    check("endpoint taken from the client", rows and rows[0]["endpoint"] == "127.0.0.1:9",
+          rows[0]["endpoint"] if rows else "")
+    check("usage read through the SDK object",
+          rows and (rows[0]["prompt_tokens"], rows[0]["cached_tokens"], rows[0]["cached_src"])
+          == (100, 64, "usage"))
+    import litellm
+    litellm.suppress_debug_info = True
+    litellm.completion(model="openai/coder-next", messages=[{"role": "user", "content": "hi"}],
+                       api_base="http://127.0.0.1:9/v1", api_key="EMPTY", client=cli)
+    check("litellm (actor) call is not booked by the SDK patch", len(L.rows()) == 1,
+          f"rows={len(L.rows())}")
+    check("…and it is counted as stood aside", L.skipped()["litellm"] == before + 1,
+          str(L.skipped()))
+    # 兜底规则:actor 那台服务器上没有 usage 的 SDK 调用也不记
+    L.begin_session(run_id="t", chain="c", slot=1, instance="i", arm="a", out=None)
+    nousage = {k: v for k, v in payload.items() if k != "usage"}
+    cli2 = OpenAI(api_key="EMPTY", base_url="http://127.0.0.1:9/v1",
+                  http_client=httpx.Client(transport=httpx.MockTransport(
+                      lambda req: httpx.Response(200, json=nousage))))
+    n0 = L.skipped()["actor_endpoint"]
+    cli2.chat.completions.create(model="m", messages=[{"role": "user", "content": "x"}])
+    check("usage-less call on the actor endpoint is stood aside",
+          L.skipped()["actor_endpoint"] == n0 + 1 and not L.rows(), str(L.skipped()))
+    # 没有 usage 的调用(端点不是 actor 的):记账但 cached_src 明确 none,role 不许是 memory_extract
+    os.environ["RSM_API_BASE"] = "http://127.0.0.1:8013/v1"
+    L.begin_session(run_id="t", chain="c", slot=1, instance="i", arm="a", out=None)
+    row = L.record("other", body={"messages": [{"role": "user", "content": "x" * 320}]},
+                   usage={}, endpoint="127.0.0.1:9")
+    check("no usage -> cached_src none", row and row["cached_src"] == "none" and row["cached_tokens"] == 0)
+    check("no usage -> prompt estimated", row and row["prompt_tokens"] == 100, str(row))
+    _clear_env("RSM_LEDGER")
 
 
 # ---------------------------------------------------------------- 5. request bytes unchanged
@@ -486,6 +558,7 @@ def test_results_key_set_unchanged():
                 keys |= set(json.loads(l))
         new_keys = {"note_write_mode", "note_write_reason", "n_note_turns", "note_chars",
                     "note_retries", "note_prompt_tokens", "note_cached_tokens", "note_prompt_sha",
+                    "note_prev_actor_prompt_tokens", "note_suffix_tokens",
                     "tok_raw_total", "tok_cacheaware_total", "cost_usd_priced", "injected_tokens",
                     "ledger_ver", "price_table_sha"}
         check("no new key leaked into an old run", not (keys & new_keys), str(keys & new_keys))
@@ -502,7 +575,8 @@ def test_ledger_off_is_inert():
 
 def main():
     for fn in (test_parser, test_state_machine, test_rollup, test_cached_estimator,
-               test_injected_tokens, test_role_rules, test_request_bytes_unchanged,
+               test_injected_tokens, test_role_rules, test_no_double_capture,
+               test_request_bytes_unchanged,
                test_urlopen_wrapper_transparent, test_runner_patch_is_guarded,
                test_registry, test_layer_write_paths, test_runner_module_switch,
                test_results_key_set_unchanged, test_ledger_off_is_inert):
