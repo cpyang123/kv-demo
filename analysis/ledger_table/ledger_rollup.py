@@ -22,6 +22,7 @@
 import collections
 import glob
 import json
+import os
 import pathlib
 import statistics as st
 import sys
@@ -49,9 +50,21 @@ sys.argv = [sys.argv[0]] + _argv
 R, DEFRUN, _CH, LABEL = T3.R, T3.DEFRUN, T3._CH, T3.LABEL
 ORDERS = (2, 3)
 
+# 2026-10-02 last-attempt rule (default). Why the default changed: a chain that is killed and restarted rewrites
+# results.jsonl, which therefore keeps only the final attempt of each slot (resolve, steps), but calls.jsonl is
+# append-only and keeps the calls of the aborted attempt under the same slot number. Summing every call of a slot
+# put tokens of an attempt that was never graded into the token columns of that session (ft1_ledger: 34 of 14322
+# slots in 12 chain directories). The token columns must describe the same attempt as resolve and steps, so a slot
+# now counts only the calls of its LAST attempt. Attempt marker: call_idx. harness/ledger.py resets the counter in
+# begin_session() and increments it on every recorded call, so each attempt is a gap-free run 1..n; a new attempt
+# starts wherever call_idx fails to increase over the previous row of the same slot (this also holds if an attempt's
+# first row were lost). Timestamps are not used, because actor rows are harvested in one burst at session end.
+# RSM_ROLLUP_KEEP_ABORTED=1 restores the old behaviour (every attempt summed).
+KEEP_ABORTED = os.environ.get("RSM_ROLLUP_KEEP_ABORTED") == "1"
+
 
 def read_calls(d):
-    """<chain_out>/calls.jsonl -> {slot: [row, ...]}。"""
+    """<chain_out>/calls.jsonl -> {slot: [row, ...]}(默认只留每个 slot 最后一次 attempt 的调用,见上)。"""
     out = collections.defaultdict(list)
     f = pathlib.Path(d) / "calls.jsonl"
     if not f.exists():
@@ -64,7 +77,12 @@ def read_calls(d):
             r = json.loads(l)
         except Exception:
             continue
-        out[r.get("slot")].append(r)
+        rows = out[r.get("slot")]
+        ci = r.get("call_idx")
+        if (not KEEP_ABORTED and rows and isinstance(ci, int) and isinstance(rows[-1].get("call_idx"), int)
+                and ci <= rows[-1]["call_idx"]):
+            rows.clear()                         # a new attempt of this slot begins: drop the earlier attempt
+        rows.append(r)
     return out
 
 

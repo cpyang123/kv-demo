@@ -27,8 +27,32 @@ Ledger fields are read by train-corpus/ledger_rollup.py's own load_arm (calls.js
 chainswe/harness/ledger.py summarize); no ledger logic is copied here. Resolve, steps and the linked flag come
 from exam_table3.load, as in Table 2. Visual conventions (\\sdsub, \\mmc, change tags, groups) are Table 2's,
 imported from make_main_avg.py.
+
+2026-10-02 split layout and replay pinning (all optional; with none set the output is byte-identical to before):
+  RSM_T3_LAYOUT=split      the 14-column Table 1 layout approved on 10-02. Linked and Unlinked keep Resolve and Steps;
+                           Overall = Resolve, Steps, Actor K/session, Writer side K/session, Total K/session,
+                           Res/Tok (actor), Res/Tok (total), USD/chain. All token cells are cache-aware (uncached
+                           prompt + completion) per session, read from ledger_rollup.load_arm's per-session summary
+                           (calls.jsonl -> chainswe/harness/ledger.py summarize): Actor = role "actor" (the acting
+                           model's own calls); Writer side = every other summarised role, i.e. note_writer (the
+                           in-session note turn included) + memory_extract + memory_retrieve + judge + other;
+                           Total = tok_cacheaware_total. Actor + Writer side == Total is asserted for every counted
+                           session. Res/Tok (actor) = Overall resolve / Actor K, Res/Tok (total) = Overall resolve /
+                           Total K, each formed per whole-frame replay and then averaged; the paired bootstrap stars
+                           cover Overall Resolve, Steps and both Res/Tok columns. Writer side prints 0 for a row whose
+                           counted sessions made no memory-side call, and carries no change tag. USD prints -- (not
+                           reported in this version, see the Table 1 footnote; the priced figure stays in the .md).
+                           Only the rows Table 1 shows are visible; the other trained-actor rows join the hidden set.
+                           Output goes to table3_ledger_27b_split.{tex,md} unless RSM_T3_OUT is set, so the
+                           hand-merged six-block table3_ledger_full.tex is never overwritten by this mode.
+  RSM_T3_REPLAYS=<json>    {arm: ["_r1", "_r2", ...]} counts only those replays of the listed arms ("_r1" or "" =
+                           the unsuffixed first replay); a key may be the arm directory name or the row key; keys
+                           starting with "_" are comments; arms not listed keep every replay. A pinned replay still
+                           has to be complete to count, and the console warns about any pinned replay that is
+                           missing or incomplete.
+  RSM_T3_OUT=<path prefix> writes <prefix>.tex and <prefix>.md instead of the default basename.
 """
-import sys, pathlib, statistics as st, collections
+import sys, pathlib, statistics as st, collections, json
 import os
 
 # Path handling (analysis/ledger_table copy). Sibling modules are imported from this directory. The repo root is
@@ -86,6 +110,43 @@ PLAIN = dict(MMA.PLAIN, rbankj="ReasoningBank (judge labels)",
              t8inline="Fused v5 (self, in-session), actor prov8d s20")
 NO_TAG = {"seq"}
 
+# 2026-10-02 options (see the docstring); none of them is read unless its env variable is set.
+SPLIT = os.environ.get("RSM_T3_LAYOUT") == "split"
+if os.environ.get("RSM_T3_LAYOUT") not in (None, "", "split"):
+    raise SystemExit(f"RSM_T3_LAYOUT={os.environ['RSM_T3_LAYOUT']!r}: only 'split' is defined")
+# Table 1 (10-02) shows only the in-session trained row; the other trained-actor rows stay in the source, hidden.
+HIDE_SPLIT = HIDE | {"t0seq", "t0note", "t7seq", "t7note", "t8seq", "t8note"}
+HIDDEN = HIDE_SPLIT if SPLIT else HIDE
+
+
+def _norm_suf(s):
+    """replay suffix as make_main_avg.disc returns it: "" for the first replay, "_rN" for the others"""
+    s = str(s).strip()
+    if s in ("", "1", "r1", "_r1"):
+        return ""
+    if s.isdigit():
+        return "_r" + s
+    return s if s.startswith("_") else "_" + s
+
+
+_rp = os.environ.get("RSM_T3_REPLAYS")
+PIN = ({k: {_norm_suf(x) for x in v} for k, v in json.load(open(_rp)).items() if not k.startswith("_")}
+       if _rp else {})
+_unknown = sorted(set(PIN) - {a for _, a in ROWS} - {k for k, _ in ROWS})
+if _unknown:
+    raise SystemExit(f"RSM_T3_REPLAYS: keys match no arm or row of this table: {_unknown}")
+
+
+def pinned(key, arm):
+    """the replay suffixes RSM_T3_REPLAYS allows for this row, or None (every replay)"""
+    return PIN.get(arm, PIN.get(key)) if PIN else None
+
+
+_OUTBASE = os.environ.get("RSM_T3_OUT") or (str(OUT / "table3_ledger_27b_split") if SPLIT else None)
+SPLIT_CHECK = set()                     # split layout: sessions whose Actor + Writer side == Total was checked
+# per-slot metrics averaged over replays; the split layout adds Actor and Writer side (K per session)
+SLOT_M = ("res", "steps", "ca", "raw", "reuse") + (("act", "wside") if SPLIT else ())
+
 
 def chains(fn):
     return {l.strip() for l in open(R / f"data/chains/{fn}") if l.strip()}
@@ -108,14 +169,17 @@ def gather():
             chs = chains(fn)
             denom = 2 * len(chs)
             reps = {}
+            pin = pinned(key, arm)
             for suf in MMA.disc(run, arm):
+                if pin is not None and suf not in pin:
+                    continue                      # RSM_T3_REPLAYS: replay not in the pinned set
                 t3, led = load_half(run, arm + suf, chs)
                 slots = [k for k in t3 if k in led]
                 reps[suf] = dict(t3=t3, led=led, cov=len(slots), complete=len(slots) >= denom,
                                  noledger=sum(1 for v in led.values() if v["src"] != "calls.jsonl"),
                                  est=[v["cached_src_estimated_share"] for v in led.values()
                                       if v.get("cached_src_estimated_share") is not None])
-            info[key][half] = dict(run=run, denom=denom, reps=reps)
+            info[key][half] = dict(run=run, denom=denom, reps=reps, pin=pin)
     return info
 
 
@@ -149,9 +213,21 @@ def analyse(info):
         # reuse = 1 - sum(uncached_prompt) / sum(prompt), in percent.
         pr = led["tok_actor_prompt"] + led["tok_writer_prompt"] + led["tok_memother_prompt"]
         un = led["tok_actor_uncached"] + led["tok_writer_uncached"] + led["tok_memother_uncached"]
-        return dict(res=100.0 * v["res"], steps=v["steps"], ca=led["tok_cacheaware_total"] / 1000,
-                    raw=led["tok_raw_total"] / 1000, reuse=(100.0 * (1 - un / pr) if pr else 0.0),
-                    linked=v["linked"])
+        d = dict(res=100.0 * v["res"], steps=v["steps"], ca=led["tok_cacheaware_total"] / 1000,
+                 raw=led["tok_raw_total"] / 1000, reuse=(100.0 * (1 - un / pr) if pr else 0.0),
+                 linked=v["linked"])
+        if SPLIT:
+            # 2026-10-02 split layout: Actor = role "actor"; Writer side = every other summarised role (note_writer,
+            # in-session note turn included, + memory_extract + memory_retrieve + judge + other), both cache-aware.
+            act = led["tok_actor_uncached"] + led["tok_actor_completion"]
+            side = (led["tok_writer_uncached"] + led["tok_writer_completion"]
+                    + led["tok_memother_uncached"] + led["tok_memother_completion"])
+            if act + side != led["tok_cacheaware_total"]:
+                raise SystemExit(f"ledger split check failed: actor {act} + writer side {side} != "
+                                 f"cache-aware total {led['tok_cacheaware_total']}")
+            SPLIT_CHECK.add(id(led))              # one entry per distinct session summary checked
+            d.update(act=act / 1000, wside=side / 1000)
+        return d
 
     def chain_vals(ss):
         side = sum(s["tok_writer_uncached"] + s["tok_writer_completion"] + s["tok_memother_uncached"]
@@ -163,7 +239,7 @@ def analyse(info):
         out = {}
         for sn, sel in (("L", lambda d: d["linked"]), ("U", lambda d: not d["linked"]), ("O", lambda d: True)):
             ks = [k for k in keys if sel(slotmap[k])]
-            for m in ("res", "steps", "ca", "raw", "reuse"):
+            for m in SLOT_M:
                 vs = [slotmap[k][m] for k in ks]
                 out[(sn, m)] = (st.mean(vs), st.median(vs)) if vs else (None, None)
         for m in ("usd", "side"):
@@ -174,6 +250,9 @@ def analyse(info):
         res, ca, usd = out[("O", "res")][0], out[("O", "ca")][0], out[("O", "usd")][0]
         out[("O", "eff")] = ((res / ca) if res is not None and ca else None, None)
         out[("O", "resusd")] = ((res / usd) if res is not None and usd else None, None)
+        if SPLIT:                                     # Res/Tok (actor): Overall resolve per Actor K
+            act = out[("O", "act")][0]
+            out[("O", "effa")] = ((res / act) if res is not None and act else None, None)
         return out
 
     rows = {}
@@ -187,7 +266,7 @@ def analyse(info):
         sm = {}
         for k in keys:
             vs = [slot_vals(v, led) for v, led in acc[k]]
-            sm[k] = {m: st.mean(x[m] for x in vs) for m in ("res", "steps", "ca", "raw", "reuse")}
+            sm[k] = {m: st.mean(x[m] for x in vs) for m in SLOT_M}
             sm[k]["linked"] = linked[k]
         cm = {c: {m: st.mean(chain_vals(ss)[m] for ss in cacc[c]) for m in ("usd", "side")} for c in chainset}
         main = cellset(sm, cm)
@@ -207,7 +286,7 @@ def analyse(info):
                         cmr[c] = chain_vals(ss)
             if len(smr) == len(keys) and len(cmr) == len(chainset):
                 reps.append(cellset(smr, cmr))
-        for m in ("eff", "resusd"):                       # mean of per-replay ratios, never a ratio of means
+        for m in ("eff", "resusd") + (("effa",) if SPLIT else ()):   # mean of per-replay ratios, never a ratio of means
             vs = [r[("O", m)][0] for r in reps if r[("O", m)][0] is not None]
             main[("O", m)] = (st.mean(vs) if vs else None, None)
         sd = {cm_: (st.stdev([r[cm_][0] for r in reps]) if len(reps) >= 2 else None) for cm_ in main}
@@ -220,12 +299,19 @@ def analyse(info):
         rows[key] = dict(sm=sm, cells={cm_: (main[cm_][0], sd[cm_], main[cm_][1]) for cm_ in main},
                          n_half=n_half, n_whole=len(reps), inline_hit=(st.mean(hits) if hits else None),
                          n_hit=len(hits), est_share=(st.mean(est) if est else None))
+        if SPLIT:
+            # counted replays (whole-frame); wside_zero: no counted session of the row made a memory-side call
+            # (a per-slot mean of non-negative token counts is 0 exactly when every session's count is 0)
+            rows[key]["sufs"] = sorted(sufs, key=lambda s: (len(s), s))
+            rows[key]["wside_zero"] = all(sm[k]["wside"] == 0 for k in keys)
     # 2026-09-29 Peiwen: paired chain-cluster bootstrap vs the no-memory row on Overall Res%, Steps, Res/Tok
+    # (2026-10-02 split layout: Res/Tok (actor) too)
     if "seq" in rows:
         for key in rows:
             if key == "seq":
                 continue
-            rows[key]["ci"] = {m: paired_ci(rows[key]["sm"], rows["seq"]["sm"], keys, m) for m in ("res", "steps", "eff")}
+            rows[key]["ci"] = {m: paired_ci(rows[key]["sm"], rows["seq"]["sm"], keys, m)
+                               for m in ("res", "steps", "eff") + (("effa",) if SPLIT else ())}
     nL = sum(1 for k in keys if per[active[0]][0][k][0][0]["linked"]) if keys else 0
     return dict(full=full, halves=halves, nslots=len(keys), nL=nL, nU=len(keys) - nL,
                 nchains=len(chainset), rows=rows)
@@ -239,6 +325,19 @@ DIG = {"res": 1, "steps": 1, "ca": 1, "raw": 1, "eff": 2, "resusd": 1, "reuse": 
 MED = {"steps", "ca", "raw"}
 TAGM = {"res": "res", "steps": "steps", "ca": "tok", "raw": "tok", "eff": "eff", "resusd": "eff", "reuse": "res",
         "usd": "tok", "side": None}
+# 2026-10-02 split layout (RSM_T3_LAYOUT=split), 14 columns. Linked / Unlinked drop their token column; Overall drops
+# Raw (appendix table tab:rawtok) and the per-chain writer side, and gains Actor, Writer side (per session) and
+# Res/Tok (actor). act / wside / effa = Actor K, Writer side K, Res/Tok (actor); ca is printed as Total.
+# The .md twin keeps the dropped readings (raw, per-chain side, priced USD) for reference.
+BODY_SPLIT = [(s, m) for s in ("L", "U") for m in ("res", "steps")] + \
+    [("O", m) for m in ("res", "steps", "act", "wside", "ca", "effa", "eff", "usd")]
+MD_BODY_SPLIT = BODY_SPLIT + [("O", "raw"), ("O", "side"), ("O", "resusd"), ("O", "reuse")]
+DIG.update(act=1, wside=1, effa=2)
+MED |= {"act", "wside"}
+TAGM.update(act="tok", wside=None, effa="eff")
+if SPLIT:
+    BODY, MD_BODY = BODY_SPLIT, MD_BODY_SPLIT
+NCOL = 14 if SPLIT else 15
 
 HEAD = r"""\begin{table*}[!t]
 \centering
@@ -259,6 +358,36 @@ HEAD = r"""\begin{table*}[!t]
 & {\scriptsize\shortstack{\textbf{Resolve}\\\textbf{(\%)} $\uparrow$}} & {\scriptsize\shortstack{\textbf{Steps}\\\textbf{mean (med.)} $\downarrow$}} & {\scriptsize\shortstack{\textbf{Cache-aware}\\\textbf{K / session} $\downarrow$}}
 & {\scriptsize\shortstack{\textbf{Resolve}\\\textbf{(\%)} $\uparrow$}} & {\scriptsize\shortstack{\textbf{Steps}\\\textbf{mean (med.)} $\downarrow$}} & {\scriptsize\shortstack{\textbf{Cache-aware}\\\textbf{K / session} $\downarrow$}} & {\scriptsize\shortstack{\textbf{Raw}\\\textbf{K / session} $\downarrow$}} & {\scriptsize\shortstack{\textbf{Res/Tok}\\\textbf{(pp per K)} $\uparrow$}} & {\scriptsize\shortstack{\textbf{USD}\\\textbf{/ chain} $\downarrow$}} & {\scriptsize\shortstack{\textbf{Writer side}\\\textbf{K / chain}}} \\"""
 
+# 2026-10-02 split layout header; spacing as in the hand-merged Table 1 (tabcolsep 6pt, arraystretch 0.95). The 12 data
+# columns are 5.4em wide instead of C's 4.8em: with one column fewer, \resizebox would scale the table up by ~5.5% and
+# push the Table 1 float page 11.9pt past the text height; at 5.4em the scale is back to the 09-30 one (0.484 vs 0.488).
+HEAD_SPLIT = r"""\begin{table*}[!t]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}\renewcommand{\arraystretch}{0.95}
+\caption{CAPTION}
+\label{tab:ledger-full}
+\resizebox{\linewidth}{!}{
+\begin{tabular}{l|l|*{2}{>{\centering\arraybackslash}m{5.4em}}|*{2}{>{\centering\arraybackslash}m{5.4em}}|*{8}{>{\centering\arraybackslash}m{5.4em}}}
+\toprule
+\multicolumn{1}{c|}{\multirow{2}{*}{\textbf{Type}}} & \multicolumn{1}{c|}{\multirow{2}{*}{\textbf{Memory layer}}}
+& \multicolumn{2}{c|}{\textbf{Linked} (dependency present)}
+& \multicolumn{2}{c|}{\textbf{Unlinked} (independent)}
+& \multicolumn{8}{c}{\textbf{Overall}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-14}
+\multicolumn{1}{c|}{} & \multicolumn{1}{c|}{}
+& {\scriptsize\shortstack{\textbf{Resolve}\\\textbf{(\%)} $\uparrow$}} & {\scriptsize\shortstack{\textbf{Steps}\\\textbf{mean (med.)} $\downarrow$}}
+& {\scriptsize\shortstack{\textbf{Resolve}\\\textbf{(\%)} $\uparrow$}} & {\scriptsize\shortstack{\textbf{Steps}\\\textbf{mean (med.)} $\downarrow$}}
+& {\scriptsize\shortstack{\textbf{Resolve}\\\textbf{(\%)} $\uparrow$}} & {\scriptsize\shortstack{\textbf{Steps}\\\textbf{mean (med.)} $\downarrow$}} & {\scriptsize\shortstack{\textbf{Actor}\\\textbf{K / session} $\downarrow$}} & {\scriptsize\shortstack{\textbf{Writer side}\\\textbf{K / session}}} & {\scriptsize\shortstack{\textbf{Total}\\\textbf{K / session} $\downarrow$}} & {\scriptsize\shortstack{\textbf{Res/Tok}\\\textbf{(actor)}\\\textbf{pp per K} $\uparrow$}} & {\scriptsize\shortstack{\textbf{Res/Tok}\\\textbf{(total)}\\\textbf{pp per K} $\uparrow$}} & {\scriptsize\shortstack{\textbf{USD}\\\textbf{/ chain} $\downarrow$}} \\"""
+# split layout, column definitions of the footnote (Table 1 wording of 10-02) and the USD sentence of this version
+SPLIT_COLDEF = (r"\emph{Actor} counts the cache-aware tokens (uncached prompt plus completion) of the acting model's "
+                r"own calls in a session. \emph{Writer side} counts the cache-aware tokens of every other call made for "
+                r"memory in that session, namely note writing, extraction, retrieval and judging; it is $0$ for the "
+                r"no-memory and raw-concat rows. \emph{Total} is their sum. \emph{Res/Tok} divides the Overall "
+                r"resolve rate by the Actor tokens or by the Total tokens. Raw token counts are in "
+                r"Appendix~\ref{app:rawtok}. \emph{USD / chain} is not reported in this version, since an "
+                r"open-weight actor has no API price.")
+
 
 BOOT_REPS, BOOT_SEED = 2000, 0
 
@@ -268,13 +397,15 @@ def paired_ci(sa, sb, keys, m):
     Resampling is NM.boot_ci's own (chains as clusters, 2000 resamples, seed 0); its stat hook is used to collect the
     bootstrap distribution, so the 99% interval comes from the very same resamples as its 95% interval.
     res / steps: mean paired difference. eff: difference of the two ratios mean(res)/mean(cache-aware K) on the
-    resampled slots (the table's eff cell is a mean of per-replay ratios; the test is on the per-slot-mean ratio)."""
+    resampled slots (the table's eff cell is a mean of per-replay ratios; the test is on the per-slot-mean ratio).
+    effa (split layout): the same with the Actor K as denominator."""
     vals = [(sa[k], sb[k]) for k in keys]
     clus = [k[0] for k in keys]
-    if m == "eff":
+    if m in ("eff", "effa"):
+        den = "ca" if m == "eff" else "act"
         def f(xs):
-            a = sum(x[0]["res"] for x in xs) / max(1e-12, sum(x[0]["ca"] for x in xs))
-            b = sum(x[1]["res"] for x in xs) / max(1e-12, sum(x[1]["ca"] for x in xs))
+            a = sum(x[0]["res"] for x in xs) / max(1e-12, sum(x[0][den] for x in xs))
+            b = sum(x[1]["res"] for x in xs) / max(1e-12, sum(x[1][den] for x in xs))
             return a - b
     else:
         def f(xs):
@@ -301,6 +432,15 @@ def fmt(cell, base, m, key, star=""):
     return MMA.num(mean, sd, d=DIG[m], tag=tag, med=(med if m in MED else None))
 
 
+def split_cell(r, m):
+    """split layout cells that do not go through fmt; None = use fmt"""
+    if m == "usd":
+        return "--"          # not reported in this version (Table 1 footnote); the priced figure stays in the .md
+    if m == "wside" and r.get("wside_zero"):
+        return "0"           # no counted session of the row made a memory-side call
+    return None
+
+
 def build(A, missing):
     s = A
     frame = (r"the full sample, the $48$ test chains (run-id \texttt{ft1\_ledger}) and the $51$ training chains "
@@ -313,7 +453,10 @@ def build(A, missing):
            r"slots; the subscript is the across-replay SD of whole-frame replays. Change tags read against the "
            r"no-memory row of the same block, as a percentage of that row's value; "
            r"\dg{blue} marks an improvement and \dl{light blue} a deterioration.")  # 2026-09-30: Table 2/3 hidden in main.tex, no cross-ref
-    out = [HEAD.replace("CAPTION", cap), r"\midrule"]
+    if SPLIT:
+        # 2026-10-02: Writer side K / chain is gone, so USD / chain is the only per-chain column
+        cap = cap.replace("common chains for the per-chain columns.", "common chains for the per-chain column.", 1)
+    out = [(HEAD_SPLIT if SPLIT else HEAD).replace("CAPTION", cap), r"\midrule"]
     first = True
     base = A["rows"].get("seq")
     for lead, ks in GROUPS:
@@ -321,17 +464,18 @@ def build(A, missing):
         if not ks:
             continue
         if not first:
-            out.append(r"\cmidrule{1-15}")
+            out.append(rf"\cmidrule{{1-{NCOL}}}")
         first = False
-        vis = [k for k in ks if k not in HIDE]
+        vis = [k for k in ks if k not in HIDDEN]
         j = 0
         for k in ks:
             r = A["rows"][k]
-            cells = " & ".join(fmt(r["cells"][(sn, m)], base["cells"][(sn, m)][0] if base else None, m, k,
+            cells = " & ".join((SPLIT and split_cell(r, m)) or
+                               fmt(r["cells"][(sn, m)], base["cells"][(sn, m)][0] if base else None, m, k,
                                    star=(r.get("ci", {}).get(m, {}).get("stars", "") if sn == "O" else ""))
                                for sn, m in BODY)
             lab = LAB[k] + rf" {{\scriptsize (average@{r['n_whole']})}}"
-            if k in HIDE:
+            if k in HIDDEN:
                 out.append(f"% [hidden] & {lab} & {cells} \\\\")
                 continue
             head = rf"\multirow{{{len(vis)}}}{{*}}{{{lead}}}" if j == 0 else ""
@@ -365,6 +509,18 @@ def build(A, missing):
            r"$^{*}$\,/\,$^{**}$ on an Overall change tag of Resolve, Steps or Res/Tok: the paired chain-cluster "
            r"bootstrap $95\%$ / $99\%$ CI vs the no-memory row excludes zero, $2000$ resamples over the "
            rf"${A['nchains']}$ chains.")
+    if SPLIT:
+        # 2026-10-02: the column definitions of the split layout replace the Cache-aware / Raw / USD / Writer side
+        # sentences; the Res/Tok detail names both denominators
+        a, b = fn.index(r"\emph{Cache-aware} counts"), fn.index(r" \textbf{Rows.}")
+        fn = fn[:a] + SPLIT_COLDEF + fn[b:]
+        for old, new in ((r"by that same replay's overall cache-aware K per session",
+                          r"by that same replay's overall Actor or Total K per session"),
+                         (r"the cell is the mean and SD of these per-replay ratios",
+                          r"each cell is the mean and SD of these per-replay ratios")):
+            if old not in fn:
+                raise SystemExit(f"split footnote: anchor not found: {old}")
+            fn = fn.replace(old, new, 1)
     if missing:
         fn += " " + r"\textbf{Missing so far.} " + "; ".join(missing) + "."
     out += [r"\bottomrule", r"\end{tabular}}",
@@ -386,7 +542,7 @@ def md(A):
                     return "--"
                 s = f"{c[0]:.{DIG[m]}f}" + (f" ±{c[1]:.{DIG[m]}f}" if c[1] is not None else "")
                 return s + (f" ({c[2]:.{DIG[m]}f})" if m in MED else "")
-            lines.append("| " + " | ".join([PLAIN[k] + (" (hidden in .tex)" if k in HIDE else "")]
+            lines.append("| " + " | ".join([PLAIN[k] + (" (hidden in .tex)" if k in HIDDEN else "")]
                                            + [f(r["cells"][(s, m)], m) for s, m in MD_BODY]) + " |")
     hl = [f"- note-turn prefix-cache hit, {PLAIN[k]}: {100 * A['rows'][k]['inline_hit']:.1f}% "
           f"(mean over {A['rows'][k]['n_hit']} sessions)" for k in ("v5inline", "t8inline")
@@ -396,9 +552,19 @@ def md(A):
           "- O reuse = auxiliary, .md only: share of a session's prompt tokens (actor + writer + memory side) served from "
           "the prefix cache, 1 - sum(uncached prompt)/sum(prompt); every call carries the engine-reported cached count "
           "(estimated share 0.000 on every row, ReasoningBank writer/judge included)."] + hl
+    if SPLIT:
+        hl += [f"- split layout: O act / O wside / O ca = Actor / Writer side / Total cache-aware K per session "
+               f"(Total = Actor + Writer side, checked on {len(SPLIT_CHECK)} distinct counted sessions); O effa = "
+               f"Res/Tok (actor), O eff = Res/Tok (total), both pp per K and means of per-replay ratios.",
+               "- .md only in the split layout: O raw (appendix table), O side (per-chain writer side, old column), "
+               "O usd (priced at prices.json; the .tex prints --), O resusd, O reuse.",
+               "- counted replays: " + "; ".join(
+                   f"{PLAIN[k]} {','.join(s or '_r1' for s in A['rows'][k]['sufs'])}"
+                   for _, ks in GROUPS for k in ks if k in A["rows"])]
     ci = ["", "## Paired chain-cluster bootstrap vs no memory (Overall; per-slot means over replays; "
           f"{BOOT_REPS} resamples over chains, seed {BOOT_SEED})", "",
-          "| Row | n rep | dRes pp [95%] [99%] | dSteps [95%] [99%] | dRes/Tok [95%] [99%] |", "|---|---|---|---|---|"]
+          "| Row | n rep | dRes pp [95%] [99%] | dSteps [95%] [99%] | dRes/Tok [95%] [99%] |"
+          + (" dRes/Tok actor [95%] [99%] |" if SPLIT else ""), "|---|---|---|---|---|" + ("---|" if SPLIT else "")]
     for _, ks in GROUPS:
         for k in ks:
             r = A["rows"].get(k)
@@ -407,8 +573,8 @@ def md(A):
             c = r["ci"]
             cell = lambda x, d: (f"{x['d']:+.{d}f}{x['stars']} [{x['lo95']:+.{d}f}, {x['hi95']:+.{d}f}] "
                                  f"[{x['lo99']:+.{d}f}, {x['hi99']:+.{d}f}]")
-            ci.append(f"| {PLAIN[k]}{' (hidden in .tex)' if k in HIDE else ''} | {r['n_whole']} | {cell(c['res'], 1)} | "
-                      f"{cell(c['steps'], 1)} | {cell(c['eff'], 3)} |")
+            ci.append(f"| {PLAIN[k]}{' (hidden in .tex)' if k in HIDDEN else ''} | {r['n_whole']} | {cell(c['res'], 1)} | "
+                      f"{cell(c['steps'], 1)} | {cell(c['eff'], 3)} |" + (f" {cell(c['effa'], 3)} |" if SPLIT else ""))
     return ("\n".join(lines) + "\n" + ("\n" + "\n".join(hl) + "\n" if hl else "")
             + "\n".join(ci) + "\n")
 
@@ -429,9 +595,17 @@ if __name__ == "__main__":
                      if any(r['est'] for r in reps.values()) else ""))
             if not ok:
                 missing.append(f"{PLAIN[key]} ({h} half, \\texttt{{{run.replace('_', chr(92) + '_')}}})")
+            if d.get("pin") is not None:          # RSM_T3_REPLAYS: say when a pinned replay cannot count
+                gone = sorted(d["pin"] - set(reps), key=lambda s: (len(s), s))
+                bad = [s or "_r1" for s, r in reps.items() if not r["complete"]]
+                print(f"    pinned {arm}: " + ",".join(s or "_r1" for s in sorted(d["pin"], key=lambda s: (len(s), s)))
+                      + (f"  WARNING missing {[s or '_r1' for s in gone]}" if gone else "")
+                      + (f"  WARNING incomplete {bad}" if bad else ""))
     A = analyse(info)
     print(f"\nframe: {'FULL (test+train)' if A['full'] else 'TEST SPLIT'}; common slots {A['nslots']} "
           f"(L {A['nL']} / U {A['nU']}); common chains {A['nchains']}; price row {L.price_row()['_row']}")
+    if SPLIT:
+        print(f"split layout: Actor + Writer side == Total on all {len(SPLIT_CHECK)} distinct counted sessions")
     print(f"{'row':<30}" + "".join(f"{s+':'+m:>13}" for s, m in MD_BODY) + "  n(test,train) whole")
     for _, ks in GROUPS:
         for k in ks:
@@ -442,10 +616,16 @@ if __name__ == "__main__":
                 f"{('--' if r['cells'][c][0] is None else format(r['cells'][c][0], '.' + str(DIG[c[1]]) + 'f') + ('' if r['cells'][c][1] is None else '±' + format(r['cells'][c][1], '.' + str(DIG[c[1]]) + 'f'))):>13}"
                 for c in MD_BODY) + f"  ({r['n_half']['test']},{r['n_half'].get('train', 0)}) {r['n_whole']}")
     miss_tex = [m for m in missing if "train half" not in m] if not A["full"] else missing
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "table3_ledger_full.tex").write_text(build(A, miss_tex))
-    (OUT / "table3_ledger_full.md").write_text(
+    # 2026-10-02: RSM_T3_OUT (or the split layout's own basename) redirects both files; default unchanged
+    tex_out = pathlib.Path(_OUTBASE + ".tex") if _OUTBASE else OUT / "table3_ledger_full.tex"
+    md_out = pathlib.Path(_OUTBASE + ".md") if _OUTBASE else OUT / "table3_ledger_full.md"
+    tex_out.parent.mkdir(parents=True, exist_ok=True)
+    tex_out.write_text(build(A, miss_tex))
+    md_out.write_text(
         f"Table 3 (ledger), {'full sample' if A['full'] else 'test split (96 slots)'}; "
-        f"{A['nslots']} common slots (L {A['nL']} / U {A['nU']}), {A['nchains']} chains\n\n" + md(A)
+        f"{A['nslots']} common slots (L {A['nL']} / U {A['nU']}), {A['nchains']} chains\n\n"
+        + (f"Split layout (RSM_T3_LAYOUT=split); replays pinned by {_rp}\n\n" if SPLIT and _rp else
+           "Split layout (RSM_T3_LAYOUT=split)\n\n" if SPLIT else
+           f"Replays pinned by {_rp}\n\n" if _rp else "") + md(A)
         + ("\nMissing: " + "; ".join(missing) + "\n" if missing else ""))
-    print("\nwrote", OUT / "table3_ledger_full.tex", "and", OUT / "table3_ledger_full.md")
+    print("\nwrote", tex_out, "and", md_out)
