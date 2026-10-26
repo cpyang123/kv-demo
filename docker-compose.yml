@@ -24,7 +24,11 @@ services:
       retries: 5
       start_period: 60s
 
+  # ---- ingress, pick ONE profile ---------------------------------------------------------------
+  # public: Caddy on 80/443 (needs a public IP + NSG rules)         docker compose --profile public up -d
+  # tunnel: Cloudflare Tunnel, outbound only, no open ports           docker compose --profile tunnel up -d
   caddy:
+    profiles: [public]
     image: caddy:2.9.1
     container_name: kv-caddy
     depends_on: [demo]
@@ -34,6 +38,16 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    restart: unless-stopped
+
+  cloudflared:
+    profiles: [tunnel]
+    image: cloudflare/cloudflared:2026.9.3
+    container_name: kv-tunnel
+    depends_on: [demo]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}   # from .env; the tunnel's public hostname must point at http://demo:8765
     restart: unless-stopped
 
 volumes:

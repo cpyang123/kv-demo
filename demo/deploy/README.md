@@ -1,6 +1,33 @@
 # Hosting the demo on Azure
 
-## Automated path (option C): GitHub Actions → GHCR image → Azure VM (Docker Compose)
+## No inbound exposure: self-hosted runner + Cloudflare Tunnel (recommended for a shared / locked-down VM)
+
+Nothing on the VM listens to the internet: deploys run *on* the VM through a GitHub Actions runner that
+polls GitHub, and visitors reach the site through a Cloudflare Tunnel that the VM dials out to. No public
+IP, no NSG rule, no SSH key in GitHub. Workflow: `.github/workflows/deploy-runner.yml`.
+
+1. **Runner on the VM** (one time, as a sudo user on the VM — e.g. via `az ssh vm`, Bastion or the VM's owner):
+   GitHub repo → Settings → Actions → Runners → *New self-hosted runner* → Linux x64; run the printed
+   `./config.sh --url … --token …` commands and add the label **`kv-demo`** when asked; then
+   `sudo ./svc.sh install && sudo ./svc.sh start` so it survives reboots. The runner user needs passwordless
+   `sudo` (Azure admin users have it). Docker is installed by the workflow if missing.
+2. **Cloudflare Tunnel** (needs a Cloudflare account with a domain on it): Zero Trust → Networks → Tunnels →
+   *Create a tunnel* (Cloudflared) → copy the **token** → secret `CLOUDFLARE_TUNNEL_TOKEN`. Add a *Public
+   hostname*, e.g. `kv-demo.<your-domain>` → service **HTTP** `demo:8765` (the compose network name).
+   Then Zero Trust → Access → Applications → add `kv-demo.<your-domain>` with a policy such as
+   "emails ending in @yale.edu" (login via one-time PIN, Microsoft or GitHub) — this is the login wall.
+   No domain? Use Azure Dev Tunnels instead (`devtunnel host -p 8765` on the VM with tenant-restricted
+   access) or Tailscale for a team-only private demo; the compose `tunnel` profile is Cloudflare-specific.
+3. **Secrets** (environment `production`): `GOODVISION_API_KEY`, `CLOUDFLARE_TUNNEL_TOKEN`, optionally
+   `DEMO_PUBLIC_URL=https://kv-demo.<your-domain>` for the smoke test. Variable `DEPLOY_PROFILE=tunnel`
+   (default). Nothing else: the runner pulls the image with the job's own `GITHUB_TOKEN`.
+4. Push (or *Run workflow* → "Deploy demo (self-hosted runner on the VM)"). The deploy job runs on the VM,
+   starts `demo` + `cloudflared`, checks `/api/meta` and the GoodVision status locally.
+
+Admin access to the VM afterwards without port 22: `az ssh vm -g <rg> -n <vm>` (Entra login, outbound only
+if `az ssh` is allowed), Azure Bastion, or a job step in the runner workflow.
+
+## Public IP path: GitHub Actions → GHCR image → Azure VM over SSH (Docker Compose)
 
 What is in the repo:
 

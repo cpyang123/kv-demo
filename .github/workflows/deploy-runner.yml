@@ -1,0 +1,106 @@
+name: Deploy demo (self-hosted runner on the VM)
+# Outbound-only deployment: a GitHub Actions runner installed on the VM pulls the image and runs docker compose
+# locally. No SSH, no public IP, no NSG change. Ingress is a Cloudflare Tunnel (compose profile "tunnel") or,
+# if the VM does have a public address, Caddy (profile "public"). Setup: demo/deploy/README.md → "No inbound exposure".
+#
+# Repository variables: DEPLOY_PROFILE = tunnel | public (default tunnel), DEMO_DISABLE_LIVE (optional)
+# Secrets: GOODVISION_API_KEY, CLOUDFLARE_TUNNEL_TOKEN (tunnel) or DEMO_DOMAIN + DEMO_BASIC_AUTH_HASH (public),
+#          DEMO_PUBLIC_URL (optional, for the smoke test through the tunnel), DEMO_BASIC_AUTH_PASSWORD (public)
+on:
+  push:
+    branches: [main, demo-deploy]
+    paths-ignore: ["infra/**", "**/*.md"]
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/kv-demo
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: demo/requirements*.txt }
+      - run: pip install -r demo/requirements.txt -r demo/requirements-dev.txt
+      - run: pytest -q tests/test_demo.py
+
+  build:
+    needs: tests
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    outputs: { tag: "${{ steps.meta.outputs.tag }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted, linux, kv-demo]      # the runner registered on the VM with label kv-demo
+    environment: production
+    permissions: { contents: read, packages: read }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write /opt/kv (compose, Caddyfile, .env)
+        run: |
+          sudo mkdir -p /opt/kv && sudo chown "$USER" /opt/kv
+          cp docker-compose.yml demo/deploy/Caddyfile /opt/kv/
+          umask 077
+          cat > /opt/kv/.env <<EOF
+          IMAGE=${{ env.IMAGE }}:${{ needs.build.outputs.tag }}
+          DEMO_PROVIDER=goodvision-test
+          DEMO_DISABLE_LIVE=${{ vars.DEMO_DISABLE_LIVE || '0' }}
+          GOODVISION_API_KEY='${{ secrets.GOODVISION_API_KEY }}'
+          CLOUDFLARE_TUNNEL_TOKEN='${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}'
+          DEMO_DOMAIN=${{ secrets.DEMO_DOMAIN }}
+          DEMO_BASIC_AUTH_HASH='${{ secrets.DEMO_BASIC_AUTH_HASH }}'
+          EOF
+      - name: Docker present?
+        run: |
+          if ! command -v docker >/dev/null 2>&1; then curl -fsSL https://get.docker.com | sudo sh; fi
+          sudo systemctl enable --now docker
+      - name: Pull and start
+        run: |
+          cd /opt/kv
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          PROFILE="${{ vars.DEPLOY_PROFILE || 'tunnel' }}"
+          sudo docker compose --profile "$PROFILE" pull
+          sudo docker compose --profile "$PROFILE" up -d --remove-orphans
+          sudo docker image prune -f >/dev/null
+          for i in $(seq 1 30); do sudo docker inspect -f '{{.State.Health.Status}}' kv-demo 2>/dev/null | grep -q healthy && break; sleep 5; done
+          sudo docker inspect -f 'demo container: {{.State.Health.Status}}' kv-demo
+      - name: Smoke test (inside the VM)
+        run: |
+          curl -fsS http://127.0.0.1:8765/api/meta | python3 -c "import json,sys; m=json.load(sys.stdin); print('runs:', m['runs']); print('live_enabled:', m['live_enabled'])"
+          curl -fsS -m 120 http://127.0.0.1:8765/api/providers | python3 -c "
+          import json,sys; gv=[p for p in json.load(sys.stdin) if p['name']=='goodvision-test'][0]
+          print('goodvision-test:', 'ok' if gv['ok'] else 'NOT OK', '| models', len(gv['models']), '|', gv.get('message') or ''); sys.exit(0 if gv['ok'] else 1)"
+      - name: Smoke test (through the tunnel / public URL)
+        if: ${{ secrets.DEMO_PUBLIC_URL != '' }}
+        run: |
+          for i in $(seq 1 18); do code=$(curl -s -o /dev/null -w '%{http_code}' "${{ secrets.DEMO_PUBLIC_URL }}/api/meta"); [ "$code" = "200" ] || [ "$code" = "302" ] || [ "$code" = "401" ] && break; sleep 10; done
+          echo "public URL answered HTTP $code (302/401 = login wall in front, fine)"
+
+  goodvision:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env: { GOODVISION_API_KEY: "${{ secrets.GOODVISION_API_KEY }}" }
+        run: |
+          python3 demo/deploy/check_goodvision.py; rc=$?
+          if [ $rc -eq 2 ]; then echo "::warning::GoodVision reachable but degraded (see log)"; exit 0; fi
+          exit $rc
