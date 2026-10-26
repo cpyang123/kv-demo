@@ -87,8 +87,14 @@ def model_config(model=None, api_key_config=None, served_name="coder-next", endp
     # 多条**采样**轨迹,温度 0 只有 vLLM 批处理抖动、不是策略分布的样本。只有显式设
     # RSM_ACTOR_TEMPERATURE 才偏离旧行为;RSM_ACTOR_SEED 同理(不设=不传)。
     _t = os.environ.get("RSM_ACTOR_TEMPERATURE")
-    mk = {"api_key": "EMPTY", "temperature": (float(_t) if _t else 0.0),
+    mk = {"api_key": os.environ.get("RSM_API_KEY", "EMPTY"), "temperature": (float(_t) if _t else 0.0),
           "max_tokens": K.LOCAL_MAX_TOKENS}
+    if os.environ.get("RSM_OPENAI_STRICT") == "1":
+        # 2026-10-20(env 门控,默认关):经 OpenAI 协议网关(GoodVision SmartRouter 等,见 demo/goodvision.md)
+        # 跑 actor 时,上游新模型只认 max_completion_tokens、不接受非默认 temperature;本地 vLLM 路径逐字不变。
+        mk["max_completion_tokens"] = mk.pop("max_tokens")
+        if not _t:
+            mk.pop("temperature")
     _tp = os.environ.get("RSM_ACTOR_TOP_P")
     if _tp:
         mk["top_p"] = float(_tp)

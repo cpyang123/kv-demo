@@ -1,0 +1,42 @@
+# Full demo on a Docker host (an Azure VM provisioned by infra/main.bicep). Deployed by .github/workflows/deploy.yml.
+#   IMAGE       ghcr.io/<owner>/kv-demo:<tag>      (set by the workflow; defaults below for a manual run)
+#   .env        GOODVISION_API_KEY=…  DEMO_DOMAIN=…  DEMO_BASIC_AUTH_HASH=…  (written by the workflow from GitHub secrets)
+services:
+  demo:
+    image: ${IMAGE:-ghcr.io/lpwpower/kv-demo:latest}
+    container_name: kv-demo
+    privileged: true                      # Apptainer inside the container (user namespaces, FUSE)
+    env_file: .env
+    environment:
+      DEMO_PROVIDER: ${DEMO_PROVIDER:-goodvision-test}
+      DEMO_DISABLE_LIVE: ${DEMO_DISABLE_LIVE:-0}
+      DEMO_PULL_IMAGES: ${DEMO_PULL_IMAGES:-1}   # pull the task images in demo/deploy/images.txt at start (background)
+    volumes:
+      - kv_data:/data                       # runs (seeded from the image), SIFs, sandbox workspaces, apptainer cache
+    tmpfs:
+      - /tmp:exec,size=8g                   # harness workspaces (/tmp/rsm_chain) and Apptainer's temp dir
+    expose: ["8765"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8765/api/meta"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  caddy:
+    image: caddy:2.9.1
+    container_name: kv-caddy
+    depends_on: [demo]
+    ports: ["80:80", "443:443"]
+    env_file: .env                          # DEMO_DOMAIN, DEMO_BASIC_AUTH_HASH used by the Caddyfile
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  kv_data:
+  caddy_data:
+  caddy_config:

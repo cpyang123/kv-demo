@@ -54,7 +54,7 @@ def _facts_client():
     from openai import OpenAI
     fa = os.environ.get("RSM_FACTS_API")
     return OpenAI(
-        api_key="EMPTY" if fa else (os.environ.get("AZURE_OPENAI_API_KEY") or os.environ["OPENAI_API_KEY"]),
+        api_key=(os.environ.get("RSM_FACTS_API_KEY") or "EMPTY") if fa else (os.environ.get("AZURE_OPENAI_API_KEY") or os.environ["OPENAI_API_KEY"]),
         base_url=fa or os.environ.get("AZURE_OPENAI_BASE_URL") or os.environ.get("OPENAI_BASE_URL")), \
         os.environ.get("RSM_FACTS_MODEL", "gpt-4o-mini")
 
@@ -78,7 +78,9 @@ def extract_facts_mem0style(raw_text):
     for agent_mode in (True, False):
         sp, up = get_fact_retrieval_messages(raw_text[:cap], is_agent_memory=agent_mode)
         r = client.chat.completions.create(
-            model=model, temperature=0, response_format={"type": "json_object"},
+            model=model, response_format={"type": "json_object"},
+            # 2026-10-20(env 门控,默认关):OpenAI 协议网关上游新模型不接受 temperature=0(见 demo/goodvision.md)
+            **({} if os.environ.get("RSM_OPENAI_STRICT") == "1" else {"temperature": 0}),
             messages=[{"role": "system", "content": sp}, {"role": "user", "content": up}])
         _log_usage(model, r.usage)   # 修:记实际 model,不再硬编码
         try:

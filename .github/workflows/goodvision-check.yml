@@ -1,0 +1,22 @@
+name: GoodVision connection check
+# Daily probe of the router with the demo key: key validity, model market, one model per family, auto routing,
+# tool calls. Exit 2 (degraded, e.g. a family blocked upstream) is reported as a warning, 1 (key broken) fails.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - env: { GOODVISION_API_KEY: "${{ secrets.GOODVISION_API_KEY }}" }
+        run: |
+          python3 demo/deploy/check_goodvision.py --json > gv.json; rc=$?
+          python3 demo/deploy/check_goodvision.py || true
+          { echo '### GoodVision SmartRouter (test)'; echo '```json'; cat gv.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ $rc -eq 2 ]; then echo "::warning::GoodVision reachable but degraded"; exit 0; fi
+          exit $rc

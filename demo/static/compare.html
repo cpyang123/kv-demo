@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory × model comparison</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --plane: #f3f3f0; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10); --hover: rgba(11,11,11,0.04); --sel: rgba(42,120,214,0.10);
+    --kv: #2a78d6; --mem0: #eb6834; --none: #898781; --accent: #2a78d6; --c3: #6250d6;
+    --good: #006300; --bad: #d03b3b; --status-good: #0ca30c; --status-bad: #d03b3b;
+    --code: #f6f6f3; --term: #141413; --term-ink: #e8e7e1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface: #1a1a19; --plane: #0f0f0e; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.05); --sel: rgba(57,135,229,0.16);
+      --kv: #3987e5; --mem0: #d95926; --none: #898781; --accent: #3987e5; --c3: #9085e9;
+      --good: #0ca30c; --bad: #e66767; --code: #111110; --term: #0b0b0a; --term-ink: #d9d8d1;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #1a1a19; --plane: #0f0f0e; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.05); --sel: rgba(57,135,229,0.16);
+    --kv: #3987e5; --mem0: #d95926; --none: #898781; --accent: #3987e5; --c3: #9085e9;
+    --good: #0ca30c; --bad: #e66767; --code: #111110; --term: #0b0b0a; --term-ink: #d9d8d1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--plane); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  button, select, input { font: inherit; color: inherit; }
+  a { color: var(--accent); text-decoration: none; }
+  .app { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); height: 100vh; }
+  .app > * { min-width: 0; }
+  select { min-width: 0; max-width: 100%; }
+  header.top { display: flex; align-items: center; gap: 10px; padding: 6px 14px; min-height: 48px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
+  .brand { font-weight: 700; display: flex; gap: 8px; align-items: center; white-space: nowrap; flex: none; }
+  .brand .mark { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg, var(--kv), #6250d6); display: inline-block; }
+  .brand .sub { color: var(--muted); font-weight: 400; }
+  select.ctl, input.ctl { background: var(--plane); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: min(360px, 100%); min-width: 0; }
+  label.ctl { min-width: 0; max-width: 100%; } label.ctl select { flex: 1 1 auto; }
+  label.ctl { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--ink2); white-space: nowrap; }
+  .spacer { flex: 1; }
+  .controls { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); }
+  .btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; cursor: pointer; font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  .btn.primary, .btn.on { background: var(--accent); color: #fff; border-color: transparent; } .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .pb-opt { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+  .live { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+  .live .st { font-size: 12px; color: var(--muted); max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .live .st.err { color: var(--bad); }
+  .cols { display: grid; grid-template-columns: repeat(var(--ncols, 2), minmax(0, 1fr)); min-height: 0; }
+  .col { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--border); }
+  .col:last-child { border-right: 0; }
+  .col .head { padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .col .head select { max-width: 100%; min-width: 0; width: 100%; flex: 1 1 200px; font-weight: 600; }
+  .col .sub { padding: 4px 12px 6px; background: var(--surface); font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--border); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink2); white-space: nowrap; }
+  .ok { color: var(--status-good); font-weight: 700; } .no { color: var(--status-bad); font-weight: 700; } .na { color: var(--muted); }
+  .strip { padding: 6px 12px 7px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--ink2); }
+  .strip .stat { display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .strip .stat b { color: var(--ink); font-size: 15px; } .strip .stat .big { font-size: 20px; font-weight: 700; color: var(--ink); }
+  .trow { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+  .trow .tl { width: 22px; color: var(--muted); font-weight: 600; font-size: 11px; flex: none; }
+  .trow .dots { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; min-width: 0; }
+  .d2 { width: 9px; height: 9px; border-radius: 50%; background: var(--grid); border: 1px solid var(--border); box-sizing: border-box; flex: none; }
+  .d2.ok { background: var(--status-good); border-color: transparent; } .d2.fail { background: var(--status-bad); border-color: transparent; } .d2.submit { background: var(--accent); border-color: transparent; }
+  .d2.current { box-shadow: 0 0 0 2px var(--accent); animation: blink 1s steps(1) infinite; }
+  .d2.pending { background: transparent; border: 1px solid var(--border); }
+  .d2.future { background: transparent; border: 1px solid var(--border); opacity: 0; }
+  .trow:hover .d2.future { opacity: 0.45; }
+  .d2, .trow .tl { cursor: pointer; } .d2:hover { transform: scale(1.4); } .trow .tl:hover { color: var(--accent); }
+  .d2.loop { background: transparent; border: 2px solid var(--status-bad); }
+  .trow .tag { font-size: 10.5px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--ink2); white-space: nowrap; flex: none; }
+  .trow .tag.loop { color: var(--bad); border-color: var(--bad); } .trow .tag.none { color: var(--muted); }
+  .trow .tres { width: 16px; text-align: center; flex: none; font-weight: 700; font-size: 12px; } .trow .tres.pend { color: var(--muted); font-weight: 400; }
+  .strip .legend { font-size: 10.5px; color: var(--muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; } .strip .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
+  .bar { height: 3px; background: var(--grid); } .bar div { height: 100%; background: var(--arm, var(--accent)); transition: width .25s linear; }
+  .transcript { flex: 1; overflow-y: auto; padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 12px; }
+  .msg .who { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .bubble { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 9px 13px; white-space: pre-wrap; word-break: break-word; font-size: 13.5px; }
+  .msg.user .bubble { border-top-left-radius: 4px; max-height: 200px; overflow: auto; }
+  .msg.assistant .bubble { background: transparent; border: 0; padding: 0 2px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 9px 13px; }
+  .card.memory { border-left: 3px solid var(--arm, var(--accent)); }
+  .card .hd { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 13px; margin-bottom: 4px; } .card .hd .meta { color: var(--muted); font-weight: 400; }
+  .note { white-space: pre-wrap; word-break: break-word; font-size: 12.5px; max-height: 240px; overflow: auto; }
+  .note b.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; margin-right: 6px; color: var(--ink2); background: var(--hover); border: 1px solid var(--border); font-family: inherit; }
+  .note .inst { color: var(--muted); font-weight: 600; }
+  .cmd { background: var(--term); color: var(--term-ink); border-radius: 8px; padding: 7px 11px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; } .cmd::before { content: "$ "; color: #8fd38f; }
+  .obs { background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--ink2); max-height: 170px; overflow: auto; }
+  .obs-bar { display: flex; gap: 10px; align-items: center; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .rc { font-size: 11px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); } .rc.err { color: var(--bad); border-color: var(--bad); }
+  .tests { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12.5px; } .tests li { display: flex; gap: 8px; align-items: baseline; }
+  .pm .a { color: var(--good); } .pm .d { color: var(--bad); }
+  .turn[hidden], .tail[hidden] { display: none; }
+  .th.typing::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+  .thinking { color: var(--muted); font-style: italic; } .thinking::after { content: "…"; animation: blink 1s steps(1) infinite; }
+  .running { color: var(--muted); font-size: 12px; } .running::after { content: " ▍"; color: var(--accent); animation: blink .8s steps(1) infinite; }
+  .tail.phase { color: var(--muted); font-size: 13px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .empty { color: var(--muted); padding: 20px; text-align: center; }
+  footer.sum { border-top: 1px solid var(--border); background: var(--surface); padding: 8px 14px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  footer.sum > * { min-width: 0; } .tabwrap { max-width: 100%; overflow-x: auto; }
+  footer .hero { font-size: 22px; font-weight: 700; } footer .hero.good { color: var(--good); } footer .hero.bad { color: var(--bad); }
+  footer .muted { color: var(--muted); font-size: 12px; }
+  table.tot { border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; } .tot th, .tot td { padding: 2px 8px; text-align: right; white-space: nowrap; } .tot th:first-child, .tot td:first-child { text-align: left; } .tot th { color: var(--muted); font-weight: 600; }
+  .jobs { font-size: 12px; color: var(--ink2); }
+  .custom-cfg { display: none; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; } .custom-cfg.open { display: inline-flex; }
+  .custom-cfg select, .custom-cfg input { padding: 3px 6px; font-size: 12px; }
+  @media (max-width: 1000px) { .live .st { white-space: normal; max-width: 100%; } .cols { grid-template-columns: minmax(0, 1fr); } .col { border-right: 0; border-bottom: 1px solid var(--border); } .app { height: auto; grid-template-rows: auto auto auto auto; } .transcript { max-height: 60vh; } .counters { grid-template-columns: repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><span class="mark"></span>Knowledge Vault <span class="sub">· memory × model comparison</span></div>
+    <label class="ctl">Chain <select id="cid" class="ctl"></select></label>
+    <label class="ctl">Columns <select id="ncols" class="ctl"><option value="2">2</option><option value="3">3</option></select></label>
+    <label class="ctl">Pricing <select id="pricing" class="ctl"><option value="model">per model actually used (list prices)</option><option value="global">one global row</option></select></label>
+    <select id="price" class="ctl" title="global price row"></select>
+    <span class="spacer"></span>
+    <span style="white-space:nowrap;font-size:13px"><a href="./">Agent view</a> · <a href="report" target="_blank">Report ↗</a></span>
+  </header>
+  <div class="controls">
+    <button class="btn primary" id="play">▶ Play all</button>
+    <button class="btn" id="step">Step all ›</button>
+    <button class="btn" id="restart">Restart</button>
+    <button class="btn" id="end">Show all</button>
+    <select id="speed" class="ctl"><option value="0.5">0.5×</option><option value="1" selected>1× real time</option><option value="2">2×</option><option value="4">4×</option><option value="10">10×</option></select>
+    <label class="pb-opt"><input type="checkbox" id="auto" checked> play the whole chain</label>
+    <div class="live">
+      <label class="pb-opt">steps <input type="number" id="steps" value="100" min="5" max="200" class="ctl" style="width:64px;padding:3px 6px"></label>
+      <button class="btn" id="runlive">▶ Run all columns live on this chain</button>
+      <span class="st" id="livest"></span>
+    </div>
+  </div>
+  <div class="cols" id="cols"></div>
+  <footer class="sum" id="sum"></footer>
+</div>
+
+<script type="module">
+import { SessionPlayer, NAMES, COLOR, esc, usd, tok, fmtClock, api } from "./static/player.js";
+const $ = s => document.querySelector(s);
+const SIDES = ["A", "B", "C"];
+const S = { meta: null, cfgs: null, price: null, pricing: "model", cid: null, n: 2, sel: {}, rc: {}, players: {}, stats: {}, auto: true, jobs: [], custom: {}, chain: {} };
+const colColor = side => ({ A: null, B: null, C: "var(--c3)" })[side];
+
+function priceRow() { return S.meta.price_rows[S.price] || { input: 0, cached_input: 0, output: 0 }; }
+function priceFor(model) {
+  if (S.pricing !== "model" || !model) return null;
+  const t = S.cfgs.prices; let best = null;
+  for (const k in t) if ((model === k || model.startsWith(k)) && (!best || k.length > best.length)) best = k;
+  return best ? t[best] : null;
+}
+function cfgOf(side) { const id = S.sel[side]; if (id === "__custom") return S.custom[side]; return (S.cfgs.configs || []).find(c => c.id === id); }
+function runIdOf(c) { return c.run_id || ("cfg__" + `${c.provider}__${c.model}`.replace(/[^A-Za-z0-9.]+/g, "-").replace(/^-|-$/g, "")); }
+function armOf(c) { return S.meta.arms[c.kind]; }
+function sessionsFor(side) { const c = cfgOf(side); if (!c) return []; const rc = S.rc[runIdOf(c)]; const ch = rc?.chains?.find(x => x.cid === S.cid); return ch?.arms?.[c.kind]?.sessions || []; }
+function cost(s) { return S.pricing === "model" && s.usd_model != null ? s.usd_model : s.usd; }
+
+// ---------------------------------------------------------------- columns
+function buildColumns() {
+  const box = $("#cols"); box.style.setProperty("--ncols", S.n);
+  box.innerHTML = SIDES.slice(0, S.n).map(side => `<section class="col" id="col${side}">
+      <div class="head"><span class="dot" id="dot${side}"></span><select id="sel${side}" class="ctl"></select>
+        <span class="custom-cfg" id="cc${side}"><select id="cck${side}"><option value="kv">Knowledge Vault</option><option value="mem0">Mem0</option><option value="none">No memory</option></select><select id="ccp${side}"></select><input id="ccm${side}" list="models${side}" placeholder="model" style="width:130px"><datalist id="models${side}"></datalist><button class="btn" id="ccgo${side}">use</button></span></div>
+      <div class="sub"><span class="chip" id="task${side}">–</span><span class="chip" id="res${side}"></span><span id="models${side}txt" class="muted"></span></div>
+      <div class="strip" id="ctr${side}"></div><div class="bar"><div id="bar${side}" style="width:0"></div></div>
+      <div class="transcript" id="tr${side}"></div></section>`).join("");
+  for (const side of SIDES.slice(0, S.n)) {
+    const sel = $(`#sel${side}`);
+    sel.innerHTML = (S.cfgs.configs || []).map(c => `<option value="${esc(c.id)}">${esc(c.label)}${c.provider_ok || c.recorded ? "" : " (endpoint unavailable)"}</option>`).join("") + `<option value="__custom">custom: memory × endpoint × model…</option>`;
+    sel.value = S.sel[side] || sel.options[0].value; S.sel[side] = sel.value;
+    sel.onchange = async () => { S.sel[side] = sel.value; $(`#cc${side}`).classList.toggle("open", sel.value === "__custom"); if (sel.value !== "__custom") { await loadRuns(); await loadSide(side); fillChains(); renderSummary(); } else fillCustom(side); };
+    $(`#ccgo${side}`).onclick = async () => { S.custom[side] = { id: "__custom", kind: $(`#cck${side}`).value, provider: $(`#ccp${side}`).value, model: $(`#ccm${side}`).value.trim() || "auto", label: `custom ${$(`#cck${side}`).value} + ${$(`#ccm${side}`).value.trim() || "auto"}`, short: `${$(`#cck${side}`).value}+${$(`#ccm${side}`).value.trim() || "auto"}` }; await loadRuns(); await loadSide(side); fillChains(); renderSummary(); };
+  }
+}
+function fillCustom(side) {
+  const ps = S.provs || []; $(`#ccp${side}`).innerHTML = ps.map(p => `<option value="${esc(p.name)}">${esc(p.label)}</option>`).join("");
+  const p = ps.find(x => x.ok) || ps[0]; if (p) { $(`#ccp${side}`).value = p.name; $(`#models${side}`).innerHTML = (p.models.length ? p.models : p.models_hint).map(m => `<option value="${esc(m)}">`).join(""); $(`#ccm${side}`).value = p.default_model || ""; }
+}
+
+async function loadRuns() {
+  const ids = new Set(SIDES.slice(0, S.n).map(cfgOf).filter(Boolean).map(runIdOf));
+  await Promise.all([...ids].map(async rid => { if (!S.rc[rid]) S.rc[rid] = await api(`api/runchains?run=${encodeURIComponent(rid)}&price=${encodeURIComponent(S.price)}`).catch(() => ({ chains: [] })); }));
+}
+function fillChains() {
+  const sides = SIDES.slice(0, S.n); const lists = sides.map(side => { const c = cfgOf(side); if (!c) return []; return (S.rc[runIdOf(c)]?.chains || []).filter(ch => ch.arms[c.kind]).map(ch => ch.cid); });
+  const all = [...new Set(lists.flat())]; const common = all.filter(cid => lists.every(l => l.includes(cid)));
+  const ordered = [...common, ...all.filter(c => !common.includes(c))];
+  const names = Object.fromEntries((S.meta.chains || []).map(c => [c.cid, c]));
+  $("#cid").innerHTML = ordered.map(cid => `<option value="${esc(cid)}">${common.includes(cid) ? "" : "◌ "}${esc(cid)} — ${esc(names[cid]?.repo || "")}</option>`).join("") || `<option value="">no chain has sessions for these configurations yet — pick one below and run</option>`;
+  if (!ordered.includes(S.cid)) S.cid = (S.meta.default_cid && ordered.includes(S.meta.default_cid)) ? S.meta.default_cid : (ordered[0] || S.cid);
+  if (!ordered.length) { const sif = (S.meta.chains || []).filter(c => c.sif); $("#cid").innerHTML = sif.map(c => `<option value="${esc(c.cid)}">${esc(c.cid)} — ${esc(c.repo)} (image ready)</option>`).join(""); S.cid = S.cid && sif.some(c => c.cid === S.cid) ? S.cid : (sif[0]?.cid || null); }
+  $("#cid").value = S.cid;
+}
+
+async function loadSide(side) {
+  const c = cfgOf(side); const color = c ? (colColor(side) || COLOR[c.kind]) : "var(--none)";
+  $(`#dot${side}`).style.background = color; $(`#col${side}`).style.setProperty("--arm", color);
+  const p = new SessionPlayer($(`#tr${side}`), { kind: c?.kind, price: priceRow(), priceFn: m => priceFor(m), speed: +$("#speed").value,
+    onStats: st => { S.stats[side] = st; renderCounters(side); renderSummary(); },
+    nextOrder: pl => { if (!S.auto) return null; const nx = sessionsFor(side).find(s => s.order === pl.sess.order + 1); return nx ? { run: runIdOf(c), arm: armOf(c), cid: S.cid, order: nx.order } : null; } });
+  S.players[side] = p; S.stats[side] = null;
+  const ss = sessionsFor(side);
+  S.chain[side] = [];
+  if (c && ss.length) {
+    const runId = runIdOf(c), arm = armOf(c);
+    const all = await Promise.all(ss.map(x => api(`api/session?run=${encodeURIComponent(runId)}&arm=${encodeURIComponent(arm)}&cid=${encodeURIComponent(S.cid)}&order=${x.order}`).catch(() => null)));
+    S.chain[side] = all.map((sess, i) => {
+      const steps = sess ? sess.turns.map(t => { const o = t.observation; const fmt = !t.command || (o && /^\s*Format error/i.test(o.output || "")); const ok = !!(o && o.returncode === 0);
+        return { cmd: t.command || "", loop: false, kind: t.exit === "Submitted" ? "submit" : (fmt || (o && o.returncode !== 0) || (t.exit && t.exit !== "Submitted")) ? "fail" : ok ? "ok" : "ok", title: `step ${t.step}${o ? ` · rc ${o.returncode ?? "?"}` : ""}${t.exit ? ` · ${t.exit}` : ""}${fmt ? " · format error" : ""}\n$ ${(t.command || "").slice(0, 100)}` }; }) : [];
+      // a run of identical consecutive commands (≥ 5) = the agent stuck in a loop; mark it so the viewer does not read it as a memory effect
+      let longest = 0, j = 0;
+      while (j < steps.length) { let k = j; while (k + 1 < steps.length && steps[k + 1].cmd && steps[k + 1].cmd === steps[j].cmd) k++; const len = k - j + 1; if (len >= 5) { for (let q = j; q <= k; q++) { steps[q].loop = true; steps[q].title += `\n↻ same command repeated ${len}× (steps ${j + 1}–${k + 1})`; } longest = Math.max(longest, len); } j = k + 1; }
+      return { order: ss[i].order, resolved: ss[i].resolved, n_steps: ss[i].n_steps, steps, loop: longest, memory: sess ? (sess.memory || "").length : 0, exit: sess ? sess.exit_status : null };
+    });
+  }
+  if (!c || !ss.length) { $(`#tr${side}`).innerHTML = `<div class="empty">${c ? `No ${esc(c.label)} run for this chain yet. Use "Run all columns live".` : "Pick a configuration."}</div>`; $(`#task${side}`).textContent = "not run"; $(`#res${side}`).textContent = ""; $(`#models${side}txt`).textContent = c ? `${esc(c.provider)} · ${esc(c.model)}` : ""; renderCounters(side); return; }
+  await p.load({ run: runIdOf(c), arm: armOf(c), cid: S.cid, order: ss[0].order });
+}
+async function loadAll() { await loadRuns(); fillChains(); for (const side of SIDES.slice(0, S.n)) await loadSide(side); renderSummary(); }
+
+function renderCounters(side) {
+  const st = S.stats[side], c = cfgOf(side), ss = sessionsFor(side), n = ss.length, box = $(`#ctr${side}`);
+  if (!st || !c) { box.innerHTML = ""; return; }
+  $(`#task${side}`).textContent = st.task ? `Task ${st.task} of ${n} · step ${st.step}/${st.nSteps}` : "–";
+  $(`#res${side}`).innerHTML = st.done && st.task ? (st.resolvedTask === true ? `<span class="ok">✓ resolved</span>` : st.resolvedTask === false ? `<span class="no">✗ not resolved</span>` : `<span class="na">not graded</span>`) : "";
+  const models = Object.entries(st.models || {}).sort((a, b) => b[1] - a[1]).map(([m, k]) => `${m}×${k}`).join(", ");
+  $(`#models${side}txt`).textContent = `${c.provider} · ${c.model}${models ? ` → served by ${models}` : ""}`;
+  // one line of numbers
+  let h = `<div class="stat"><span class="big">${usd(st.usd)}</span><span><b>${st.steps}</b> steps</span><span><b>${tok(st.actor + st.writer)}</b> tokens <span class="muted">(${tok(st.writer)} writer)</span></span><span><b>${st.resolved}</b>/${st.tasks} resolved</span><span class="muted">${fmtClock(st.elapsed)} emulated</span></div>`;
+  // the step chain: one dot per agent step, per task; filled as the replay reveals them
+  const playing = S.players[side]?.on, curTask = st.task, curStep = st.step, doneTask = st.done;
+  for (const t of S.chain[side] || []) {
+    const before = curTask != null && t.order < curTask, isCur = t.order === curTask;
+    const dots = t.steps.map((x, i) => { const shown = before || (isCur && (i < curStep || doneTask)); const cur = isCur && !doneTask && i === curStep && playing;
+      return `<span class="d2 ${shown ? x.kind : "future"} ${shown && x.loop ? "loop" : ""} ${cur ? "current" : ""}" data-jump="${side}:${t.order}:${i}" title="${esc(x.title)}${shown ? "" : " (not reached — click to jump here)"}"></span>`; }).join("");
+    const resShown = before || (isCur && doneTask);
+    const res = resShown ? (t.resolved === true ? `<span class="tres ok">✓</span>` : t.resolved === false ? `<span class="tres no">✗</span>` : `<span class="tres pend">–</span>`) : `<span class="tres pend">·</span>`;
+    const reached = before || isCur;
+    const tags = (resShown && t.loop ? `<span class="tag loop" title="the agent repeated one command ${t.loop} times — a decoding loop of the actor, not a memory effect">↻ loop ×${t.loop}</span>` : "") + (reached && t.order > 1 ? `<span class="tag ${t.memory ? "" : "none"}" title="characters of memory injected before this task">${t.memory ? `${(t.memory / 1000).toFixed(1)}K mem` : "no mem"}</span>` : "");
+    h += `<div class="trow"><span class="tl" data-jump="${side}:${t.order}:0" title="jump to the start of task ${t.order}">T${t.order}</span><span class="dots">${dots}</span>${tags}${res}</div>`;
+  }
+  h += `<div class="legend"><span><i style="background:var(--status-good)"></i>command ok</span><span><i style="background:var(--status-bad)"></i>failed / format error</span><span><i style="border:2px solid var(--status-bad);background:transparent"></i>same command repeated (loop)</span><span><i style="background:var(--accent)"></i>submit</span></div>`;
+  box.innerHTML = h;
+  box.querySelectorAll("[data-jump]").forEach(el => el.onclick = () => { const [sd, o, i] = el.dataset.jump.split(":"); jumpTo(sd, +o, +i); });
+  const chainTotal = ss.reduce((a, s) => a + cost(s), 0);
+  $(`#bar${side}`).style.width = chainTotal ? `${Math.min(100, 100 * st.usd / chainTotal)}%` : "0%";
+}
+
+function renderSummary() {
+  const sides = SIDES.slice(0, S.n); const a = S.stats.A, b = S.stats.B, cA = cfgOf("A"), cB = cfgOf("B");
+  let h = "";
+  if (a && b && cA && cB && (a.usd || b.usd)) {
+    const d = b.usd ? (b.usd - a.usd) / b.usd : 0;
+    h += `<span class="hero ${Math.abs(d) < 0.005 ? "" : d > 0 ? "good" : "bad"}">${esc(cA.short || cA.label)} ${Math.abs(d) < 0.005 ? "±0" : (d > 0 ? "−" : "+") + (Math.abs(d) * 100).toFixed(0)}%</span><span>vs ${esc(cB.short || cB.label)} so far: <b>${usd(a.usd)}</b> vs <b>${usd(b.usd)}</b> · ${tok(a.actor + a.writer)} vs ${tok(b.actor + b.writer)} tokens · ${a.steps} vs ${b.steps} steps · ${a.resolved}/${a.tasks} vs ${b.resolved}/${b.tasks} resolved</span>`;
+  } else h += `<span class="muted">Press ▶ Play all — counters tick per step at emulated real-time speed; cost is priced by the model that actually served each call.</span>`;
+  const rows = sides.map(side => { const c = cfgOf(side), ss = sessionsFor(side); if (!c || !ss.length) return ""; const models = {}; ss.forEach(s => Object.entries(s.models || {}).forEach(([m, k]) => models[m] = (models[m] || 0) + k));
+    return `<tr><td><span class="dot" style="background:${colColor(side) || COLOR[c.kind]};margin-right:6px"></span>${esc(c.short || c.label)}</td><td>${ss.filter(s => s.resolved).length}/${ss.length}</td><td>${ss.reduce((x, s) => x + (s.n_steps || 0), 0)}</td><td>${tok(ss.reduce((x, s) => x + (s.tokens || 0), 0))}</td><td><b>${usd(ss.reduce((x, s) => x + cost(s), 0))}</b></td><td class="muted" style="text-align:left">${esc(Object.entries(models).sort((p, q) => q[1] - p[1]).map(([m, k]) => m === "model not recorded" ? `${c.model} (${c.provider})` : `${m}×${k}`).join(", "))}</td></tr>`; }).join("");
+  if (rows) h += `<div class="tabwrap"><table class="tot"><thead><tr><th>whole chain (recorded)</th><th>resolved</th><th>steps</th><th>tokens</th><th>cost</th><th style="text-align:left">served by</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const unverified = Object.entries(S.cfgs.prices || {}).filter(([k, v]) => !v.verified).map(([k]) => k);
+  if (S.pricing === "model") h += `<span class="muted">list prices per model (demo/model_prices.json); unverified rows: ${esc(unverified.join(", "))} — the router's usage page is the bill.</span>`;
+  if (S.jobs.length) h += `<span class="jobs">live: ${S.jobs.map(j => `${esc(j.config || j.arm)} ${esc(j.status)}${j.results ? ` (${j.results.length} graded)` : ""}`).join(" · ")}</span>`;
+  $("#sum").innerHTML = h;
+}
+
+// ---------------------------------------------------------------- jump to a step (click on a dot / task label)
+async function jumpTo(side, order, idx) {
+  const p = S.players[side], c = cfgOf(side); if (!p || !c) return;
+  if (p.sess && p.sess.order === order) { p.seek(idx); return; }
+  // another task: counters for the tasks before it = their recorded totals (steps, tokens, cost, resolved)
+  p.pause(); p.resetCum();
+  for (const s of sessionsFor(side)) if (s.order < order) { p.cum.steps += s.n_steps || 0; p.cum.actor += s.tokens || 0; p.cum.usd += cost(s); p.cum.tasks += 1; if (s.resolved) p.cum.resolved += 1; }
+  const ok = await p.load({ run: runIdOf(c), arm: armOf(c), cid: S.cid, order });
+  if (ok) p.seek(idx);
+}
+
+// ---------------------------------------------------------------- controls
+function each(fn) { for (const s of SIDES.slice(0, S.n)) if (S.players[s]?.sess) fn(S.players[s]); }
+function anyOn() { return SIDES.some(s => S.players[s]?.on); }
+function setPlayBtn() { $("#play").textContent = anyOn() ? "Pause all" : "▶ Play all"; $("#play").classList.toggle("on", anyOn()); }
+$("#play").onclick = () => { if (anyOn()) each(p => p.pause()); else each(p => p.play()); setTimeout(setPlayBtn, 300); };
+$("#step").onclick = () => { each(p => p.step()); setPlayBtn(); };
+$("#restart").onclick = async () => { for (const s of SIDES.slice(0, S.n)) await loadSide(s); renderSummary(); setPlayBtn(); };
+$("#end").onclick = () => { each(p => p.showAll()); setPlayBtn(); };
+$("#speed").onchange = () => each(p => p.speed = +$("#speed").value);
+$("#auto").onchange = () => S.auto = $("#auto").checked;
+setInterval(setPlayBtn, 1000);
+
+// ---------------------------------------------------------------- live runs of every column
+$("#runlive").onclick = async () => {
+  if (!S.cid) return;
+  const cfgs = SIDES.slice(0, S.n).map(cfgOf).filter(Boolean).map(c => c.id === "__custom" ? { kind: c.kind, provider: c.provider, model: c.model, short: c.short } : c.id);
+  $("#livest").className = "st"; $("#livest").textContent = "starting…";
+  try { const r = await api("api/configs/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cid: S.cid, configs: cfgs, step_limit: +$("#steps").value || 100 }) });
+    S.jobs = r.jobs; $("#livest").textContent = `${r.jobs.length} run${r.jobs.length === 1 ? "" : "s"} started${r.errors.length ? " · " + r.errors.join("; ") : ""}`; if (r.errors.length) $("#livest").className = "st err"; renderSummary(); if (r.jobs.length) pollJobs(); }
+  catch (e) { $("#livest").className = "st err"; $("#livest").textContent = e.message; }
+};
+async function pollJobs() {
+  const js = await Promise.all(S.jobs.map(j => api(`api/live/${j.id}?tail=3`).then(x => ({ ...x, config: j.config })).catch(() => j)));
+  S.jobs = js; renderSummary();
+  if (js.some(j => j.status === "running")) { setTimeout(pollJobs, 6000); return; }
+  S.rc = {}; S.cfgs = await api("api/configs"); await loadAll(); $("#livest").textContent = "live runs finished — loaded";
+}
+
+// ---------------------------------------------------------------- boot
+(async () => {
+  [S.meta, S.cfgs] = await Promise.all([api("api/meta"), api("api/configs")]); S.price = S.meta.default_price_row;
+  S.provs = await api("api/providers").catch(() => []);
+  $("#price").innerHTML = Object.entries(S.meta.price_rows).map(([k, v]) => `<option value="${esc(k)}">${esc(k)} · $${v.input}/$${v.output} per M</option>`).join(""); $("#price").value = S.price;
+  const q = new URLSearchParams(location.search);
+  const pair = S.cfgs.default_pair || [], sc = S.cfgs.showcase || {};          // open on the showcase (configs.json) unless the URL says otherwise
+  S.sel = { A: q.get("a") || sc.a || pair[0], B: q.get("b") || sc.b || pair[1], C: q.get("c") || sc.c || (S.cfgs.configs[2] || {}).id };
+  if (q.get("c") || (!q.get("a") && sc.c)) S.n = 3; $("#ncols").value = S.n; S.cid = q.get("cid") || sc.cid || S.meta.default_cid || null;
+  buildColumns(); await loadAll();
+  $("#cid").onchange = async () => { S.cid = $("#cid").value; for (const s of SIDES.slice(0, S.n)) await loadSide(s); renderSummary(); };
+  $("#ncols").onchange = async () => { S.n = +$("#ncols").value; buildColumns(); await loadAll(); };
+  $("#pricing").onchange = async () => { S.pricing = $("#pricing").value; await loadAll(); };
+  $("#price").onchange = async () => { S.price = $("#price").value; S.rc = {}; await loadAll(); };
+  if (S.meta.live_enabled === false) $(".live").style.display = "none";
+  const ok = (S.provs || []).some(p => p.ok); $("#runlive").disabled = !ok; const warn = (S.provs || []).filter(p => p.ok && p.message).map(p => `${p.label}: ${p.message}`).join(" · ");
+  $("#livest").textContent = ok ? (warn ? "⚠ " + warn.slice(0, 200) : "") : "no model endpoint available for live runs";
+})();
+</script>
+</body>
+</html>

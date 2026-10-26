@@ -158,6 +158,15 @@ def distill_fused_note(raw_text, prompt_file=None, tags=V3_TAGS, first_tag_hint=
             "max_tokens": int(os.environ.get("RSM_WRITER_MAXTOK", "900")),
             "chat_template_kwargs": {"enable_thinking": False},
             "messages": [{"role": "system", "content": sysp}, {"role": "user", "content": m}]}
+    if os.environ.get("RSM_OPENAI_STRICT") == "1":
+        # 2026-10-20(env 门控,默认关):OpenAI 协议网关不认 vLLM 专有的 chat_template_kwargs,上游新模型只认
+        # max_completion_tokens / 默认 temperature(见 demo/goodvision.md);本地路径的请求体逐字不变。
+        body.pop("chat_template_kwargs"); body.pop("temperature")
+        body["max_completion_tokens"] = body.pop("max_tokens")
+    _hdr = {"Content-Type": "application/json"}
+    _key = os.environ.get("RSM_WRITER_API_KEY") or os.environ.get("RSM_API_KEY")
+    if _key and _key != "EMPTY":
+        _hdr["Authorization"] = f"Bearer {_key}"   # 网关鉴权;本地 vLLM 不设 key 时头部不变
     def _valid(t):
         """结构校验:防 writer 被轨迹格式带跑续写(实测 14% 废品率的根因)。
 
@@ -178,7 +187,7 @@ def distill_fused_note(raw_text, prompt_file=None, tags=V3_TAGS, first_tag_hint=
     try:
         cap = int(os.environ.get("RSM_NOTE_CAP", "1500"))
         for attempt in range(2):
-            req = urllib.request.Request(api, json.dumps(body).encode(), {"Content-Type": "application/json"})
+            req = urllib.request.Request(api, json.dumps(body).encode(), dict(_hdr))
             r = json.load(urllib.request.urlopen(req, timeout=300))
             txt = r["choices"][0]["message"]["content"].split("</think>")[-1].strip()
             txt = txt.strip("`\n ").removeprefix("```").strip()

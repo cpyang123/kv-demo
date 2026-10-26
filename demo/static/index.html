@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knowledge Vault agent</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --plane: #f3f3f0; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10); --hover: rgba(11,11,11,0.04); --sel: rgba(42,120,214,0.10);
+    --kv: #2a78d6; --mem0: #eb6834; --none: #898781; --accent: #2a78d6;
+    --good: #006300; --bad: #d03b3b; --status-good: #0ca30c; --status-bad: #d03b3b;
+    --diff-add: rgba(12,163,12,0.14); --diff-del: rgba(208,59,59,0.14); --code: #f6f6f3; --term: #141413; --term-ink: #e8e7e1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface: #1a1a19; --plane: #0f0f0e; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.05); --sel: rgba(57,135,229,0.16);
+      --kv: #3987e5; --mem0: #d95926; --none: #898781; --accent: #3987e5;
+      --good: #0ca30c; --bad: #e66767; --diff-add: rgba(12,163,12,0.20); --diff-del: rgba(230,103,103,0.20);
+      --code: #111110; --term: #0b0b0a; --term-ink: #d9d8d1;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #1a1a19; --plane: #0f0f0e; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.05); --sel: rgba(57,135,229,0.16);
+    --kv: #3987e5; --mem0: #d95926; --none: #898781; --accent: #3987e5;
+    --good: #0ca30c; --bad: #e66767; --diff-add: rgba(12,163,12,0.20); --diff-del: rgba(230,103,103,0.20);
+    --code: #111110; --term: #0b0b0a; --term-ink: #d9d8d1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--plane); color: var(--ink);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  a { color: var(--accent); text-decoration: none; }
+  .app { display: grid; grid-template-rows: 48px 1fr; grid-template-columns: 290px minmax(0, 1fr) 420px; height: 100vh; }
+  header.top { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .brand { font-weight: 700; display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+  .brand .mark { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg, var(--kv), #6250d6); display: inline-block; }
+  .brand span.sub { color: var(--muted); font-weight: 400; }
+  select.ctl { background: var(--plane); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: 220px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--plane); }
+  .seg { flex: none; }
+  .seg button { border: 0; background: transparent; color: var(--ink2); padding: 5px 12px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; gap: 7px; align-items: center; white-space: nowrap; }
+  #savings { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #price { max-width: 150px; flex: none; }
+  .brand, #run { flex: none; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--border); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+  .chip { font-size: 12.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink2); white-space: nowrap; }
+  .chip b { color: var(--ink); } .chip.good b { color: var(--good); } .chip.bad b { color: var(--bad); }
+  .spacer { flex: 1; }
+  .top .link { font-size: 13px; white-space: nowrap; }
+  aside.left { border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+  .left .search { padding: 10px; border-bottom: 1px solid var(--border); }
+  .left input { width: 100%; background: var(--plane); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+  .list { overflow-y: auto; flex: 1; padding: 6px; }
+  .chain { border-radius: 8px; padding: 7px 9px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .chain:hover { background: var(--hover); }
+  .chain .id { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chain .repo { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chain .stat { font-size: 12px; color: var(--ink2); text-align: right; font-variant-numeric: tabular-nums; }
+  .chain.open { background: var(--hover); }
+  .sessions { margin: 2px 0 6px 10px; border-left: 2px solid var(--grid); padding-left: 6px; }
+  .sess { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+  .sess:hover { background: var(--hover); } .sess.sel { background: var(--sel); }
+  .sess .n { font-weight: 700; color: var(--ink2); width: 16px; } .sess .inst { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sess .m { color: var(--muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ok { color: var(--status-good); font-weight: 700; } .no { color: var(--status-bad); font-weight: 700; } .na { color: var(--muted); }
+  .left .foot { border-top: 1px solid var(--border); padding: 8px 12px; font-size: 12px; color: var(--muted); }
+  main.chat { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .chat-head { padding: 10px 18px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .chat-head h2 { font-size: 15px; margin: 0; font-weight: 650; }
+  .chat-head .inst { color: var(--muted); font-size: 13px; }
+  .transcript { flex: 1; overflow-y: auto; padding: 18px 22px 10px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 860px; }
+  .msg .who { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+  .bubble { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; white-space: pre-wrap; word-break: break-word; }
+  .msg.user .bubble { border-top-left-radius: 4px; }
+  .msg.assistant .bubble { background: transparent; border: 0; padding: 0 2px; }
+  .msg.model .bubble { border-left: 3px solid var(--accent); }
+  .bubble.md code { background: var(--code); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 12.5px; }
+  .bubble.md pre.mdcode { background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; overflow-x: auto; white-space: pre; margin: 6px 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; }
+  .card.memory { border-left: 3px solid var(--arm, var(--accent)); }
+  .card .hd { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .card .hd .meta { color: var(--muted); font-weight: 400; }
+  .note { white-space: pre-wrap; word-break: break-word; font-size: 13px; }
+  .note b.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; margin-right: 6px; color: var(--ink2); background: var(--hover); border: 1px solid var(--border); font-family: inherit; }
+  .note .inst { color: var(--muted); font-weight: 600; }
+  .cmd { background: var(--term); color: var(--term-ink); border-radius: 8px; padding: 8px 12px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+  .cmd::before { content: "$ "; color: #8fd38f; }
+  .obs { background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--ink2); max-height: 260px; overflow: auto; }
+  .obs.open { max-height: none; }
+  .obs-bar { display: flex; gap: 10px; align-items: center; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .obs-bar button, .linkbtn { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font-size: 12px; }
+  .rc { font-size: 11px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); } .rc.err { color: var(--bad); border-color: var(--bad); }
+  details.sub summary { cursor: pointer; color: var(--accent); font-size: 12.5px; }
+  details.sub pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--ink2); max-height: 300px; overflow: auto; }
+  .tests { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12.5px; }
+  .tests li { display: flex; gap: 8px; align-items: baseline; }
+  .composer { border-top: 1px solid var(--border); background: var(--surface); padding: 10px 18px 12px; }
+  .composer-row { display: flex; gap: 8px; align-items: flex-end; max-width: 900px; }
+  .composer textarea { flex: 1; resize: none; background: var(--plane); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; min-height: 42px; max-height: 160px; }
+  .btn { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: transparent; } .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .composer-tools { display: flex; gap: 10px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap; max-width: 900px; }
+  .runlive { position: relative; margin-left: auto; }
+  .menu { position: absolute; bottom: 36px; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; display: none; min-width: 230px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); z-index: 5; }
+  .menu.open { display: block; }
+  .menu button { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+  .menu button:hover { background: var(--hover); }
+  .menu .note-s { font-size: 11.5px; color: var(--muted); padding: 4px 10px 6px; }
+  aside.right { border-left: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 6px; overflow-x: auto; }
+  .tabs button { border: 0; background: none; padding: 12px 10px; cursor: pointer; color: var(--ink2); font-weight: 600; font-size: 13px; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .tabs button .cnt { color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .pane { flex: 1; overflow: auto; padding: 10px 12px; min-width: 0; }
+  .file { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: 12.5px; }
+  .file:hover { background: var(--hover); } .file.sel { background: var(--sel); }
+  .file .p { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+  .file .pm { font-size: 11.5px; white-space: nowrap; } .pm .a { color: var(--good); } .pm .d { color: var(--bad); }
+  .badge { font-size: 10.5px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--ink2); white-space: nowrap; }
+  .diff { font-size: 12px; white-space: pre; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin: 6px 0 12px; }
+  .diff div { padding: 0 10px; min-height: 1.4em; } .diff .a { background: var(--diff-add); } .diff .d { background: var(--diff-del); } .diff .h { color: var(--accent); background: var(--hover); }
+  .diff-head { display: flex; gap: 8px; align-items: center; font-size: 12.5px; margin-top: 8px; cursor: pointer; }
+  pre.view { margin: 8px 0 0; font-size: 12px; white-space: pre; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--code); counter-reset: ln; }
+  pre.view span.l { display: block; } pre.view span.l::before { counter-increment: ln; content: counter(ln); display: inline-block; width: 3.2em; color: var(--muted); text-align: right; margin-right: 12px; }
+  .pane .src { font-size: 11.5px; color: var(--muted); margin: 6px 0; }
+  .pane .back { margin-bottom: 6px; }
+  table.ledger { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .ledger th, .ledger td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  .ledger th:first-child, .ledger td:first-child, .ledger th:nth-child(2), .ledger td:nth-child(2) { text-align: left; }
+  .ledger th { color: var(--muted); font-weight: 600; }
+  .kv-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--grid); }
+  .kv-row b { font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); padding: 20px; text-align: center; }
+  .live-banner { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 8px 12px; background: var(--surface); font-size: 13px; }
+  .live-banner pre { margin: 6px 0 0; font-size: 11.5px; color: var(--ink2); max-height: 120px; overflow: auto; white-space: pre-wrap; }
+  .toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--plane); padding: 8px 14px; border-radius: 10px; font-size: 13px; display: none; z-index: 20; }
+  @media (max-width: 1100px) { .app { grid-template-columns: 240px minmax(0,1fr) 340px; } }
+  @media (max-width: 860px) { .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto; height: auto; } .chat-head .inst { overflow-wrap: anywhere; }
+    header.top { flex-wrap: wrap; height: auto; padding: 8px 12px; } #savings { white-space: normal; flex-basis: 100%; } .chat-head .chip { white-space: normal; } aside.left { max-height: 40vh; } aside.right { max-height: 60vh; border-left: 0; border-top: 1px solid var(--border); } .transcript { min-height: 50vh; } }
+
+  .playbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 6px 18px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 12.5px; color: var(--ink2); position: relative; }
+  .btn.sm { padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
+  .btn.sm.on { background: var(--accent); color: #fff; border-color: transparent; }
+  select.ctl.sm { padding: 3px 6px; font-size: 12.5px; }
+  .pb-opt { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+  .pb-status { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pb-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; }
+  #pb-fill { height: 100%; width: 0; background: var(--accent); transition: width .25s linear; }
+  .turn[hidden], .tail[hidden] { display: none; }
+  .th.typing::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+  .thinking { color: var(--muted); font-style: italic; }
+  .thinking::after { content: "…"; animation: blink 1s steps(1) infinite; }
+  .running { color: var(--muted); font-size: 12px; }
+  .running::after { content: " ▍"; color: var(--accent); animation: blink .8s steps(1) infinite; }
+  .tail.phase { color: var(--muted); font-size: 13px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .seg.small { margin: 8px 8px 0; align-self: flex-start; }
+  .seg.small button { padding: 4px 10px; font-size: 12.5px; }
+  .newproj { padding: 8px 10px; border-bottom: 1px solid var(--border); display: grid; gap: 6px; }
+  .newproj input, .newproj select { width: 100%; background: var(--plane); border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; font-size: 13px; }
+  .newproj .np-hint { font-size: 11.5px; color: var(--muted); }
+  .task-row { padding: 6px 8px; border-radius: 7px; } .task-row .tt { font-size: 13px; } .task-row .n { font-weight: 700; color: var(--ink2); margin-right: 4px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .chip.tiny { font-size: 11px; padding: 1px 7px; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
+  .chip.ghost { color: var(--muted); border-style: dashed; } .chip.tiny.on { background: var(--sel); color: var(--ink); }
+  select.ctl.sm, input.ctl.sm { padding: 3px 7px; font-size: 12.5px; }
+  .ctl2 { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+  #cmode { max-width: 150px; align-self: flex-end; height: 42px; }
+  .arms label { display: inline-flex; gap: 4px; align-items: center; margin-right: 8px; white-space: nowrap; }
+  .arms input[type=number] { width: 58px; background: var(--plane); border: 1px solid var(--border); border-radius: 6px; padding: 2px 5px; }
+  #epstatus.err { color: var(--bad); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><span class="mark"></span>Knowledge Vault <span class="sub">· ChainSWE agent</span></div>
+    <select id="run" class="ctl" title="Run"></select>
+    <div class="seg" id="armseg" role="group" aria-label="Memory system">
+      <button data-k="none" aria-pressed="false"><span class="dot" style="background:var(--none)"></span>No memory</button>
+      <button data-k="mem0" aria-pressed="false"><span class="dot" style="background:var(--mem0)"></span>Mem0</button>
+      <button data-k="kv" aria-pressed="true"><span class="dot" style="background:var(--kv)"></span>Knowledge Vault</button>
+    </div>
+    <span class="chip" id="savings">…</span>
+    <span class="spacer"></span>
+    <select id="price" class="ctl" title="Price row"></select>
+    <a class="link" href="compare">Compare ⇄</a>
+    <a class="link" href="report" target="_blank">Report ↗</a>
+  </header>
+
+  <aside class="left">
+    <div class="seg small" id="srcseg" role="group" aria-label="Session source">
+      <button data-src="chains" aria-pressed="true">ChainSWE chains</button>
+      <button data-src="custom" aria-pressed="false">Your sandbox</button>
+    </div>
+    <div class="search"><input id="search" placeholder="Filter chains by repo or id…"></div>
+    <div id="newproj" class="newproj" hidden>
+      <input id="np-name" placeholder="new project name (e.g. tablib-play)">
+      <select id="np-sandbox"></select>
+      <button class="btn sm" id="np-create">Create project</button>
+      <div class="np-hint">A project = a sandbox image + the tasks you type below. Each memory system keeps its own workspace and memory across your tasks.</div>
+    </div>
+    <div class="list" id="chains"><div class="empty">Loading…</div></div>
+    <div class="foot" id="leftfoot"></div>
+  </aside>
+
+  <main class="chat">
+    <div class="chat-head" id="chathead"><h2>Pick a session</h2></div>
+    <div class="playbar" id="playbar">
+      <button class="btn sm" id="pb-play" title="Play / pause (space)">▶ Play</button>
+      <button class="btn sm" id="pb-step" title="Reveal next step">Step &rsaquo;</button>
+      <button class="btn sm" id="pb-restart" title="Back to the start of this task">Restart</button>
+      <button class="btn sm" id="pb-end" title="Show the whole session">Show all</button>
+      <select id="pb-speed" class="ctl sm" title="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1× real time</option><option value="2">2×</option><option value="4">4×</option><option value="10">10×</option></select>
+      <label class="pb-opt"><input type="checkbox" id="pb-auto" checked> continue to next task</label>
+      <label class="pb-opt"><input type="checkbox" id="pb-follow" checked> right panel follows</label>
+      <span class="pb-status" id="pb-status"></span>
+      <div class="pb-progress"><div id="pb-fill"></div></div>
+    </div>
+    <div class="transcript" id="transcript"><div class="empty">Select a chain and task on the left to replay the agent's session.</div></div>
+    <div class="composer">
+      <div class="composer-row">
+        <select id="cmode" class="ctl" title="What the box does"><option value="ask">Ask about session</option><option value="chat">Chat with model</option><option value="task">Run a task</option></select>
+        <textarea id="q" rows="1" placeholder="Ask about this session — e.g. “why did task 3 fail?” or “what did the memory tell the agent?”"></textarea>
+        <button class="btn primary" id="send">Send</button>
+      </div>
+      <div class="composer-tools">
+        <label class="ctl2">Endpoint <select id="provider" class="ctl sm"></select></label>
+        <input id="model" class="ctl sm" list="models" placeholder="model" style="width:150px"><datalist id="models"></datalist>
+        <span id="epstatus">checking model endpoints…</span>
+        <span class="arms" id="taskarms" hidden><label><input type="checkbox" data-k="kv" checked> KV</label><label><input type="checkbox" data-k="mem0" checked> Mem0</label><label><input type="checkbox" data-k="none"> none</label><label>steps <input type="number" id="tasksteps" value="40" min="5" max="150"></label></span>
+        <div class="runlive">
+          <button class="btn" id="runlive">▶ Run this chain live</button>
+          <div class="menu" id="runmenu">
+            <div class="note-s" id="runnote"></div>
+            <button data-k="kv"><span class="dot" style="background:var(--kv)"></span>with Knowledge Vault</button>
+            <button data-k="mem0"><span class="dot" style="background:var(--mem0)"></span>with Mem0</button>
+            <button data-k="none"><span class="dot" style="background:var(--none)"></span>without memory</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="right">
+    <div class="tabs" id="tabs">
+      <button data-t="changes" aria-selected="true">Changes<span class="cnt" id="cnt-changes"></span></button>
+      <button data-t="files" aria-selected="false">Files<span class="cnt" id="cnt-files"></span></button>
+      <button data-t="memory" aria-selected="false">Memory</button>
+      <button data-t="issue" aria-selected="false">Issue</button>
+      <button data-t="ledger" aria-selected="false">Ledger</button>
+    </div>
+    <div class="pane" id="pane"><div class="empty">Files touched, the final patch, the memory the agent carried, the issue text and the token ledger appear here.</div></div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s, el=document) => el.querySelector(s);
+const NAMES = { kv: "Knowledge Vault", mem0: "Mem0", none: "No memory" };
+const COLOR = { kv: "var(--kv)", mem0: "var(--mem0)", none: "var(--none)" };
+const S = { meta: null, run: null, price: null, kind: "kv", runchains: null, summary: null, cid: null, order: null, sess: null, tab: "changes", file: null, filter: "", jobs: {}, chat: [], epOk: false, src: "chains", projects: [], provs: [], chatHist: [], cmode: "ask", lastRun: null };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const usd = v => v == null ? "–" : "$" + (+v).toFixed(2);
+const tok = v => v == null ? "–" : v >= 1e6 ? (v/1e6).toFixed(2)+"M" : v >= 1000 ? (v/1000).toFixed(1)+"K" : String(v);
+async function api(path, opts) { const r = await fetch(path, opts); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.detail || r.statusText); return j; }
+function toast(t, ms=2600) { const e = $("#toast"); e.textContent = t; e.style.display = "block"; clearTimeout(toast._t); toast._t = setTimeout(() => e.style.display = "none", ms); }
+const armOf = k => S.meta.arms[k];
+
+// Minimal markdown for model answers: fenced code, inline code, bold, headings, bullets. Everything is escaped first.
+function md(text) {
+  const parts = esc(text).split(/```[a-zA-Z0-9_-]*\n?/);
+  return parts.map((p, i) => i % 2 ? `<pre class="mdcode">${p.replace(/\n$/, "")}</pre>` :
+    p.replace(/^#{1,4}\s+(.*)$/gm, "<b>$1</b>").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`\n]+)`/g, "<code>$1</code>")
+     .replace(/^\s*[-*]\s+/gm, "• ").replace(/\n{3,}/g, "\n\n")).join("");
+}
+
+// ---------------------------------------------------------------- left: sessions
+function renderChains() {
+  if (S.src === "custom") return renderProjects();
+  const box = $("#chains"); const rows = (S.runchains?.chains || []).filter(c => !S.filter || (c.cid + " " + c.repo).toLowerCase().includes(S.filter));
+  if (!rows.length) { box.innerHTML = `<div class="empty">No chains in this run.</div>`; return; }
+  box.innerHTML = rows.map(c => {
+    const a = c.arms[S.kind]; const open = c.cid === S.cid;
+    const stat = a ? `<span class="${a.resolved ? "ok" : "na"}">${a.resolved}/${a.sessions.length} ✓</span><br>${usd(a.usd)}` : `<span class="na">not run</span>`;
+    let sessions = "";
+    if (open) {
+      sessions = `<div class="sessions">` + (a ? a.sessions.map(s => `<div class="sess ${s.order === S.order ? "sel" : ""}" data-order="${s.order}">
+          <span class="n">${s.order}</span><span class="inst mono" title="${esc(s.instance)}">${esc((s.instance || "").split("__").pop())}</span>
+          <span class="${s.resolved === true ? "ok" : s.resolved === false ? "no" : "na"}">${s.resolved === true ? "✓" : s.resolved === false ? "✗" : "·"}</span>
+          <span class="m">${s.n_steps ?? "–"} st · ${usd(s.usd)}</span></div>`).join("")
+        : `<div class="sess na" style="cursor:default">no ${esc(NAMES[S.kind])} run for this chain</div>`) + `</div>`;
+    }
+    return `<div class="chain ${open ? "open" : ""}" data-cid="${esc(c.cid)}" title="${esc(c.cid)}">
+      <div class="id">${esc(c.cid)}</div><div class="stat">${stat}</div>
+      <div class="repo">${esc(c.repo)} · ${c.n_tasks} tasks${c.sif ? " · image ●" : ""}</div></div>${sessions}`;
+  }).join("");
+  box.querySelectorAll(".chain").forEach(el => el.onclick = () => { S.cid = el.dataset.cid; S.order = null; renderChains(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); });
+  box.querySelectorAll(".sess[data-order]").forEach(el => el.onclick = ev => { ev.stopPropagation(); openSession(+el.dataset.order); });
+  $("#leftfoot").textContent = `${S.runchains.chains.length} chains in ${S.run} · run dir ${S.meta.runs_dir.split("/").slice(-2).join("/")}`;
+}
+const rowFor = cid => (S.runchains?.chains || []).find(c => c.cid === cid);
+
+// ---------------------------------------------------------------- left: your sandbox projects
+async function loadProjects() { try { S.projects = await api("api/custom/projects"); } catch { S.projects = []; } }
+function renderProjects() {
+  const box = $("#chains"); const ps = (S.projects || []).filter(p => !S.filter || (p.name + " " + (p.label || "")).toLowerCase().includes(S.filter));
+  if (!ps.length) { box.innerHTML = `<div class="empty">No sandbox projects yet — create one above, then type a task in the box below and press Run.</div>`; $("#leftfoot").textContent = "sandbox images: " + (S.sandboxes || []).length; return; }
+  box.innerHTML = ps.map(p => { const open = p.name === S.cid; const rc = rowFor(p.name); let tasks = "";
+    if (open) tasks = `<div class="sessions">` + (p.tasks.length ? p.tasks.map(t => { const chips = ["kv", "mem0", "none"].map(k => { const s = rc?.arms?.[k]?.sessions?.find(x => x.order === t.order);
+          return s ? `<span class="chip tiny ${k === S.kind && t.order === S.order ? "on" : ""}" data-open="${k}:${t.order}" title="open the ${NAMES[k]} session"><span class="dot" style="background:${COLOR[k]}"></span>${s.n_steps} st · ${usd(s.usd)}</span>`
+                   : `<span class="chip tiny ghost" data-rerun="${k}:${t.order}" title="run this task with ${NAMES[k]}">${k === "kv" ? "KV" : NAMES[k]} ▶</span>`; }).join("");
+        return `<div class="task-row"><div class="tt"><span class="n">${t.order}</span>${esc(t.title)}</div><div class="chips">${chips}</div></div>`; }).join("")
+      : `<div class="sess na" style="cursor:default">no tasks yet — type one below and press Run</div>`) + `</div>`;
+    return `<div class="chain ${open ? "open" : ""}" data-proj="${esc(p.name)}" title="${esc(p.name)}"><div class="id">${esc(p.name)}</div><div class="stat">${p.tasks.length} task${p.tasks.length === 1 ? "" : "s"}</div><div class="repo">${esc(p.label || p.sandbox)}</div></div>${tasks}`; }).join("");
+  box.querySelectorAll(".chain").forEach(el => el.onclick = () => { S.cid = el.dataset.proj; S.order = null; renderProjects(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); else { S.sess = null; setPlayUI(); $("#chathead").innerHTML = `<h2>${esc(S.cid)}</h2><span class="inst">sandbox project · type a task below</span>`; $("#transcript").innerHTML = `<div class="empty">No ${esc(NAMES[S.kind])} session yet in this project. Choose "Run a task" below, describe the task, and press Run.</div>`; renderPane(); } });
+  box.querySelectorAll("[data-open]").forEach(el => el.onclick = ev => { ev.stopPropagation(); const [k, o] = el.dataset.open.split(":"); setKind(k); openSession(+o); });
+  box.querySelectorAll("[data-rerun]").forEach(el => el.onclick = ev => { ev.stopPropagation(); const [k, o] = el.dataset.rerun.split(":"); rerunTask(k, +o); });
+  $("#leftfoot").textContent = `${S.projects.length} project${S.projects.length === 1 ? "" : "s"} · run dir runs/custom`;
+}
+async function setSrc(src) {
+  S.src = src; document.querySelectorAll("#srcseg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.src === src));
+  $("#newproj").hidden = src !== "custom"; $(".runlive").style.display = src === "custom" ? "none" : ""; $("#search").placeholder = src === "custom" ? "Filter projects…" : "Filter chains by repo or id…";
+  if (src === "custom") {
+    if (S.run !== "custom") S.lastRun = S.run;
+    S.run = "custom"; S.order = null; S.sess = null;
+    await Promise.all([loadProjects(), loadSandboxes()]);
+    $("#np-sandbox").innerHTML = (S.sandboxes || []).map(x => `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join("") || `<option value="">no sandbox images under the SIF directory</option>`;
+    await loadRun(); if (!S.projects.some(p => p.name === S.cid)) S.cid = S.projects[0]?.name || null; renderProjects();
+    setCmode("task"); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); else { setPlayUI(); $("#chathead").innerHTML = `<h2>${esc(S.cid || "Your sandbox")}</h2>`; $("#transcript").innerHTML = `<div class="empty">${S.cid ? "No session yet — describe a task below and press Run." : "Create a project on the left to start."}</div>`; renderPane(); }
+  } else {
+    S.run = S.lastRun || S.meta.default_run; $("#run").value = S.run; S.order = null; S.sess = null; setCmode("ask");
+    await loadRun(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order);
+  }
+}
+async function loadSandboxes() { try { S.sandboxes = await api("api/sandboxes"); } catch { S.sandboxes = []; } }
+async function createProject() {
+  const name = $("#np-name").value.trim(), sandbox = $("#np-sandbox").value; if (!name || !sandbox) { toast("name and sandbox image required"); return; }
+  try { const p = await api("api/custom/project", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, sandbox})}); $("#np-name").value = ""; await loadProjects(); S.cid = p.name; S.order = null; S.sess = null; renderProjects(); toast(`project ${p.name} ready — type a task below`); $("#chathead").innerHTML = `<h2>${esc(p.name)}</h2><span class="inst">${esc(p.label || p.sandbox)}</span>`; $("#transcript").innerHTML = `<div class="empty">Describe the first task below and press Run.</div>`; $("#q").focus(); }
+  catch (e) { toast("⚠ " + e.message, 5000); }
+}
+function selectedKinds() { return [...document.querySelectorAll("#taskarms input[data-k]:checked")].map(i => i.dataset.k); }
+async function runTask() {
+  const text = $("#q").value.trim(); if (!text) return;
+  if (S.src !== "custom" || !S.cid || !S.projects.some(p => p.name === S.cid)) { toast("pick or create a sandbox project on the left first", 4000); return; }
+  const kinds = selectedKinds(); if (!kinds.length) { toast("tick at least one memory system"); return; }
+  $("#send").disabled = true;
+  try { const r = await api("api/custom/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({project: S.cid, task: text, kinds, provider: $("#provider").value, model: $("#model").value.trim() || null, step_limit: +$("#tasksteps").value || 40})});
+    $("#q").value = ""; $("#q").style.height = "auto"; for (const j of r.jobs) S.jobs[j.id] = j; toast(`task ${r.order} running with ${kinds.map(k => NAMES[k]).join(" + ")}`); await loadProjects(); renderProjects(); pollJobs(); }
+  catch (e) { toast("⚠ " + e.message, 6000); }
+  $("#send").disabled = false;
+}
+async function rerunTask(kind, order) {
+  try { const r = await api("api/custom/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({project: S.cid, task: "", order, kinds: [kind], provider: $("#provider").value, model: $("#model").value.trim() || null, step_limit: +$("#tasksteps").value || 40})});
+    for (const j of r.jobs) S.jobs[j.id] = j; toast(`task ${order} running with ${NAMES[kind]}`); pollJobs(); }
+  catch (e) { toast("⚠ " + e.message, 6000); }
+}
+
+// ---------------------------------------------------------------- middle: chat transcript
+async function openSession(order, opts = {}) {
+  pause(); P.prepared = false; P.done = false;
+  S.order = order; S.chat = []; renderChains();
+  const arm = armOf(S.kind);
+  $("#transcript").innerHTML = `<div class="empty">Loading session…</div>`;
+  try { S.sess = await api(`api/session?run=${encodeURIComponent(S.run)}&arm=${encodeURIComponent(arm)}&cid=${encodeURIComponent(S.cid)}&order=${order}`); }
+  catch (e) { S.sess = null; $("#transcript").innerHTML = `<div class="empty">${esc(e.message)}</div>`; $("#chathead").innerHTML = `<h2>${esc(S.cid)} · task ${order}</h2>`; renderPane(); return; }
+  renderHead(); renderTranscript(); S.file = null; renderPane();
+  if (opts.play) play();
+}
+
+function noteHtml(text) {
+  // KV notes: "DID: … | WHERE: … | VERIFY: …"; mem0 facts: "[instance__f1]\nfact". Render tags and instance headers.
+  return esc(text).split("\n").map(l => {
+    if (/^\[[^\]]+\]$/.test(l.trim())) return `<span class="inst">${l}</span>`;
+    return l.replace(/^(DID|CONTEXT|LESSON|STATE|NOTE|TODO|WARN|FACT):/, (m, t) => `<b class="tag">${t}</b>`).replace(/ \| (WHERE|VERIFY):/g, (m, t) => ` <b class="tag">${t}</b>`);
+  }).join("\n");
+}
+
+function renderHead() {
+  const s = S.sess, r = s.result, t = s.tok || {};
+  const res = r.resolved === true ? `<span class="chip good"><b>✓ resolved</b></span>` : r.resolved === false ? `<span class="chip bad"><b>✗ not resolved</b></span>` : `<span class="chip">not graded</span>`;
+  const row = rowFor(S.cid); const n = row ? row.n_tasks : "?";
+  $("#chathead").innerHTML = `<h2>Task ${s.order} of ${n}</h2><span class="inst mono">${esc(s.instance)}</span>
+    <span class="chip"><span class="dot" style="background:${COLOR[s.kind]};margin-right:6px"></span>${esc(NAMES[s.kind] || s.arm)}</span>${res}
+    <span class="chip">${r.n_steps ?? s.turns.length} steps</span><span class="chip">${tok((t.actor_prompt||0)+(t.actor_completion||0))} actor tok${(t.writer_prompt||0) ? ` · ${tok(t.writer_prompt + t.writer_completion)} writer${t.writer_src === "estimate" ? " (est.)" : ""}` : ""}</span>
+    <span class="chip"><b>${usd(t.usd)}</b></span>${s.model ? `<span class="chip">${esc(s.model.replace(/^openai\//, ""))}</span>` : ""}
+    <span class="chip" title="exit status">${esc(s.exit_status || "")}</span>`;
+}
+
+function renderTranscript() {
+  const s = S.sess; let h = "";
+  if (s.memory) h += `<div class="card memory" style="--arm:${COLOR[s.kind]}"><div class="hd"><span class="dot" style="background:${COLOR[s.kind]}"></span>Memory injected from earlier sessions <span class="meta">· ${esc(NAMES[s.kind])} · ${s.memory.length} chars</span></div><div class="note">${noteHtml(s.memory)}</div></div>`;
+  else h += `<div class="card" style="color:var(--muted);font-size:13px">No cross-session memory injected${s.order === 1 ? " — first task of the chain" : S.kind === "none" ? " — no-memory baseline" : " — the store was empty"}.</div>`;
+  h += `<div class="msg user"><div class="who">Issue · ${esc(s.repo)}</div><div class="bubble">${esc(s.problem_statement)}</div>${s.instructions ? `<details class="sub"><summary>harness instructions (${s.instructions.length} chars)</summary><pre>${esc(s.instructions)}</pre></details>` : ""}</div>`;
+  s.turns.forEach(t => {
+    const o = t.observation;
+    h += `<div class="msg assistant turn" data-k="${t.step}"><div class="who">agent · step ${t.step}${t.usage ? ` · ${tok(t.usage.prompt)} in / ${t.usage.completion} out` : ""}</div>
+      <div class="bubble th">${esc(t.thought)}</div>${t.command ? `<div class="cmd">${esc(t.command)}</div>` : ""}<div class="obsw">`;
+    if (o) {
+      const long = o.output.length > 1500;
+      h += `<div class="obs-bar"><span class="rc ${o.returncode ? "err" : ""}">rc ${o.returncode ?? "?"}</span><span>${o.chars.toLocaleString()} chars${o.truncated ? " (truncated in log)" : ""}</span>${long ? `<button data-more="${t.step}">show all</button>` : ""}</div>
+        <div class="obs" id="obs-${t.step}">${esc(long ? o.output.slice(0, 1500) + "\n…" : o.output)}</div>`;
+    } else if (t.exit) {
+      h += `<div class="obs-bar"><span class="rc">${esc(t.exit)}</span></div>`;
+    }
+    h += `</div></div>`;
+  });
+  const ch = s.changes || [];
+  if (s.exit_status === "Submitted" || ch.length) {
+    const add = ch.reduce((a, f) => a + f.added, 0), rem = ch.reduce((a, f) => a + f.removed, 0);
+    h += `<div class="card tail" data-tail="exit"><div class="hd">Submitted <span class="meta">· ${ch.length} file${ch.length === 1 ? "" : "s"} changed <span class="pm"><span class="a">+${add}</span> <span class="d">−${rem}</span></span></span></div>
+      ${ch.length ? `<div style="font-size:12.5px">${ch.map(f => `<div class="mono">${esc(f.path)}</div>`).join("")}<button class="linkbtn" id="to-changes">open in Changes →</button></div>` : `<div class="note" style="color:var(--muted)">empty patch</div>`}</div>`;
+  } else if (s.exit_status) {
+    h += `<div class="card tail" data-tail="exit"><div class="hd">Session ended: <span class="meta">${esc(s.exit_status)}</span></div>${s.result.error ? `<div class="note" style="color:var(--bad)">${esc(s.result.error)}</div>` : ""}</div>`;
+  }
+  const r = s.result;
+  if (r.resolved !== null && r.resolved !== undefined) {
+    const f2p = Object.entries(r.f2p || {});
+    h += `<div class="card tail" data-tail="grade"><div class="hd">${r.resolved ? `<span class="ok">✓ Resolved</span>` : `<span class="no">✗ Not resolved</span>`} <span class="meta">· official F2P/P2P grading${r.secs ? ` · ${r.secs}s session` : ""}</span></div>
+      <ul class="tests">${f2p.map(([t, st]) => `<li><span class="${st === "PASSED" ? "ok" : "no"}">${st === "PASSED" ? "✓" : "✗"}</span><span class="mono" style="font-size:12px">${esc(t)}</span></li>`).join("")}
+      ${(r.p2p_failed || []).map(t => `<li><span class="no">✗</span><span class="mono" style="font-size:12px">${esc(t)}</span> <span class="badge">regression</span></li>`).join("")}</ul></div>`;
+  }
+  if (s.note_written) h += `<div class="card memory tail" data-tail="note" style="--arm:${COLOR[s.kind]}"><div class="hd"><span class="dot" style="background:${COLOR[s.kind]}"></span>Written to memory after this session <span class="meta">· ${s.note_written.length} chars${s.tok && s.tok.writer_prompt ? ` · writer ${tok(s.tok.writer_prompt + s.tok.writer_completion)} tok${s.tok.writer_src === "estimate" ? " (est.)" : ""}` : ""}${r.mem_write_secs ? ` · ${r.mem_write_secs}s` : ""}</span></div><div class="note">${noteHtml(s.note_written)}</div></div>`;
+  else if (S.kind !== "none" && s.result.mem_nodes === 0) h += `<div class="card tail" data-tail="note" style="color:var(--muted);font-size:13px">The ${esc(NAMES[S.kind])} writer produced nothing for this session (0 items stored)${s.tok && s.tok.writer_prompt ? ` — it still cost ${tok(s.tok.writer_prompt + s.tok.writer_completion)} tokens${s.tok.writer_src === "estimate" ? " (est.)" : ""}` : ""}.</div>`;
+  S.chat.forEach(m => h += `<div class="msg ${m.role}"><div class="who">${m.role === "you" ? "you" : (S.cmode === "chat" ? "model" : "model · about this session") + (m.meta ? " · " + esc(m.meta) : "")}</div><div class="bubble md">${m.role === "you" ? esc(m.text) : md(m.text)}</div></div>`);
+  const box = $("#transcript"); box.innerHTML = h;
+  box.querySelectorAll("[data-more]").forEach(b => b.onclick = () => { const t = S.sess.turns.find(x => x.step === +b.dataset.more); const o = $(`#obs-${t.step}`); o.textContent = t.observation.output; o.classList.add("open"); b.remove(); });
+  const tc = $("#to-changes"); if (tc) tc.onclick = () => setTab("changes");
+  $("#runnote").textContent = S.sess?.sif || rowFor(S.cid)?.sif ? `Chain ${S.cid}: image available.` : `Chain ${S.cid}: image not pulled — live run not possible.`;
+  P.prepared = false; setPlayUI();
+}
+
+// ---------------------------------------------------------------- playback: replay the session at emulated real-time speed
+// Pacing: the session's measured wall time (results.jsonl `secs`) is spread over the steps in proportion to the
+// tokens each step generated (model time), plus a short pause per command for its execution; the memory-write
+// phase lasts its measured `mem_write_secs`. The ledger books actor calls at session end, so per-step latencies
+// are not available — this is an emulation of the recorded timing, not a recording of it.
+const P = { on: false, k: 0, phase: 0, speed: 1, token: 0, prepared: false, done: false, plan: null, total: 0, elapsed: 0, follow: true, auto: true, fileCache: {} };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const fmtClock = sec => { sec = Math.max(0, Math.round(sec)); return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`; };
+function planTimes(s) {
+  const comp = s.turns.map(t => (t.usage && t.usage.completion) || 50), sum = comp.reduce((a, b) => a + b, 0) || 1;
+  const secs = s.result.secs || s.turns.length * 4, gen = secs * 0.75, run = secs * 0.25 / Math.max(1, s.turns.length);
+  return s.turns.map((t, i) => ({ think: Math.max(0.8, gen * comp[i] / sum), obs: t.observation ? Math.max(0.3, Math.min(6, run + t.observation.chars / 10000)) : 0.3 }));
+}
+function preparePlayback() {
+  const s = S.sess; if (!s) return;
+  P.plan = planTimes(s); P.k = 0; P.phase = 0; P.done = false; P.elapsed = 0;
+  P.total = P.plan.reduce((a, p) => a + p.think + p.obs, 0) + 2.5 + (s.note_written || (S.kind !== "none" && s.result.mem_nodes === 0) ? (s.result.mem_write_secs || 4) : 0);
+  document.querySelectorAll("#transcript .turn, #transcript .tail").forEach(el => { el.hidden = true; });
+  document.querySelectorAll("#transcript .th").forEach(el => el.classList.remove("typing"));
+  P.prepared = true; setPlayUI();
+  if (P.follow && s.memory) setTab("memory");
+}
+function setPlayUI() {
+  const s = S.sess, n = s ? s.turns.length : 0;
+  $("#pb-play").textContent = P.on ? "Pause" : (P.prepared && P.k > 0 && !P.done ? "▶ Resume" : "▶ Play");
+  $("#pb-play").classList.toggle("on", P.on);
+  $("#pb-play").disabled = $("#pb-step").disabled = $("#pb-restart").disabled = $("#pb-end").disabled = !s;
+  $("#pb-status").textContent = s ? (P.prepared ? `step ${Math.min(P.k + (P.done ? 0 : 0), n)}/${n} · ${fmtClock(P.elapsed)} / ${fmtClock(P.total)} emulated · ${P.speed}×` : `${n} steps · ${fmtClock(s.result.secs || 0)} real wall time`) : "";
+  $("#pb-fill").style.width = P.prepared && P.total ? `${Math.min(100, 100 * P.elapsed / P.total)}%` : "0%";
+}
+function autoScroll() { const b = $("#transcript"); if (b.scrollHeight - b.scrollTop - b.clientHeight < 260) b.scrollTop = b.scrollHeight; }
+async function typeText(el, text, dur, my) {
+  const steps = Math.max(1, Math.min(text.length, Math.round(dur * 30 / P.speed)));
+  el.classList.add("typing");
+  for (let i = 1; i <= steps; i++) {
+    if (my !== P.token) return false;
+    el.textContent = text.slice(0, Math.round(text.length * i / steps));
+    await sleep(dur * 1000 / P.speed / steps);
+  }
+  el.textContent = text; el.classList.remove("typing"); return my === P.token;
+}
+function followFile(t) {
+  if (!P.follow || !S.sess) return;
+  const f = (S.sess.files || []).filter(x => t.command.includes(x.path) || (x.path.includes("/") && t.command.includes(x.path.split("/").pop()))).sort((a, b) => b.path.length - a.path.length)[0];
+  if (f) { S.tab = "files"; S.file = f.path; document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.t === "files")); renderFile(); }
+}
+async function revealTurn(k, my) {
+  const s = S.sess, t = s.turns[k], el = document.querySelector(`#transcript .turn[data-k="${t.step}"]`), plan = P.plan[k];
+  if (!el) return true;
+  const th = el.querySelector(".th"), cmd = el.querySelector(".cmd"), obsw = el.querySelector(".obsw");
+  if (P.phase <= 1) {
+    el.hidden = false; th.textContent = ""; if (cmd) cmd.hidden = true; obsw.hidden = true; autoScroll();
+    if (P.phase === 0) { th.innerHTML = `<span class="thinking">thinking</span>`; await sleep(Math.min(plan.think * 0.3, 2.5) * 1000 / P.speed); if (my !== P.token) return false; P.phase = 1; }
+    if (!await typeText(th, t.thought, plan.think * 0.7, my)) return false;
+    P.elapsed += plan.think; P.phase = 2; setPlayUI();
+  }
+  if (P.phase === 2) {
+    if (cmd) { cmd.hidden = false; followFile(t); }
+    obsw.hidden = false; const hold = obsw.innerHTML; obsw.innerHTML = `<div class="running">running</div>`; autoScroll();
+    await sleep(plan.obs * 1000 / P.speed); if (my !== P.token) { obsw.innerHTML = hold; return false; }
+    obsw.innerHTML = hold; obsw.querySelectorAll("[data-more]").forEach(b => b.onclick = () => { const tt = S.sess.turns.find(x => x.step === +b.dataset.more); const o = $(`#obs-${tt.step}`); o.textContent = tt.observation.output; o.classList.add("open"); b.remove(); });
+    P.elapsed += plan.obs; P.phase = 0; autoScroll(); setPlayUI();
+  }
+  return true;
+}
+async function revealTail(my) {
+  const s = S.sess, box = $("#transcript");
+  const show = sel => { const el = box.querySelector(sel); if (el) { el.hidden = false; autoScroll(); } return el; };
+  const phase = async (text, secs) => { const el = document.createElement("div"); el.className = "card tail phase"; el.innerHTML = `<span class="running">${text}</span>`; box.appendChild(el); autoScroll(); await sleep(secs * 1000 / P.speed); el.remove(); return my === P.token; };
+  show('.tail[data-tail="exit"]');
+  if (!await phase("grading: resetting test files and running the F2P / P2P tests", 2.5)) return false;
+  P.elapsed += 2.5; show('.tail[data-tail="grade"]'); setPlayUI();
+  if (box.querySelector('.tail[data-tail="note"]')) {
+    const w = s.result.mem_write_secs || 4;
+    if (!await phase(`${esc(NAMES[S.kind])} writer: distilling this session into memory`, w)) return false;
+    P.elapsed += w; show('.tail[data-tail="note"]'); if (P.follow) setTab("memory");
+  } else if (P.follow) setTab(s.changes.length ? "changes" : "ledger");
+  P.elapsed = P.total; setPlayUI(); return true;
+}
+function nextSessionOrder() { const a = rowFor(S.cid)?.arms[S.kind]; if (!a) return null; const nx = a.sessions.find(x => x.order === S.order + 1); return nx ? nx.order : null; }
+async function play() {
+  if (!S.sess || P.on) return;
+  if (!P.prepared || P.done) preparePlayback();
+  P.on = true; const my = ++P.token; setPlayUI();
+  while (P.on && my === P.token) {
+    if (P.k < S.sess.turns.length) { if (!await revealTurn(P.k, my)) return; P.k++; setPlayUI(); }
+    else { const ok = await revealTail(my); if (!ok) return; P.done = true; P.on = false; setPlayUI();
+      const nx = nextSessionOrder(); if (P.auto && nx) { await sleep(1200 / P.speed); if (my === P.token) openSession(nx, {play: true}); } return; }
+  }
+}
+function pause() { P.on = false; P.token++; setPlayUI(); }
+function stepOnce() {
+  if (!S.sess) return; if (P.on) pause(); if (!P.prepared || P.done) preparePlayback();
+  if (P.k < S.sess.turns.length) { const t = S.sess.turns[P.k], el = document.querySelector(`#transcript .turn[data-k="${t.step}"]`); el.hidden = false; el.querySelector(".th").textContent = t.thought; el.querySelector(".th").classList.remove("typing"); const c = el.querySelector(".cmd"); if (c) c.hidden = false; el.querySelector(".obsw").hidden = false; followFile(t); P.elapsed += P.plan[P.k].think + P.plan[P.k].obs; P.k++; P.phase = 0; }
+  else { document.querySelectorAll("#transcript .tail").forEach(e => e.hidden = false); P.elapsed = P.total; P.done = true; if (P.follow) setTab(S.sess.changes.length ? "changes" : "memory"); }
+  autoScroll(); setPlayUI();
+}
+function restart() { pause(); renderTranscript(); preparePlayback(); $("#transcript").scrollTop = 0; }
+function showEnd() { pause(); renderTranscript(); P.prepared = false; setPlayUI(); }
+
+// ---------------------------------------------------------------- right: panes
+function setTab(t) { S.tab = t; S.file = null; document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.t === t)); renderPane(); }
+function renderPane() {
+  const s = S.sess, p = $("#pane");
+  $("#cnt-changes").textContent = s?.changes?.length ? ` ${s.changes.length}` : ""; $("#cnt-files").textContent = s?.files?.length ? ` ${s.files.length}` : "";
+  if (!s) { p.innerHTML = `<div class="empty">No session selected.</div>`; return; }
+  if (S.tab === "changes") {
+    if (!s.changes.length) { p.innerHTML = `<div class="empty">No patch was submitted in this session.</div>`; return; }
+    p.innerHTML = s.changes.map((f, i) => `<div class="diff-head" data-i="${i}"><span class="mono" style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(f.path)}</span><span class="pm"><span class="a">+${f.added}</span> <span class="d">−${f.removed}</span></span></div>
+      <div class="diff">${f.diff.split("\n").map(l => `<div class="${l.startsWith("+") && !l.startsWith("+++") ? "a" : l.startsWith("-") && !l.startsWith("---") ? "d" : l.startsWith("@@") ? "h" : ""}">${esc(l) || " "}</div>`).join("")}</div>`).join("");
+  } else if (S.tab === "files") {
+    if (S.file) { renderFile(); return; }
+    if (!s.files.length) { p.innerHTML = `<div class="empty">No repository paths appear in this session.</div>`; return; }
+    p.innerHTML = `<div class="src">Paths the agent read or edited, from its commands and their output. ${s.sif ? "Click to open the file from the task image." : "Image not available — click to see what the agent saw."}</div>` +
+      s.files.map(f => `<div class="file" data-p="${esc(f.path)}"><span class="p mono" title="${esc(f.path)}">${esc(f.path)}</span>${f.edited ? `<span class="badge" style="color:var(--good);border-color:var(--good)">edited</span>` : ""}<span class="badge">${f.in_commands}×</span></div>`).join("");
+    p.querySelectorAll(".file").forEach(el => el.onclick = () => { S.file = el.dataset.p; renderFile(); });
+  } else if (S.tab === "memory") {
+    p.innerHTML = (s.memory ? `<div class="src">Injected before this task (${esc(NAMES[s.kind])}, ${s.memory.length} chars → ${s.result.injected_chars ?? s.memory.length} injected chars)</div><div class="card memory" style="--arm:${COLOR[s.kind]}"><div class="note">${noteHtml(s.memory)}</div></div>` : `<div class="src">Nothing injected before this task.</div>`) +
+      (s.note_written ? `<div class="src" style="margin-top:12px">Written after this task (${s.note_written.length} chars)</div><div class="card memory" style="--arm:${COLOR[s.kind]}"><div class="note">${noteHtml(s.note_written)}</div></div>` : `<div class="src" style="margin-top:12px">Nothing written after this task${s.order === rowFor(S.cid)?.n_tasks ? " that a later task could use (last task)" : ""}.</div>`);
+  } else if (S.tab === "issue") {
+    p.innerHTML = `<div class="src">${esc(s.repo)} · ${esc(s.instance)}</div><div class="card"><div class="note">${esc(s.problem_statement)}</div></div>`;
+  } else if (S.tab === "ledger") {
+    const t = s.tok || {};
+    const rows = s.ledger.length ? s.ledger : s.turns.filter(x => x.usage).map(x => ({idx: x.step, role: "actor", prompt: x.usage.prompt, cached: 0, completion: x.usage.completion, cached_src: "usage"}));
+    p.innerHTML = `<div class="kv-row"><span>Actor tokens (prompt / completion)</span><b>${tok(t.actor_prompt)} / ${tok(t.actor_completion)}</b></div>
+      <div class="kv-row"><span>Writer-side tokens${t.writer_src === "estimate" ? " (estimated)" : ""}</span><b>${tok((t.writer_prompt||0)+(t.writer_completion||0))}</b></div>
+      <div class="kv-row"><span>Cache-aware total</span><b>${tok(t.cacheaware_total)}</b></div>
+      <div class="kv-row"><span>Priced USD (${esc(S.price)})</span><b>${usd(t.usd)}</b></div>
+      <div class="src">Source: ${esc(t.src === "ledger" ? "calls.jsonl written by harness/ledger.py (exact, every role)" : "actor usage from the trajectory; writer side estimated from the material handed to the writer")}.</div>
+      <table class="ledger"><thead><tr><th>#</th><th>role</th><th>prompt</th><th>cached</th><th>compl.</th>${s.ledger.length ? "<th>s</th>" : ""}</tr></thead><tbody>
+      ${rows.map(r => `<tr><td>${r.idx ?? ""}</td><td>${esc(r.role)}</td><td>${tok(r.prompt)}</td><td>${r.cached || 0}</td><td>${r.completion ?? ""}</td>${s.ledger.length ? `<td>${r.latency_s ?? ""}</td>` : ""}</tr>`).join("")}</tbody></table>`;
+  }
+}
+async function renderFile() {
+  const s = S.sess, p = $("#pane"), path = S.file;
+  p.innerHTML = `<div class="back"><button class="linkbtn" id="back">← files</button></div><div class="mono" style="font-size:12.5px;word-break:break-all">${esc(path)}</div><div class="src">loading…</div>`;
+  $("#back").onclick = () => { S.file = null; renderPane(); };
+  const excerpts = s.turns.filter(t => t.observation && t.observation.output.includes(path.split("/").pop())).slice(0, 3);
+  let body = "";
+  if (s.sif) {
+    try { const key = s.cid + "|" + path; const f = P.fileCache[key] || (P.fileCache[key] = await api(`api/file?cid=${encodeURIComponent(s.cid)}&path=${encodeURIComponent(path)}`));
+      body = `<div class="src">${esc(f.source)} · ${f.root}/${esc(path)}${f.truncated ? " · truncated" : ""}</div><pre class="view">${f.content.split("\n").map(l => `<span class="l">${esc(l)}</span>`).join("")}</pre>`;
+    } catch (e) { body = `<div class="src">${esc(e.message)}</div>`; }
+  }
+  if (excerpts.length) body += `<div class="src" style="margin-top:10px">As the agent saw it (${excerpts.length} observation${excerpts.length > 1 ? "s" : ""} mention this file):</div>` + excerpts.map(t => `<div class="src">step ${t.step} · <span class="mono">${esc(t.command.slice(0, 120))}</span></div><div class="obs open" style="max-height:300px">${esc(t.observation.output.slice(0, 4000))}</div>`).join("");
+  if (!body) body = `<div class="src">No content captured for this file.</div>`;
+  if (S.file !== path) return;
+  p.innerHTML = `<div class="back"><button class="linkbtn" id="back">← files</button></div><div class="mono" style="font-size:12.5px;word-break:break-all">${esc(path)}</div>${body}`;
+  $("#back").onclick = () => { S.file = null; renderPane(); };
+}
+
+// ---------------------------------------------------------------- composer: ask + live runs
+const PLACEHOLDER = { ask: "Ask about this session — e.g. “why did task 3 fail?” or “what did the memory tell the agent?”", chat: "Chat with the model on the selected endpoint…", task: "Describe a task for the agent to do in this sandbox — e.g. “add a CONTRIBUTING.md explaining how to run the tests”. Memory from earlier tasks in this project is injected automatically." };
+function setCmode(m) { S.cmode = m; $("#cmode").value = m; $("#q").placeholder = PLACEHOLDER[m]; $("#send").textContent = m === "task" ? "Run ▶" : "Send"; $("#taskarms").hidden = m !== "task"; }
+function provider() { return { provider: $("#provider").value || "local", model: $("#model").value.trim() || null }; }
+async function ask() {
+  if (S.cmode === "task") return runTask();
+  const q = $("#q").value.trim(); if (!q) return;
+  if (S.cmode === "ask" && !S.sess) { toast("open a session first, or switch the box to “Chat with model”", 4000); return; }
+  if (P.prepared) showEnd();
+  $("#q").value = ""; $("#q").style.height = "auto"; S.chat.push({role: "you", text: q}); if (S.sess) { renderTranscript(); } else renderChatOnly(); scrollBottom();
+  $("#send").disabled = true;
+  try {
+    let r;
+    if (S.cmode === "chat") { S.chatHist.push({role: "user", content: q}); r = await api("api/chat", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({messages: S.chatHist, ...provider()})}); S.chatHist.push({role: "assistant", content: r.answer}); }
+    else r = await api("api/ask", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({run: S.run, arm: S.sess.arm, cid: S.cid, order: S.order, question: q, ...provider()})});
+    const u = r.usage || {}; S.chat.push({role: "model", text: r.answer, meta: `${r.model || ""} · ${u.prompt_tokens ?? "?"} in / ${u.completion_tokens ?? "?"} out · ${r.latency_s ?? "?"}s`}); }
+  catch (e) { S.chat.push({role: "model", text: "⚠ " + e.message}); }
+  $("#send").disabled = false; if (S.sess) renderTranscript(); else renderChatOnly(); scrollBottom();
+}
+function renderChatOnly() { $("#transcript").innerHTML = S.chat.map(m => `<div class="msg ${m.role}"><div class="who">${m.role === "you" ? "you" : "model" + (m.meta ? " · " + esc(m.meta) : "")}</div><div class="bubble md">${m.role === "you" ? esc(m.text) : md(m.text)}</div></div>`).join("") || `<div class="empty">Chat with the model on the selected endpoint.</div>`; }
+function scrollBottom() { const b = $("#transcript"); b.scrollTop = b.scrollHeight; }
+async function checkEndpoint() {
+  $("#epstatus").textContent = "checking model endpoints…";
+  try { S.provs = await api("api/providers"); } catch { S.provs = []; }
+  const sel = $("#provider"), keep = sel.value || S.meta.default_provider;
+  sel.innerHTML = S.provs.map(p => `<option value="${esc(p.name)}">${esc(p.label)}${p.ok ? "" : " — unavailable"}</option>`).join("");
+  const cur = S.provs.find(p => p.name === keep && p.ok) || S.provs.find(p => p.ok) || S.provs.find(p => p.name === keep) || S.provs[0];
+  if (cur) sel.value = cur.name;
+  providerChanged();
+}
+function providerChanged() {
+  const p = S.provs.find(x => x.name === $("#provider").value); if (!p) { S.epOk = false; return; }
+  $("#models").innerHTML = (p.models.length ? p.models : p.models_hint).map(m => `<option value="${esc(m)}">`).join("");
+  const have = $("#model").value.trim(); if (!have || !(p.models.includes(have) || p.models_hint.includes(have) || p.name === "local")) $("#model").value = p.default_model || "";
+  S.epOk = !!p.ok; const st = $("#epstatus"); st.className = p.ok ? "" : "err";
+  st.textContent = p.ok ? `${p.api_base}${p.models.length ? ` · ${p.models.length} models` : ""}${p.message ? ` · ⚠ ${p.message.slice(0, 140)}` : ""}` : `${p.code || "unavailable"}: ${(p.message || "").slice(0, 120)}`;
+  $("#send").disabled = !S.epOk; $("#runlive").disabled = !S.epOk;
+}
+async function startLive(kind) {
+  $("#runmenu").classList.remove("open");
+  try { const j = await api("api/live/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({cid: S.cid, kind, run_id: "demo_live", step_limit: 100, ...provider()})});
+    S.jobs[j.id] = j; toast(`live run started: ${j.arm} on ${j.cid}`); pollJobs(); }
+  catch (e) { toast("⚠ " + e.message, 5000); }
+}
+async function pollJobs() {
+  clearTimeout(pollJobs._t);
+  let jobs; try { jobs = await api("api/live"); } catch { return; }
+  const running = jobs.filter(j => j.status === "running");
+  const mine = jobs.filter(j => j.cid === S.cid && (j.status === "running" || (Date.now()/1000 - (j.finished || 0)) < 120));
+  for (const j of jobs) { if (j.custom && j.status !== "running" && S.jobs[j.id] && S.jobs[j.id].status === "running") { S.jobs[j.id] = j;
+      if (S.src === "custom") { await Promise.all([loadProjects(), loadRun()]); renderProjects(); if (!S.sess || (S.cid === j.cid && S.order === j.order && S.kind === j.kind)) { setKind(j.kind); openSession(j.order); } } } }
+  let banner = $("#livebanner");
+  if (mine.length) {
+    const j = await api(`api/live/${mine[0].id}?tail=6`);
+    if (!banner) { banner = document.createElement("div"); banner.id = "livebanner"; banner.className = "live-banner"; $("#transcript").prepend(banner); }
+    banner.innerHTML = `<b>${j.custom ? `Task ${j.order}` : "Live run"} ${j.status}</b> · ${esc(j.arm)} on ${esc(j.cid)}${j.model ? ` · ${esc(j.model)}` : ""} → run <span class="mono">${esc(j.run_id)}</span> · ${j.results.length} session${j.results.length === 1 ? "" : "s"} done · ${j.n_calls} ledger calls
+      ${j.status !== "running" ? ` · <button class="linkbtn" id="gotolive">open</button>` : ""}<pre>${esc(j.log_tail.split("\n").slice(-4).join("\n"))}</pre>`;
+    const g = $("#gotolive"); if (g) g.onclick = async () => { if (j.custom) { setKind(j.kind); if (S.src !== "custom") await setSrc("custom"); S.cid = j.cid; await loadRun(); renderProjects(); openSession(j.order); return; } if (!S.meta.runs.includes(j.run_id)) { S.meta = await api("api/meta"); fillRuns(); } S.run = j.run_id; $("#run").value = S.run; S.kind = j.kind; setKind(j.kind); await loadRun(); openSession(1); };
+  } else if (banner) banner.remove();
+  if (running.length) pollJobs._t = setTimeout(pollJobs, 4000);
+}
+
+// ---------------------------------------------------------------- boot
+function fillRuns() { $("#run").innerHTML = S.meta.runs.filter(r => r !== "custom").map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join(""); if (S.run !== "custom") $("#run").value = S.run; }
+function setKind(k) { S.kind = k; document.querySelectorAll("#armseg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === k)); }
+async function loadRun() {
+  $("#chains").innerHTML = `<div class="empty">Loading ${esc(S.run)}…</div>`;
+  const [rc, sm] = await Promise.all([api(`api/runchains?run=${encodeURIComponent(S.run)}&price=${encodeURIComponent(S.price)}`).catch(() => ({chains: []})), api(`api/summary?run=${encodeURIComponent(S.run)}&price=${encodeURIComponent(S.price)}`).catch(() => null)]);
+  S.runchains = rc; S.summary = sm;
+  const a = sm?.arms || {};
+  if (a.kv && a.mem0) { const d = (a.mem0.usd_chain - a.kv.usd_chain) / a.mem0.usd_chain; $("#savings").className = "chip " + (d > 0 ? "good" : "bad"); $("#savings").innerHTML = `Knowledge Vault <b>${d > 0 ? "−" : "+"}${(Math.abs(d)*100).toFixed(1)}%</b> cost vs Mem0 · ${usd(a.kv.usd_chain)} vs ${usd(a.mem0.usd_chain)} per chain · ${sm.common_chains} chain${sm.common_chains === 1 ? "" : "s"}`; }
+  else { $("#savings").className = "chip"; $("#savings").textContent = "run incomplete for a Mem0 vs Knowledge Vault comparison"; }
+  if (S.src !== "custom" && (!S.cid || !rowFor(S.cid))) S.cid = (S.meta.default_cid && rowFor(S.meta.default_cid)) ? S.meta.default_cid : (rc.chains[0]?.cid || null);
+  renderChains();
+}
+(async function boot() {
+  S.meta = await api("api/meta"); S.run = S.meta.default_run; S.price = S.meta.default_price_row;
+  if (S.meta.live_enabled === false) { $(".runlive").style.display = "none"; const t = document.querySelector('#srcseg button[data-src="custom"]'); if (t) t.style.display = "none"; const o = document.querySelector('#cmode option[value="task"]'); if (o) o.remove(); }
+  fillRuns(); $("#price").innerHTML = Object.entries(S.meta.price_rows).map(([k, v]) => `<option value="${esc(k)}">${esc(k)} · $${v.input}/$${v.output} per M</option>`).join(""); $("#price").value = S.price;
+  $("#run").onchange = async () => { S.run = $("#run").value; S.order = null; await loadRun(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); };
+  $("#price").onchange = async () => { S.price = $("#price").value; await loadRun(); if (S.order) openSession(S.order); };
+  document.querySelectorAll("#armseg button").forEach(b => b.onclick = () => { setKind(b.dataset.k); renderChains(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(S.order && a.sessions.some(s => s.order === S.order) ? S.order : a.sessions[0].order); else { S.sess = null; $("#transcript").innerHTML = `<div class="empty">No ${esc(NAMES[S.kind])} run for this chain in ${esc(S.run)}.</div>`; $("#chathead").innerHTML = `<h2>${esc(S.cid)}</h2>`; renderPane(); } });
+  $("#search").oninput = () => { S.filter = $("#search").value.trim().toLowerCase(); renderChains(); };
+  document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => setTab(b.dataset.t));
+  $("#send").onclick = ask; $("#q").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } };
+  $("#q").oninput = () => { const q = $("#q"); q.style.height = "auto"; q.style.height = Math.min(160, q.scrollHeight) + "px"; };
+  document.querySelectorAll("#srcseg button").forEach(b => b.onclick = () => setSrc(b.dataset.src));
+  $("#np-create").onclick = createProject; $("#np-name").onkeydown = e => { if (e.key === "Enter") createProject(); };
+  $("#cmode").onchange = () => setCmode($("#cmode").value); $("#provider").onchange = providerChanged;
+  $("#runlive").onclick = () => $("#runmenu").classList.toggle("open"); document.addEventListener("click", e => { if (!e.target.closest(".runlive")) $("#runmenu").classList.remove("open"); });
+  document.querySelectorAll("#runmenu button[data-k]").forEach(b => b.onclick = () => startLive(b.dataset.k));
+  $("#pb-play").onclick = () => P.on ? pause() : play(); $("#pb-step").onclick = stepOnce; $("#pb-restart").onclick = restart; $("#pb-end").onclick = showEnd;
+  $("#pb-speed").onchange = () => { P.speed = +$("#pb-speed").value; setPlayUI(); };
+  $("#pb-auto").onchange = () => P.auto = $("#pb-auto").checked; $("#pb-follow").onchange = () => P.follow = $("#pb-follow").checked;
+  document.addEventListener("keydown", e => { if (e.code === "Space" && !e.target.closest("textarea, input, select")) { e.preventDefault(); P.on ? pause() : play(); } });
+  await loadRun();
+  const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order);
+  setCmode("ask"); await checkEndpoint(); pollJobs();
+  if (new URLSearchParams(location.search).get("src") === "custom") setSrc("custom");
+})();
+</script>
+</body>
+</html>

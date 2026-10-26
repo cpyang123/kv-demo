@@ -290,9 +290,10 @@ def _patch_urllib():
                     break
             ep = str(full).split("//")[-1].split("/v1")[0]
             ch = (rj.get("choices") or [{}])[0]
+            # 2026-10-22:model 记响应里的实际服务模型(网关 `auto` 路由时与请求的 model 不同;vLLM 二者相同,逐字不变)
             record(role_of(sysm, endpoint=ep), body=body, usage=rj.get("usage") or {},
                    endpoint=ep, latency_s=time.time() - t0,
-                   finish_reason=ch.get("finish_reason"), model=body.get("model"))
+                   finish_reason=ch.get("finish_reason"), model=rj.get("model") or body.get("model"))
             # 原样把字节还回去:调用方的 json.load(...) 行为逐字不变
             out = io.BytesIO(raw)
             out.headers = getattr(resp, "headers", None)

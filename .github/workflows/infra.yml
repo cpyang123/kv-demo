@@ -1,0 +1,50 @@
+name: Provision Azure VM
+# One-time (or on change) provisioning of the demo VM with infra/main.bicep, authenticated to Azure with
+# GitHub OIDC (no stored Azure password). Run it manually from the Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: Resource group (created if missing)
+        required: true
+        default: kv-demo-rg
+      location:
+        description: Azure region
+        required: true
+        default: eastus
+      dns_label:
+        description: DNS label -> <label>.<region>.cloudapp.azure.com
+        required: true
+        default: kv-demo
+      vm_size:
+        required: true
+        default: Standard_D4s_v5
+
+permissions: { id-token: write, contents: read }
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Resource group
+        run: az group create -n "${{ inputs.resource_group }}" -l "${{ inputs.location }}" -o none
+      - name: Deploy Bicep
+        id: deploy
+        run: |
+          az deployment group create -g "${{ inputs.resource_group }}" -f infra/main.bicep \
+            -p dnsLabel="${{ inputs.dns_label }}" vmSize="${{ inputs.vm_size }}" \
+               adminSshPublicKey="${{ secrets.VM_SSH_PUBLIC_KEY }}" \
+            --query properties.outputs -o json > out.json
+          cat out.json
+          echo "fqdn=$(python3 -c "import json; print(json.load(open('out.json'))['fqdn']['value'])")" >> "$GITHUB_OUTPUT"
+      - name: Next steps
+        run: |
+          echo "VM ready at ${{ steps.deploy.outputs.fqdn }}"
+          echo "Set repository secrets VM_HOST=${{ steps.deploy.outputs.fqdn }}, VM_USER=kvdemo, DEMO_DOMAIN=${{ steps.deploy.outputs.fqdn }}, then run the Deploy workflow."

@@ -1,0 +1,114 @@
+name: Deploy demo to Azure VM
+# Build the demo image, push it to GHCR, deploy it with docker compose on the VM over SSH, then smoke-test the
+# site and the GoodVision connection. Secrets: see demo/deploy/README.md ("What you need to do").
+on:
+  push:
+    branches: [demo-deploy, main]
+    paths-ignore: ["infra/**", "**/*.md"]
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/kv-demo
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: demo/requirements*.txt }
+      - run: pip install -r demo/requirements.txt -r demo/requirements-dev.txt
+      - run: pytest -q tests/test_demo.py
+
+  build:
+    needs: tests
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write deploy bundle
+        run: |
+          mkdir -p bundle
+          cp docker-compose.yml demo/deploy/Caddyfile bundle/
+          cat > bundle/.env <<EOF
+          IMAGE=${{ env.IMAGE }}:${{ needs.build.outputs.tag }}
+          DEMO_DOMAIN=${{ secrets.DEMO_DOMAIN }}
+          DEMO_BASIC_AUTH_HASH=${{ secrets.DEMO_BASIC_AUTH_HASH }}
+          GOODVISION_API_KEY=${{ secrets.GOODVISION_API_KEY }}
+          DEMO_PROVIDER=goodvision-test
+          DEMO_DISABLE_LIVE=${{ vars.DEMO_DISABLE_LIVE || '0' }}
+          EOF
+      - name: Copy bundle to the VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "bundle/*,bundle/.env"
+          target: /opt/kv
+          strip_components: 1
+      - name: docker compose up on the VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/kv
+            chmod 600 .env
+            echo "${{ secrets.GHCR_PULL_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f >/dev/null
+            for i in $(seq 1 30); do docker inspect -f '{{.State.Health.Status}}' kv-demo 2>/dev/null | grep -q healthy && break; sleep 5; done
+            docker inspect -f 'demo container: {{.State.Health.Status}}' kv-demo
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Site answers behind TLS + basic auth
+        run: |
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -u "demo:${{ secrets.DEMO_BASIC_AUTH_PASSWORD }}" "https://${{ secrets.DEMO_DOMAIN }}/api/meta") && [ "$code" = "200" ] && break
+            sleep 10
+          done
+          [ "$code" = "200" ] || { echo "site not healthy (HTTP $code)"; exit 1; }
+          curl -s -u "demo:${{ secrets.DEMO_BASIC_AUTH_PASSWORD }}" "https://${{ secrets.DEMO_DOMAIN }}/api/meta" | python3 -c "import json,sys; m=json.load(sys.stdin); print('runs:', m['runs']); print('live_enabled:', m['live_enabled'], '| default provider:', m['default_provider'])"
+      - name: GoodVision connection (as the deployed site sees it)
+        run: |
+          curl -s -m 120 -u "demo:${{ secrets.DEMO_BASIC_AUTH_PASSWORD }}" "https://${{ secrets.DEMO_DOMAIN }}/api/providers" | python3 -c "
+          import json,sys; ps=json.load(sys.stdin); gv=[p for p in ps if p['name']=='goodvision-test'][0]
+          print('goodvision-test:', 'ok' if gv['ok'] else 'NOT OK', '| models', len(gv['models']), '|', gv.get('message') or '')
+          sys.exit(0 if gv['ok'] else 1)"
+      - name: GoodVision connection (direct, detailed)
+        env: { GOODVISION_API_KEY: "${{ secrets.GOODVISION_API_KEY }}" }
+        run: |
+          python3 demo/deploy/check_goodvision.py; rc=$?
+          if [ $rc -eq 2 ]; then echo "::warning::GoodVision reachable but degraded (see log)"; exit 0; fi
+          exit $rc
