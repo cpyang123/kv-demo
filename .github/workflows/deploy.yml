@@ -61,6 +61,18 @@ jobs:
           DEMO_PROVIDER=goodvision-test
           DEMO_DISABLE_LIVE=${{ vars.DEMO_DISABLE_LIVE || '0' }}
           EOF
+      - name: Prepare the VM (Docker if missing, /opt/kv owned by the deploy user)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            if ! command -v docker >/dev/null 2>&1; then curl -fsSL https://get.docker.com | sudo sh; fi
+            sudo systemctl enable --now docker
+            sudo mkdir -p /opt/kv && sudo chown "$USER" /opt/kv
+            for p in 80 443; do if sudo ss -ltnp "( sport = :$p )" | grep -qv '^State' | grep -v docker; then echo "::warning::port $p is already in use on the VM"; fi; done
       - name: Copy bundle to the VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -80,12 +92,12 @@ jobs:
             set -e
             cd /opt/kv
             chmod 600 .env
-            echo "${{ secrets.GHCR_PULL_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f >/dev/null
-            for i in $(seq 1 30); do docker inspect -f '{{.State.Health.Status}}' kv-demo 2>/dev/null | grep -q healthy && break; sleep 5; done
-            docker inspect -f 'demo container: {{.State.Health.Status}}' kv-demo
+            echo "${{ secrets.GHCR_PULL_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+            sudo docker compose pull
+            sudo docker compose up -d --remove-orphans
+            sudo docker image prune -f >/dev/null
+            for i in $(seq 1 30); do sudo docker inspect -f '{{.State.Health.Status}}' kv-demo 2>/dev/null | grep -q healthy && break; sleep 5; done
+            sudo docker inspect -f 'demo container: {{.State.Health.Status}}' kv-demo
 
   smoke:
     needs: deploy
