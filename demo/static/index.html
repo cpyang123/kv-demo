@@ -55,6 +55,18 @@
   .chip b { color: var(--ink); } .chip.good b { color: var(--good); } .chip.bad b { color: var(--bad); }
   .spacer { flex: 1; }
   .top .link { font-size: 13px; white-space: nowrap; }
+  .pnav { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--plane); flex: none; }
+  .pnav a { padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+  .pnav a[aria-current="page"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--border); }
+  .pnav a:hover { color: var(--ink); }
+  /* session header: title row + one line of figures */
+  .chat-head .hrow { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; width: 100%; }
+  .chat-head .hstats { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; width: 100%; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chat-head .hstats b { color: var(--ink); font-weight: 650; font-size: 13px; } .chat-head .hstats .big { font-size: 17px; font-weight: 700; color: var(--ink); }
+  .chat-head .hstats .mono { font-size: 12px; }
+  .epdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; background: var(--status-good); vertical-align: middle; }
+  #epstatus.err .epdot { background: var(--status-bad); } #epstatus.warn .epdot { background: #e0a100; }
+  #epstatus { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   aside.left { border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
   .left .search { padding: 10px; border-bottom: 1px solid var(--border); }
   .left input { width: 100%; background: var(--plane); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; }
@@ -154,6 +166,7 @@
   .live-dot.on { background: var(--bad); box-shadow: 0 0 0 0 rgba(208,59,59,0.5); animation: pulse 1.4s ease-out infinite; }
   @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(208,59,59,0); } 100% { box-shadow: 0 0 0 0 rgba(208,59,59,0); } }
   .live-status { border-left: 3px solid var(--bad); } .lf-phase { font-size: 13px; color: var(--ink2); } .lf-log pre { max-height: 140px; }
+  .lf-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: var(--muted); margin: 2px 0 4px; font-variant-numeric: tabular-nums; }
   details.lf-done { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
   details.lf-done > summary { cursor: pointer; padding: 9px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; min-width: 0; list-style: none; } details.lf-done > summary::-webkit-details-marker { display: none; }
   details.lf-done > summary::before { content: "▸"; color: var(--muted); } details.lf-done[open] > summary::before { content: "▾"; }
@@ -221,8 +234,7 @@
     <span class="chip" id="savings">…</span>
     <span class="spacer"></span>
     <select id="price" class="ctl" title="Price row"></select>
-    <a class="link" href="compare">Compare ⇄</a>
-    <a class="link" href="report" target="_blank">Report ↗</a>
+    <nav class="pnav" aria-label="Pages"><a aria-current="page" href="./">Agent</a><a href="compare">Compare</a><a href="report">Report</a></nav>
   </header>
 
   <aside class="left">
@@ -301,7 +313,7 @@
 </script>
 <script>
 const $ = (s, el=document) => el.querySelector(s);
-const NAMES = { kv: "Knowledge Vault", mem0: "Mem0", none: "No memory" };
+const NAMES = { kv: "Knowledge Vault", mem0: "Mem0", none: "No memory" }, SHORT = { kv: "KV", mem0: "Mem0", none: "none" };
 const COLOR = { kv: "var(--kv)", mem0: "var(--mem0)", none: "var(--none)" };
 const S = { meta: null, run: null, price: null, kind: "kv", runchains: null, summary: null, cid: null, order: null, sess: null, tab: "changes", file: null, filter: "", jobs: {}, chat: [], epOk: false, src: "chains", projects: [], provs: [], chatHist: [], cmode: "ask", lastRun: null, live: null, liveFocus: false, liveRc: null, liveRuns: [] };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -374,7 +386,7 @@ function savedLiveRuns() {
   const h = ents.map(e => { const open = !S.liveFocus && S.run === e.run && S.cid === e.cid && S.kind === e.kind;
     return `<div class="chain ${open ? "open" : ""}" data-open="${esc(e.run)}|${esc(e.cid)}|${e.kind}|${e.sessions[0]?.order ?? ""}" title="${esc(e.run)} · ${esc(e.cid)}"><div class="id">${esc(e.cid)}</div>
       <div class="stat">${e.running ? `<span class="no">● running</span>` : `<span class="${e.resolved ? "ok" : "na"}">${e.resolved}/${e.sessions.length} ✓</span>`}<br>${usd(e.usd)}</div>
-      <div class="repo"><span class="dot" style="background:${COLOR[e.kind]};margin-right:4px"></span>${esc(NAMES[e.kind])}${e.model ? ` · ${esc(e.model)}` : ""} <span class="when">· ${fmtWhen(e.started)}${e.sessions.length < e.n_tasks ? ` · ${e.sessions.length}/${e.n_tasks} tasks` : ""}</span></div></div>` +
+      <div class="repo" title="${esc(NAMES[e.kind])}${e.model ? ` · ${esc(e.model)}` : ""} · ${esc(e.run)}"><span class="dot" style="background:${COLOR[e.kind]};margin-right:4px"></span>${SHORT[e.kind]} <span class="when">${fmtWhen(e.started)}${e.model ? ` · ${esc(e.model)}` : ""}${e.sessions.length < e.n_tasks ? ` · ${e.sessions.length}/${e.n_tasks} tasks` : ""}</span></div></div>` +
       (open ? `<div class="sessions">${sessRows(e.sessions, s => s.order === S.order, s => `data-open="${esc(e.run)}|${esc(e.cid)}|${e.kind}|${s.order}"`) || `<div class="sess na" style="cursor:default">no session graded yet</div>`}</div>` : ""); }).join("");
   return `<div class="lsec">saved live runs <span class="cnt">· ${ents.length}</span></div>` + (h || `<div class="empty" style="padding:8px">none match the filter</div>`);
 }
@@ -478,11 +490,11 @@ function renderHead() {
   pin({ order: s.order, n: rowFor(S.cid)?.n_tasks, instance: s.instance, repo: s.repo, text: s.problem_statement });
   const res = r.resolved === true ? `<span class="chip good"><b>✓ resolved</b></span>` : r.resolved === false ? `<span class="chip bad"><b>✗ not resolved</b></span>` : `<span class="chip">not graded</span>`;
   const row = rowFor(S.cid); const n = row ? row.n_tasks : "?";
-  $("#chathead").innerHTML = `<h2>Task ${s.order} of ${n}</h2><span class="inst mono">${esc(s.instance)}</span>
-    <span class="chip"><span class="dot" style="background:${COLOR[s.kind]};margin-right:6px"></span>${esc(NAMES[s.kind] || s.arm)}</span>${res}
-    <span class="chip">${r.n_steps ?? s.turns.length} steps</span><span class="chip">${tok((t.actor_prompt||0)+(t.actor_completion||0))} actor tok${(t.writer_prompt||0) ? ` · ${tok(t.writer_prompt + t.writer_completion)} writer${t.writer_src === "estimate" ? " (est.)" : ""}` : ""}</span>
-    <span class="chip"><b>${usd(t.usd)}</b></span>${s.model ? `<span class="chip">${esc(s.model.replace(/^openai\//, ""))}</span>` : ""}
-    <span class="chip" title="exit status">${esc(s.exit_status || "")}</span>`;
+  $("#chathead").innerHTML = `<div class="hrow"><h2>Task ${s.order} of ${n}</h2><span class="inst mono">${esc(s.instance)}</span>
+      <span class="chip"><span class="dot" style="background:${COLOR[s.kind]};margin-right:6px"></span>${esc(NAMES[s.kind] || s.arm)}</span>${res}</div>
+    <div class="hstats"><span class="big">${usd(t.usd)}</span><span><b>${r.n_steps ?? s.turns.length}</b> steps</span>
+      <span><b>${tok((t.actor_prompt||0)+(t.actor_completion||0))}</b> actor tokens${(t.writer_prompt||0) ? ` · <b>${tok(t.writer_prompt + t.writer_completion)}</b> writer${t.writer_src === "estimate" ? " (est.)" : ""}` : ""}</span>
+      ${r.secs ? `<span><b>${fmtClock(r.secs)}</b> wall</span>` : ""}${s.model ? `<span class="mono">${esc(s.model.replace(/^openai\//, ""))}</span>` : ""}<span title="exit status">${esc(s.exit_status || "")}</span></div>`;
 }
 
 function renderTranscript() {
@@ -714,8 +726,10 @@ function providerChanged() {
   const p = S.provs.find(x => x.name === $("#provider").value); if (!p) { S.epOk = false; return; }
   $("#models").innerHTML = (p.models.length ? p.models : p.models_hint).map(m => `<option value="${esc(m)}">`).join("");
   const have = $("#model").value.trim(); if (!have || !(p.models.includes(have) || p.models_hint.includes(have) || p.name === "local")) $("#model").value = p.default_model || "";
-  S.epOk = !!p.ok; const st = $("#epstatus"); st.className = p.ok ? "" : "err";
-  st.textContent = p.ok ? `${p.api_base}${p.models.length ? ` · ${p.models.length} models` : ""}${p.message ? ` · ⚠ ${p.message.slice(0, 140)}` : ""}` : `${p.code || "unavailable"}: ${(p.message || "").slice(0, 120)}`;
+  S.epOk = !!p.ok; const st = $("#epstatus"); st.className = p.ok ? (p.message ? "warn" : "") : "err";
+  const host = (p.api_base || "").replace(/^https?:\/\//, "").replace(/\/v1\/?$/, "");
+  st.innerHTML = `<span class="epdot"></span>` + (p.ok ? `ready · ${esc(host)}${p.models.length ? ` · ${p.models.length} models` : ""}${p.message ? ` · ⚠ ${esc(p.message.slice(0, 90))}` : ""}` : `unavailable · ${esc(p.code || "")}${p.message ? ` — ${esc(p.message.slice(0, 80))}` : ""}`);
+  st.title = p.ok ? `${p.api_base}${p.message ? "\n" + p.message : ""}` : `${p.code || "unavailable"}: ${p.message || ""}`;
   $("#send").disabled = !S.epOk; $("#runlive").disabled = !S.epOk;
 }
 async function startLive(kind) {
@@ -790,8 +804,9 @@ async function loadRun() {
   const [rc, sm] = await Promise.all([api(`api/runchains?run=${encodeURIComponent(S.run)}&price=${encodeURIComponent(S.price)}`).catch(() => ({chains: []})), api(`api/summary?run=${encodeURIComponent(S.run)}&price=${encodeURIComponent(S.price)}`).catch(() => null)]);
   S.runchains = rc; S.summary = sm;
   const a = sm?.arms || {};
-  if (a.kv && a.mem0) { const d = (a.mem0.usd_chain - a.kv.usd_chain) / a.mem0.usd_chain; $("#savings").className = "chip " + (d > 0 ? "good" : "bad"); $("#savings").innerHTML = `Knowledge Vault <b>${d > 0 ? "−" : "+"}${(Math.abs(d)*100).toFixed(1)}%</b> cost vs Mem0 · ${usd(a.kv.usd_chain)} vs ${usd(a.mem0.usd_chain)} per chain · ${sm.common_chains} chain${sm.common_chains === 1 ? "" : "s"}`; }
-  else { $("#savings").className = "chip"; $("#savings").textContent = "run incomplete for a Mem0 vs Knowledge Vault comparison"; }
+  if (a.kv && a.mem0) { const d = (a.mem0.usd_chain - a.kv.usd_chain) / a.mem0.usd_chain; $("#savings").className = "chip " + (d > 0 ? "good" : "bad"); $("#savings").innerHTML = `KV <b>${d > 0 ? "−" : "+"}${(Math.abs(d)*100).toFixed(1)}%</b> vs Mem0 · ${usd(a.kv.usd_chain)} vs ${usd(a.mem0.usd_chain)}`;
+    $("#savings").title = `Knowledge Vault costs ${usd(a.kv.usd_chain)} per chain versus ${usd(a.mem0.usd_chain)} for Mem0 over the ${sm.common_chains} chain${sm.common_chains === 1 ? "" : "s"} both completed (${S.price} price row)`; }
+  else { $("#savings").className = "chip"; $("#savings").innerHTML = `<span style="color:var(--muted)">no Mem0 vs Knowledge Vault comparison in this run yet</span>`; }
   if (S.src !== "custom" && !S.live && (!S.cid || !rowFor(S.cid))) S.cid = (S.meta.default_cid && rowFor(S.meta.default_cid)) ? S.meta.default_cid : (rc.chains[0]?.cid || null);
   renderChains();
 }

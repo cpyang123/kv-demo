@@ -10,7 +10,8 @@ done
 if [ "${DEMO_PULL_IMAGES:-1}" = "1" ]; then
     ( while read -r tag; do
           [ -z "$tag" ] && continue; case "$tag" in \#*) continue;; esac
-          name="${tag##*:}"; [ -s "$RSM_SIF_DIR/$name.sif" ] && continue
+          name="${tag##*:}"; case "$tag" in */swechain:*) ;; *) name="sandbox-$(echo "$tag" | tr ':/' '--')";; esac   # generic images: sandbox-python-3.12.sif
+          [ -s "$RSM_SIF_DIR/$name.sif" ] && continue
           echo "[entrypoint] pulling $tag -> $name.sif" >&2
           apptainer pull --name "$RSM_SIF_DIR/$name.sif" "docker://$tag" >&2 || echo "[entrypoint] pull failed: $tag" >&2
       done < /app/demo/deploy/images.txt

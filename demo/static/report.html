@@ -44,6 +44,9 @@
   header h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
   header .sub { color: var(--ink2); margin: 2px 0 0; font-size: 14px; }
   .controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-left: auto; }
+  .pnav { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--plane); flex: none; }
+  .pnav a { padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--ink2); text-decoration: none; }
+  .pnav a[aria-current="page"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--border); } .pnav a:hover { color: var(--ink); }
   label.ctl { font-size: 13px; color: var(--ink2); display: flex; gap: 6px; align-items: center; }
   select, input[type=text], input[type=number] { font: inherit; font-size: 14px; color: var(--ink);
     background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; max-width: 100%; }
@@ -156,6 +159,7 @@
       <p class="sub">Chains of sequential GitHub issues solved in one workspace. Toggle the memory system; every number comes from the harness's own ledger meters.</p>
     </div>
     <div class="controls">
+      <nav class="pnav" aria-label="Pages"><a href="./">Agent</a><a href="compare">Compare</a><a aria-current="page" href="report">Report</a></nav>
       <label class="ctl">Run <select id="run"></select></label>
       <label class="ctl">Price row <select id="price"></select></label>
     </div>
@@ -177,7 +181,7 @@
     <form id="liveform" onsubmit="return false">
       <label>Endpoint (OpenAI-compatible, ending in /v1) <input type="text" id="api_base" value="http://127.0.0.1:8000/v1"></label>
       <label>Served model name <input type="text" id="served" value="coder-next"></label>
-      <label>Run id <input type="text" id="run_id" value="demo_live"></label>
+      <label>Run id <input type="text" id="run_id" value="" placeholder="auto: live_<date>-<time> (keeps earlier live runs)"></label>
       <label>Chain <select id="live_cid"></select></label>
       <label>Step limit <input type="number" id="steps" value="100" min="5" max="200"></label>
       <label>Knowledge Vault system <select id="kv_sys"></select></label>
@@ -224,7 +228,9 @@ function delta(cur, base, lowerIsGood, kind) {
 // ------------------------------------------------------------------ summary view
 function renderMain() {
   const a = S.summary.arms, sel = S.sel, oth = other(sel), A = a[sel], B = a[oth], N = a.none;
-  if (!A || !B) { $("#main").innerHTML = `<div class="card">Run <b>${esc(S.run)}</b> has no complete chains for both ${NAMES[sel]} (${esc(S.meta.arms[sel])}) and ${NAMES[oth]} (${esc(S.meta.arms[oth])}). Coverage: ${esc(JSON.stringify(S.summary.coverage))}.</div>`; return; }
+  if (!A || !B) { const cov = S.summary.coverage || {}; const rec = S.meta.runs.find(r => !/^live_|^demo_live|^cfg__|^custom$/.test(r));
+    $("#main").innerHTML = `<div class="card"><b>Nothing to compare in ${esc(S.run)} yet.</b><div class="sub" style="margin-top:6px">A comparison needs chains completed by both ${NAMES[sel]} and ${NAMES[oth]}; this run has ${cov.kv ?? 0} complete chain${cov.kv === 1 ? "" : "s"} with Knowledge Vault, ${cov.mem0 ?? 0} with Mem0 and ${cov.none ?? 0} without memory.${rec ? ` Pick <a href="#" id="pickrec">${esc(rec)}</a> for the recorded comparison, or open the sessions in the <a href="./">agent view</a>.` : ""}</div></div>`;
+    const pr = $("#pickrec"); if (pr) pr.onclick = ev => { ev.preventDefault(); S.run = rec; $("#run").value = rec; loadSummary(); }; return; }
   const saving = (B.usd_chain - A.usd_chain) / B.usd_chain;
   const heroGood = saving > 0;
   const est = A.writer_src === "estimate" || B.writer_src === "estimate";
@@ -413,7 +419,7 @@ async function replay(order, btn) {
 // ------------------------------------------------------------------ live runs
 async function startLive(kind) {
   const msg = $("#livemsg"); msg.className = "msg"; msg.textContent = "starting…";
-  const body = { cid: $("#live_cid").value, kind, run_id: $("#run_id").value.trim() || "demo_live", api_base: $("#api_base").value.trim(),
+  const body = { cid: $("#live_cid").value, kind, run_id: $("#run_id").value.trim() || null, api_base: $("#api_base").value.trim(),
     served_name: $("#served").value.trim(), step_limit: +$("#steps").value || 100, memory_system: kind === "kv" ? $("#kv_sys").value : null };
   try {
     const r = await fetch("api/live/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
@@ -444,7 +450,8 @@ function renderJobs(jobs) {
 
 // ------------------------------------------------------------------ boot
 function fillRuns() {
-  $("#run").innerHTML = S.meta.runs.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+  const live = r => /^live_|^demo_live/.test(r), opt = r => `<option value="${esc(r)}">${esc(r)}</option>`, rs = S.meta.runs;
+  $("#run").innerHTML = `<optgroup label="recorded runs">${rs.filter(r => !live(r)).map(opt).join("")}</optgroup>` + (rs.some(live) ? `<optgroup label="saved live runs">${rs.filter(live).map(opt).join("")}</optgroup>` : "");
   if (S.run) $("#run").value = S.run;
 }
 async function loadSummary() {

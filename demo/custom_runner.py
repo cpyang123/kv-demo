@@ -88,6 +88,7 @@ def main():
     ap.add_argument("--sandbox", required=True, help="SIF basename without .sif under RSM_SIF_DIR")
     ap.add_argument("--step-limit", type=int, default=60)
     ap.add_argument("--served-name", default="coder-next")
+    ap.add_argument("--generic", action="store_true", help="an empty-workspace image (not a chain image): work in /work, git initialised")
     a = ap.parse_args()
 
     projects = load_projects()
@@ -104,7 +105,7 @@ def main():
     sif = SIF_DIR / f"{a.sandbox}.sif"
     if not sif.exists():
         sys.exit(f"sandbox image missing: {sif}")
-    generic = a.sandbox.startswith("sandbox-")
+    generic = a.generic or a.sandbox.startswith("sandbox-")
     repo_path = "/work" if generic else G.detect_repo_dir(sif)
     prefix = "" if generic else G.detect_conda_prefix(sif)
     host = WORK / a.project / arm / "repo"

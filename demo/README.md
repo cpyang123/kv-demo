@@ -60,8 +60,11 @@ Reaching it:
   (phase, elapsed, graded tasks, harness log), the memory card and issue, then each step as the
   harness produces it — the thought and `$ command` appear while the command executes, the output
   when it returns — a "thinking" marker while the model generates, the grading/memory-writer phase,
-  and the next task below (finished tasks stay, collapsed). The left list marks the task in
-  progress "● live"; the right panel follows the partial session (files, ledger, changes). The
+  and the next task below (finished tasks stay, collapsed). The left list shows the run in
+  progress at the top, then **Saved live runs** (every earlier live run, one entry per chain ×
+  memory system, newest first — each live run gets its own `live_<timestamp>` run id and nothing is
+  overwritten), then the selected recorded run's chains. The right panel follows the partial
+  session (files, ledger, changes). The
   harness saves the trajectory after every model reply when `RSM_LIVE_SAVE=1` (set by the server;
   `harness/live_agent.py`, atomic writes); the page polls `GET /api/live/<job>/state` and
   `GET /api/session` every 1.5 s. The old playback controls return when the run ends.
@@ -99,7 +102,8 @@ workspace and memory store per project, so task k+1 inherits the repo state and 
 the same seq protocol as ChainSWE. Tick KV / Mem0 / none to run a task on several arms at once; the
 chips under each task open the resulting sessions, and `/compare` can be pointed at the project
 (run `custom`, chain = project name). Pull more images with
-`apptainer pull --name sandbox-<name>.sif docker://<image>` into `RSM_SIF_DIR`.
+`apptainer pull --name <name>.sif docker://<image>` into `RSM_SIF_DIR` — any image whose name is not a chain's
+docker tag is offered as a generic sandbox (the deploy entrypoint names `python:3.12` `sandbox-python-3.12.sif`).
 
 Demo runs set `RSM_VALID_V2=1` (the writer validator's v2 rule from `memory/ours/fusednote.py`), so a
 note that merely mentions the tool name is not discarded.

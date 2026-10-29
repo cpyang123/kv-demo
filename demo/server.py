@@ -298,8 +298,9 @@ def load_chain_arm(run, arm, cid, kind=None):
     rf = d / "results.jsonl"
     if not rf.exists():
         return None
-    try:
-        key = (run, arm, cid, rf.stat().st_mtime_ns, (d / "calls.jsonl").stat().st_mtime_ns if (d / "calls.jsonl").exists() else 0)
+    try:                                            # USD is baked into the sessions, so the price row is part of the key
+        key = (run, arm, cid, rf.stat().st_mtime_ns, (d / "calls.jsonl").stat().st_mtime_ns if (d / "calls.jsonl").exists() else 0,
+               os.environ.get("RSM_PRICE_ROW", ""))
     except OSError:
         return None
     if key in _CACHE:
@@ -358,7 +359,8 @@ def _set_price(row):
     else:
         os.environ.pop("RSM_PRICE_ROW", None)
     L._PRICE["row"] = None          # harness.ledger caches the row; reset so the choice applies
-    _CACHE.clear()                  # USD is baked into the cached sessions
+    if len(_CACHE) > 4000:          # bounded: (run, arm, chain, price) entries; a changed results file gets a new key anyway
+        _CACHE.clear()
 
 
 def _runs():
@@ -500,6 +502,8 @@ def _provider_env(name, model, api_base=None):
 @app.get("/api/summary")
 def summary(run: str = DEFAULT_RUN, price: str | None = None):
     if run not in _runs():
+        if run == CUSTOM_RUN:                       # no sandbox task has finished yet: an empty run, not an error
+            return {"run": run, "price_row": None, "price": None, "common_chains": 0, "arms": {k: None for k in ARMS}, "chains": [], "coverage": {k: 0 for k in ARMS}}
         raise HTTPException(404, f"run {run} not found under {RUNS}")
     _set_price(price)
     per_arm = {k: {} for k in ARMS}
@@ -563,6 +567,8 @@ def summary(run: str = DEFAULT_RUN, price: str | None = None):
 def runchains(run: str, price: str | None = None):
     """Every chain that has any arm directory in the run, with per-kind status — the left-hand session list."""
     if run not in _runs():
+        if run == CUSTOM_RUN:
+            return {"run": run, "chains": []}
         raise HTTPException(404, f"run {run} not found")
     _set_price(price)
     out = []
@@ -1143,7 +1149,7 @@ def _sandboxes():
             c = by_tag.get(tag)
             if c:
                 out.append({"id": tag, "kind": "repo", "label": f"{c['repo']} — repo at the chain's base commit ({c['cid']})", "chain": c["cid"]})
-            elif tag.startswith("sandbox-"):
+            else:                                   # anything that is not a chain image: python:3.12 -> 3.12.sif, sandbox-*.sif, ...
                 out.append({"id": tag, "kind": "generic", "label": f"{tag.replace('sandbox-', '')} — empty workspace (/work, git initialised)"})
     return out
 
@@ -1240,8 +1246,9 @@ def custom_start(req: CustomTaskReq):
         env.update({"RSM_LEDGER": "1", "RSM_SIF_DIR": str(SIF_DIR), "RSM_RUNS_DIR": str(RUNS),
                     "RSM_HF_HOME": env.get("RSM_HF_HOME", env.get("HF_HOME", str(LIVE_DIR / "hf_home"))),
                     "RSM_LIVE_SAVE": "1", "PYTHONUNBUFFERED": "1"})
+        generic = p["sandbox"] not in {c["tag"] for c in CHAINS.values() if not c.get("custom")}
         cmd = [sys.executable, str(HERE / "custom_runner.py"), "--project", req.project, "--order", str(order), "--kind", kind,
-               "--sandbox", p["sandbox"], "--step-limit", str(req.step_limit), "--served-name", model]
+               "--sandbox", p["sandbox"], "--step-limit", str(req.step_limit), "--served-name", model, *(["--generic"] if generic else [])]
         lf = open(log, "w")
         lf.write("$ " + " ".join(cmd) + "\n\n"); lf.flush()
         proc = subprocess.Popen(cmd, cwd=str(ROOT), env=env, stdout=lf, stderr=subprocess.STDOUT)

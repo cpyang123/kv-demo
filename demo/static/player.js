@@ -331,7 +331,8 @@ export class LiveFeed {
       loading: "loading the trajectory…", thinking: "the model is thinking", running: "the command is executing in the sandbox", grading: "grading the submission" + (kind !== "none" ? " and writing memory" : ""),
       finishing: "wrapping up", finished: st && st.status === "done" ? "finished" : `ended: ${st ? st.status : "?"}` }[ph];
     const live = st && st.status === "running";
-    box.innerHTML = `<div class="hd"><span class="live-dot ${live ? "on" : ""}"></span>${live ? "Live" : "Live run " + esc(st ? st.status : "")} <span class="meta">· <span class="dot" style="background:${COLOR[kind]}"></span> ${esc(NAMES[kind] || this.job.arm)} on ${esc(this.job.cid)}${i.model ? ` · ${esc(i.model)}` : ""} · ${fmtClock(i.elapsed)}${this.n ? ` · task ${this.order ?? "–"} of ${this.n}` : ""} · ${i.done.length} graded · ${i.n_calls} ledger calls</span></div>
+    box.innerHTML = `<div class="hd"><span class="live-dot ${live ? "on" : ""}"></span>${live ? "Live" : "Live run " + esc(st ? st.status : "")} <span class="meta">· <span class="dot" style="background:${COLOR[kind]}"></span> ${esc(NAMES[kind] || this.job.arm)} on ${esc(this.job.cid)}</span></div>
+      <div class="lf-meta">${i.model ? `<span>${esc(i.model)}</span>` : ""}<span>${fmtClock(i.elapsed)} elapsed</span>${this.n ? `<span>task ${this.order ?? "–"} of ${this.n}</span>` : ""}<span>${i.done.length} graded</span><span>${i.n_calls} ledger calls</span></div>
       <div class="lf-phase"><span class="${live ? "running" : ""}">${esc(text)}</span></div>
       <details class="sub lf-log" ${ph === "starting" || ph === "finished" && st && st.status !== "done" ? "open" : ""}><summary>harness log</summary><pre>${esc((i.log_tail || "").split("\n").slice(-8).join("\n"))}</pre></details>`;
   }
