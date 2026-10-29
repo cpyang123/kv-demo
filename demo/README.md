@@ -217,6 +217,11 @@ the file `demo/slurm/serve_actor.sbatch` writes (`/scratch/$USER/kv/actor_endpoi
   the two official extraction branches over `material[:23000]` for mem0. The UI marks these.
 - The vLLM used for the recorded runs did not report prefix-cache hits, so cache-aware = raw there.
 
+## Browser tests
+
+`tests/ui/` drives the three pages in headless Chromium against a replay of the recorded run and a canned
+model endpoint (incl. a sandbox task through the real harness); see `tests/ui/README.md`.
+
 ## Live-run prerequisites
 
 - An Apptainer image per chain: `apptainer pull --name <tag>.sif docker://<docker_image>` into
