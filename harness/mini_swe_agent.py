@@ -11,7 +11,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))   # chainswe/ 为�
 
 from harness import config as C, constants as K, grading as G          # noqa: E402
 from harness.env import RepoEnv                                         # noqa: E402
-from minisweagent.agents.default import DefaultAgent                    # noqa: E402
+from harness.live_agent import LiveSaveAgent as DefaultAgent            # noqa: E402  (== DefaultAgent unless RSM_LIVE_SAVE=1)
 from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel  # noqa: E402
 import memory                                                           # noqa: E402 (import 即注册全部插件)
 from memory import base as mem_base                                     # noqa: E402

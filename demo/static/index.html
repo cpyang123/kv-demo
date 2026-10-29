@@ -140,6 +140,34 @@
   .kv-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--grid); }
   .kv-row b { font-variant-numeric: tabular-nums; }
   .empty { color: var(--muted); padding: 20px; text-align: center; }
+  /* pinned task prompt (sticky above the transcript; click to expand) */
+  .taskpin { border-bottom: 1px solid var(--border); background: var(--surface); }
+  .tp-head { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; border: 0; background: none; padding: 7px 18px; cursor: pointer; font-size: 13px; min-width: 0; }
+  .tp-head:hover { background: var(--hover); }
+  .tp-chev { color: var(--muted); width: 10px; flex: none; } .tp-n { font-weight: 700; color: var(--ink2); white-space: nowrap; flex: none; }
+  .tp-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .taskpin.open .tp-title { white-space: normal; }
+  .tp-inst { color: var(--muted); font-size: 11.5px; white-space: nowrap; flex: none; max-width: 32%; overflow: hidden; text-overflow: ellipsis; }
+  .tp-body { padding: 0 18px 10px 36px; } .tp-meta { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+  .tp-text { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; color: var(--ink2); max-height: 40vh; overflow: auto; background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-family: inherit; }
+  /* live run (streamed from the harness) */
+  .live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; flex: none; }
+  .live-dot.on { background: var(--bad); box-shadow: 0 0 0 0 rgba(208,59,59,0.5); animation: pulse 1.4s ease-out infinite; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(208,59,59,0); } 100% { box-shadow: 0 0 0 0 rgba(208,59,59,0); } }
+  .live-status { border-left: 3px solid var(--bad); } .lf-phase { font-size: 13px; color: var(--ink2); } .lf-log pre { max-height: 140px; }
+  details.lf-done { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  details.lf-done > summary { cursor: pointer; padding: 9px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; min-width: 0; list-style: none; } details.lf-done > summary::-webkit-details-marker { display: none; }
+  details.lf-done > summary::before { content: "▸"; color: var(--muted); } details.lf-done[open] > summary::before { content: "▾"; }
+  details.lf-done > summary .meta { color: var(--muted); white-space: nowrap; } details.lf-done > summary .tp-title { flex: 1; }
+  .lf-done-body { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .playbar.live .pb-hide { display: none; } .pb-live { display: inline-flex; gap: 8px; align-items: center; } .pb-live[hidden] { display: none; } .pb-live b { color: var(--ink); }
+  .sess.live .inst { color: var(--bad); font-weight: 600; }
+  .liveblock { margin-bottom: 4px; }
+  .lsec { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--muted); padding: 8px 9px 3px; text-transform: uppercase; letter-spacing: .04em; border-top: 1px solid var(--border); margin-top: 6px; }
+  .lsec:first-child { border-top: 0; margin-top: 0; }
+  .lsec .cnt { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .chain .when { color: var(--muted); font-size: 11px; }
+  .livehead { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--muted); padding: 4px 9px 2px; text-transform: uppercase; letter-spacing: .03em; }
+  .livehead .x { margin-left: auto; cursor: pointer; border: 0; background: none; color: var(--muted); font-size: 12px; } .livehead .x:hover { color: var(--ink); }
   .live-banner { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 8px 12px; background: var(--surface); font-size: 13px; }
   .live-banner pre { margin: 6px 0 0; font-size: 11.5px; color: var(--ink2); max-height: 120px; overflow: auto; white-space: pre-wrap; }
   .toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--plane); padding: 8px 14px; border-radius: 10px; font-size: 13px; display: none; z-index: 20; }
@@ -215,13 +243,15 @@
 
   <main class="chat">
     <div class="chat-head" id="chathead"><h2>Pick a session</h2></div>
+    <div class="taskpin" id="taskpin" hidden></div>
     <div class="playbar" id="playbar">
-      <button class="btn sm" id="pb-play" title="Play / pause (space)">▶ Play</button>
-      <button class="btn sm" id="pb-step" title="Reveal next step">Step &rsaquo;</button>
-      <button class="btn sm" id="pb-restart" title="Back to the start of this task">Restart</button>
-      <button class="btn sm" id="pb-end" title="Show the whole session">Show all</button>
-      <select id="pb-speed" class="ctl sm" title="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1× real time</option><option value="2">2×</option><option value="4">4×</option><option value="10">10×</option></select>
-      <label class="pb-opt"><input type="checkbox" id="pb-auto" checked> continue to next task</label>
+      <span class="pb-live" id="pb-live" hidden><span class="live-dot on"></span><span id="pb-livetxt"></span><button class="btn sm" id="pb-stop" title="Stop the harness process">■ Stop</button></span>
+      <button class="btn sm pb-hide" id="pb-play" title="Play / pause (space)">▶ Play</button>
+      <button class="btn sm pb-hide" id="pb-step" title="Reveal next step">Step &rsaquo;</button>
+      <button class="btn sm pb-hide" id="pb-restart" title="Back to the start of this task">Restart</button>
+      <button class="btn sm pb-hide" id="pb-end" title="Show the whole session">Show all</button>
+      <select id="pb-speed" class="ctl sm pb-hide" title="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1× real time</option><option value="2">2×</option><option value="4">4×</option><option value="10">10×</option></select>
+      <label class="pb-opt pb-hide"><input type="checkbox" id="pb-auto" checked> continue to next task</label>
       <label class="pb-opt"><input type="checkbox" id="pb-follow" checked> right panel follows</label>
       <span class="pb-status" id="pb-status"></span>
       <div class="pb-progress"><div id="pb-fill"></div></div>
@@ -264,11 +294,16 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<script type="module">
+  // live runs stream through the same feed as compare.html (static/player.js)
+  import { LiveFeed, setTaskPin } from "./static/player.js";
+  window.LiveFeed = LiveFeed; window.setTaskPin = setTaskPin;
+</script>
 <script>
 const $ = (s, el=document) => el.querySelector(s);
 const NAMES = { kv: "Knowledge Vault", mem0: "Mem0", none: "No memory" };
 const COLOR = { kv: "var(--kv)", mem0: "var(--mem0)", none: "var(--none)" };
-const S = { meta: null, run: null, price: null, kind: "kv", runchains: null, summary: null, cid: null, order: null, sess: null, tab: "changes", file: null, filter: "", jobs: {}, chat: [], epOk: false, src: "chains", projects: [], provs: [], chatHist: [], cmode: "ask", lastRun: null };
+const S = { meta: null, run: null, price: null, kind: "kv", runchains: null, summary: null, cid: null, order: null, sess: null, tab: "changes", file: null, filter: "", jobs: {}, chat: [], epOk: false, src: "chains", projects: [], provs: [], chatHist: [], cmode: "ask", lastRun: null, live: null, liveFocus: false, liveRc: null, liveRuns: [] };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const usd = v => v == null ? "–" : "$" + (+v).toFixed(2);
 const tok = v => v == null ? "–" : v >= 1e6 ? (v/1e6).toFixed(2)+"M" : v >= 1000 ? (v/1000).toFixed(1)+"K" : String(v);
@@ -288,8 +323,10 @@ function md(text) {
 function renderChains() {
   if (S.src === "custom") return renderProjects();
   const box = $("#chains"); const rows = (S.runchains?.chains || []).filter(c => !S.filter || (c.cid + " " + c.repo).toLowerCase().includes(S.filter));
-  if (!rows.length) { box.innerHTML = `<div class="empty">No chains in this run.</div>`; return; }
-  box.innerHTML = rows.map(c => {
+  const lb = liveBlock() + savedLiveRuns();
+  const sep = `<div class="lsec">${isLiveRun(S.run) ? "selected live run" : "recorded run"} <span class="cnt">· ${esc(S.run)}</span></div>`;
+  if (!rows.length) { box.innerHTML = lb + sep + `<div class="empty">No chains in this run.</div>`; bindLiveBlock(box); return; }
+  box.innerHTML = lb + sep + rows.map(c => {
     const a = c.arms[S.kind]; const open = c.cid === S.cid;
     const stat = a ? `<span class="${a.resolved ? "ok" : "na"}">${a.resolved}/${a.sessions.length} ✓</span><br>${usd(a.usd)}` : `<span class="na">not run</span>`;
     let sessions = "";
@@ -300,15 +337,61 @@ function renderChains() {
           <span class="m">${s.n_steps ?? "–"} st · ${usd(s.usd)}</span></div>`).join("")
         : `<div class="sess na" style="cursor:default">no ${esc(NAMES[S.kind])} run for this chain</div>`) + `</div>`;
     }
-    return `<div class="chain ${open ? "open" : ""}" data-cid="${esc(c.cid)}" title="${esc(c.cid)}">
+    const open2 = open && !S.liveFocus && !isLiveRun(S.run);
+    return `<div class="chain ${open2 ? "open" : ""}" data-cid="${esc(c.cid)}" title="${esc(c.cid)}">
       <div class="id">${esc(c.cid)}</div><div class="stat">${stat}</div>
       <div class="repo">${esc(c.repo)} · ${c.n_tasks} tasks${c.sif ? " · image ●" : ""}</div></div>${sessions}`;
   }).join("");
-  box.querySelectorAll(".chain").forEach(el => el.onclick = () => { S.cid = el.dataset.cid; S.order = null; renderChains(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); });
+  box.querySelectorAll(".chain[data-cid]").forEach(el => el.onclick = () => { S.cid = el.dataset.cid; S.order = null; if (S.liveFocus) { S.live.detach(); S.liveFocus = false; setLiveUI(); } renderChains(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); });
   box.querySelectorAll(".sess[data-order]").forEach(el => el.onclick = ev => { ev.stopPropagation(); openSession(+el.dataset.order); });
+  bindLiveBlock(box);
   $("#leftfoot").textContent = `${S.runchains.chains.length} chains in ${S.run} · run dir ${S.meta.runs_dir.split("/").slice(-2).join("/")}`;
 }
 const rowFor = cid => (S.runchains?.chains || []).find(c => c.cid === cid);
+const autoOpen = (order, opts) => { if (S.liveFocus) return; openSession(order, opts); };   // for opens scheduled before an await: a live view focused meanwhile wins
+// Left list, top part: (1) the run in progress, streamed; (2) every saved live run (one entry per chain × memory
+// system, newest first), each opening like a recorded session; then a separator and the selected recorded run's chains.
+function liveSessions(job) { return (S.liveRc?.chains || []).find(c => c.cid === job.cid)?.arms?.[job.kind]?.sessions || []; }
+const fmtWhen = t => { if (!t) return ""; const d = new Date(t * 1000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+function sessRows(ss, sel, attr) {
+  return ss.map(s => `<div class="sess ${sel(s) ? "sel" : ""}" ${attr(s)}><span class="n">${s.order}</span><span class="inst mono" title="${esc(s.instance)}">${esc((s.instance || "").split("__").pop())}</span>
+      <span class="${s.resolved === true ? "ok" : s.resolved === false ? "no" : "na"}">${s.resolved === true ? "✓" : s.resolved === false ? "✗" : "·"}</span><span class="m">${s.n_steps ?? "–"} st · ${usd(s.usd)}</span></div>`).join("");
+}
+function liveBlock() {
+  const f = S.live && !S.live.job.custom ? S.live : null; if (!f) return "";
+  const job = f.job, m = (S.meta.chains || []).find(c => c.cid === job.cid) || {}, ss = liveSessions(job), i = f.info(), n = i.n || m.n_tasks || "?";
+  const liveRow = i.phase !== "finished" ? `<div class="sess live ${S.liveFocus ? "sel" : ""}" data-livefocus="1" title="the harness is working on this task now — click to watch"><span class="n">${i.order ?? "·"}</span><span class="inst">● live · ${esc(i.phase)}</span><span class="m">${i.step} st</span></div>` : "";
+  const rows = sessRows(ss, s => !S.liveFocus && S.run === job.run_id && S.cid === job.cid && S.kind === job.kind && s.order === S.order, s => `data-open="${esc(job.run_id)}|${esc(job.cid)}|${job.kind}|${s.order}"`);
+  return `<div class="lsec"><span class="live-dot on"></span>live run <span class="cnt">· ${esc(job.run_id)}</span></div><div class="liveblock">
+    <div class="chain ${S.liveFocus ? "open" : ""}" data-livechain="1" title="${esc(job.cid)}"><div class="id">${esc(job.cid)}</div><div class="stat"><span class="no">● live</span><br>${ss.length}/${n} graded</div>
+      <div class="repo"><span class="dot" style="background:${COLOR[job.kind]};margin-right:4px"></span>${esc(NAMES[job.kind])} · ${esc(m.repo || "")}${i.model ? ` · ${esc(i.model)}` : ""}</div></div>
+    <div class="sessions">${liveRow}${rows}</div></div>`;
+}
+function savedLiveRuns() {
+  const cur = S.live && !S.live.job.custom ? S.live.job : null;
+  const ents = (S.liveRuns || []).filter(e => !(cur && e.run === cur.run_id && e.cid === cur.cid && e.kind === cur.kind)).filter(e => !S.filter || (e.cid + " " + e.repo).toLowerCase().includes(S.filter));
+  if (!ents.length && !(S.liveRuns || []).length) return "";
+  const h = ents.map(e => { const open = !S.liveFocus && S.run === e.run && S.cid === e.cid && S.kind === e.kind;
+    return `<div class="chain ${open ? "open" : ""}" data-open="${esc(e.run)}|${esc(e.cid)}|${e.kind}|${e.sessions[0]?.order ?? ""}" title="${esc(e.run)} · ${esc(e.cid)}"><div class="id">${esc(e.cid)}</div>
+      <div class="stat">${e.running ? `<span class="no">● running</span>` : `<span class="${e.resolved ? "ok" : "na"}">${e.resolved}/${e.sessions.length} ✓</span>`}<br>${usd(e.usd)}</div>
+      <div class="repo"><span class="dot" style="background:${COLOR[e.kind]};margin-right:4px"></span>${esc(NAMES[e.kind])}${e.model ? ` · ${esc(e.model)}` : ""} <span class="when">· ${fmtWhen(e.started)}${e.sessions.length < e.n_tasks ? ` · ${e.sessions.length}/${e.n_tasks} tasks` : ""}</span></div></div>` +
+      (open ? `<div class="sessions">${sessRows(e.sessions, s => s.order === S.order, s => `data-open="${esc(e.run)}|${esc(e.cid)}|${e.kind}|${s.order}"`) || `<div class="sess na" style="cursor:default">no session graded yet</div>`}</div>` : ""); }).join("");
+  return `<div class="lsec">saved live runs <span class="cnt">· ${ents.length}</span></div>` + (h || `<div class="empty" style="padding:8px">none match the filter</div>`);
+}
+function bindLiveBlock(box) {
+  box.querySelectorAll("[data-livefocus], [data-livechain]").forEach(el => el.onclick = ev => { ev.stopPropagation(); focusLive(); });
+  box.querySelectorAll("[data-open]").forEach(el => el.onclick = ev => { ev.stopPropagation(); const [run, cid, kind, order] = el.dataset.open.split("|"); openRunSession(run, cid, kind, order === "" ? null : +order); });
+}
+async function refreshLiveRc(job) { try { S.liveRc = await api(`api/runchains?run=${encodeURIComponent(job.run_id)}&price=${encodeURIComponent(S.price)}`); } catch { S.liveRc = null; } }
+async function loadLiveRuns() { try { S.liveRuns = await api(`api/liveruns?price=${encodeURIComponent(S.price)}`); } catch { S.liveRuns = []; } }
+// open a session of a saved live run: this is where the run selector switches (the user asked for it)
+async function openRunSession(run, cid, kind, order) {
+  if (S.liveFocus) { S.live.detach(); S.liveFocus = false; setLiveUI(); }
+  if (!S.meta.runs.includes(run)) { S.meta = await api("api/meta"); if (!S.meta.runs.includes(run)) S.meta.runs.push(run); fillRuns(); }
+  S.run = run; $("#run").value = S.run; S.cid = cid; setKind(kind); await loadRun();
+  if (order == null) { S.sess = null; S.order = null; $("#transcript").innerHTML = `<div class="empty">No session graded yet in this run.</div>`; $("#chathead").innerHTML = `<h2>${esc(cid)}</h2>`; pin(null); renderPane(); return; }
+  openSession(order);
+}
 
 // ---------------------------------------------------------------- left: your sandbox projects
 async function loadProjects() { try { S.projects = await api("api/custom/projects"); } catch { S.projects = []; } }
@@ -319,12 +402,14 @@ function renderProjects() {
     if (open) tasks = `<div class="sessions">` + (p.tasks.length ? p.tasks.map(t => { const chips = ["kv", "mem0", "none"].map(k => { const s = rc?.arms?.[k]?.sessions?.find(x => x.order === t.order);
           return s ? `<span class="chip tiny ${k === S.kind && t.order === S.order ? "on" : ""}" data-open="${k}:${t.order}" title="open the ${NAMES[k]} session"><span class="dot" style="background:${COLOR[k]}"></span>${s.n_steps} st · ${usd(s.usd)}</span>`
                    : `<span class="chip tiny ghost" data-rerun="${k}:${t.order}" title="run this task with ${NAMES[k]}">${k === "kv" ? "KV" : NAMES[k]} ▶</span>`; }).join("");
-        return `<div class="task-row"><div class="tt"><span class="n">${t.order}</span>${esc(t.title)}</div><div class="chips">${chips}</div></div>`; }).join("")
+        const lv = S.live && S.live.job.cid === p.name && S.live.job.order === t.order && S.live.info().phase !== "finished" ? `<span class="chip tiny on live-chip" data-live="1" title="running now — click to watch"><span class="live-dot on"></span>live · ${esc(NAMES[S.live.job.kind])}</span>` : "";
+        return `<div class="task-row"><div class="tt"><span class="n">${t.order}</span>${esc(t.title)}</div><div class="chips">${lv}${chips}</div></div>`; }).join("")
       : `<div class="sess na" style="cursor:default">no tasks yet — type one below and press Run</div>`) + `</div>`;
     return `<div class="chain ${open ? "open" : ""}" data-proj="${esc(p.name)}" title="${esc(p.name)}"><div class="id">${esc(p.name)}</div><div class="stat">${p.tasks.length} task${p.tasks.length === 1 ? "" : "s"}</div><div class="repo">${esc(p.label || p.sandbox)}</div></div>${tasks}`; }).join("");
-  box.querySelectorAll(".chain").forEach(el => el.onclick = () => { S.cid = el.dataset.proj; S.order = null; renderProjects(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); else { S.sess = null; setPlayUI(); $("#chathead").innerHTML = `<h2>${esc(S.cid)}</h2><span class="inst">sandbox project · type a task below</span>`; $("#transcript").innerHTML = `<div class="empty">No ${esc(NAMES[S.kind])} session yet in this project. Choose "Run a task" below, describe the task, and press Run.</div>`; renderPane(); } });
+  box.querySelectorAll(".chain").forEach(el => el.onclick = () => { S.cid = el.dataset.proj; S.order = null; renderProjects(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); else { S.sess = null; setPlayUI(); $("#chathead").innerHTML = `<h2>${esc(S.cid)}</h2><span class="inst">sandbox project · type a task below</span>`; $("#transcript").innerHTML = `<div class="empty">No ${esc(NAMES[S.kind])} session yet in this project. Choose "Run a task" below, describe the task, and press Run.</div>`; pin(null); renderPane(); } });
   box.querySelectorAll("[data-open]").forEach(el => el.onclick = ev => { ev.stopPropagation(); const [k, o] = el.dataset.open.split(":"); setKind(k); openSession(+o); });
   box.querySelectorAll("[data-rerun]").forEach(el => el.onclick = ev => { ev.stopPropagation(); const [k, o] = el.dataset.rerun.split(":"); rerunTask(k, +o); });
+  box.querySelectorAll("[data-live]").forEach(el => el.onclick = ev => { ev.stopPropagation(); focusLive(); });
   $("#leftfoot").textContent = `${S.projects.length} project${S.projects.length === 1 ? "" : "s"} · run dir runs/custom`;
 }
 async function setSrc(src) {
@@ -336,16 +421,16 @@ async function setSrc(src) {
     await Promise.all([loadProjects(), loadSandboxes()]);
     $("#np-sandbox").innerHTML = (S.sandboxes || []).map(x => `<option value="${esc(x.id)}">${esc(x.label)}</option>`).join("") || `<option value="">no sandbox images under the SIF directory</option>`;
     await loadRun(); if (!S.projects.some(p => p.name === S.cid)) S.cid = S.projects[0]?.name || null; renderProjects();
-    setCmode("task"); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); else { setPlayUI(); $("#chathead").innerHTML = `<h2>${esc(S.cid || "Your sandbox")}</h2>`; $("#transcript").innerHTML = `<div class="empty">${S.cid ? "No session yet — describe a task below and press Run." : "Create a project on the left to start."}</div>`; renderPane(); }
+    setCmode("task"); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); else { setPlayUI(); $("#chathead").innerHTML = `<h2>${esc(S.cid || "Your sandbox")}</h2>`; $("#transcript").innerHTML = `<div class="empty">${S.cid ? "No session yet — describe a task below and press Run." : "Create a project on the left to start."}</div>`; pin(null); renderPane(); }
   } else {
     S.run = S.lastRun || S.meta.default_run; $("#run").value = S.run; S.order = null; S.sess = null; setCmode("ask");
-    await loadRun(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order);
+    await loadRun(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) autoOpen(a.sessions[0].order);
   }
 }
 async function loadSandboxes() { try { S.sandboxes = await api("api/sandboxes"); } catch { S.sandboxes = []; } }
 async function createProject() {
   const name = $("#np-name").value.trim(), sandbox = $("#np-sandbox").value; if (!name || !sandbox) { toast("name and sandbox image required"); return; }
-  try { const p = await api("api/custom/project", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, sandbox})}); $("#np-name").value = ""; await loadProjects(); S.cid = p.name; S.order = null; S.sess = null; renderProjects(); toast(`project ${p.name} ready — type a task below`); $("#chathead").innerHTML = `<h2>${esc(p.name)}</h2><span class="inst">${esc(p.label || p.sandbox)}</span>`; $("#transcript").innerHTML = `<div class="empty">Describe the first task below and press Run.</div>`; $("#q").focus(); }
+  try { const p = await api("api/custom/project", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({name, sandbox})}); $("#np-name").value = ""; await loadProjects(); S.cid = p.name; S.order = null; S.sess = null; renderProjects(); toast(`project ${p.name} ready — type a task below`); $("#chathead").innerHTML = `<h2>${esc(p.name)}</h2><span class="inst">${esc(p.label || p.sandbox)}</span>`; $("#transcript").innerHTML = `<div class="empty">Describe the first task below and press Run.</div>`; pin(null); $("#q").focus(); }
   catch (e) { toast("⚠ " + e.message, 5000); }
 }
 function selectedKinds() { return [...document.querySelectorAll("#taskarms input[data-k]:checked")].map(i => i.dataset.k); }
@@ -355,24 +440,26 @@ async function runTask() {
   const kinds = selectedKinds(); if (!kinds.length) { toast("tick at least one memory system"); return; }
   $("#send").disabled = true;
   try { const r = await api("api/custom/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({project: S.cid, task: text, kinds, provider: $("#provider").value, model: $("#model").value.trim() || null, step_limit: +$("#tasksteps").value || 40})});
-    $("#q").value = ""; $("#q").style.height = "auto"; for (const j of r.jobs) S.jobs[j.id] = j; toast(`task ${r.order} running with ${kinds.map(k => NAMES[k]).join(" + ")}`); await loadProjects(); renderProjects(); pollJobs(); }
+    $("#q").value = ""; $("#q").style.height = "auto"; for (const j of r.jobs) S.jobs[j.id] = j; toast(`task ${r.order} running with ${kinds.map(k => NAMES[k]).join(" + ")}`); await loadProjects();
+    const watch = r.jobs.find(j => j.kind === S.kind) || r.jobs[0]; if (watch) await enterLive(watch); renderProjects(); pollJobs(); }
   catch (e) { toast("⚠ " + e.message, 6000); }
   $("#send").disabled = false;
 }
 async function rerunTask(kind, order) {
   try { const r = await api("api/custom/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({project: S.cid, task: "", order, kinds: [kind], provider: $("#provider").value, model: $("#model").value.trim() || null, step_limit: +$("#tasksteps").value || 40})});
-    for (const j of r.jobs) S.jobs[j.id] = j; toast(`task ${order} running with ${NAMES[kind]}`); pollJobs(); }
+    for (const j of r.jobs) S.jobs[j.id] = j; toast(`task ${order} running with ${NAMES[kind]}`); if (r.jobs[0]) await enterLive(r.jobs[0]); pollJobs(); }
   catch (e) { toast("⚠ " + e.message, 6000); }
 }
 
 // ---------------------------------------------------------------- middle: chat transcript
 async function openSession(order, opts = {}) {
+  if (S.live && S.liveFocus) { S.live.detach(); S.liveFocus = false; setLiveUI(); }
   pause(); P.prepared = false; P.done = false;
   S.order = order; S.chat = []; renderChains();
   const arm = armOf(S.kind);
   $("#transcript").innerHTML = `<div class="empty">Loading session…</div>`;
   try { S.sess = await api(`api/session?run=${encodeURIComponent(S.run)}&arm=${encodeURIComponent(arm)}&cid=${encodeURIComponent(S.cid)}&order=${order}`); }
-  catch (e) { S.sess = null; $("#transcript").innerHTML = `<div class="empty">${esc(e.message)}</div>`; $("#chathead").innerHTML = `<h2>${esc(S.cid)} · task ${order}</h2>`; renderPane(); return; }
+  catch (e) { S.sess = null; $("#transcript").innerHTML = `<div class="empty">${esc(e.message)}</div>`; $("#chathead").innerHTML = `<h2>${esc(S.cid)} · task ${order}</h2>`; pin(null); renderPane(); return; }
   renderHead(); renderTranscript(); S.file = null; renderPane();
   if (opts.play) play();
 }
@@ -385,8 +472,10 @@ function noteHtml(text) {
   }).join("\n");
 }
 
+const pin = t => window.setTaskPin && window.setTaskPin($("#taskpin"), t);
 function renderHead() {
   const s = S.sess, r = s.result, t = s.tok || {};
+  pin({ order: s.order, n: rowFor(S.cid)?.n_tasks, instance: s.instance, repo: s.repo, text: s.problem_statement });
   const res = r.resolved === true ? `<span class="chip good"><b>✓ resolved</b></span>` : r.resolved === false ? `<span class="chip bad"><b>✗ not resolved</b></span>` : `<span class="chip">not graded</span>`;
   const row = rowFor(S.cid); const n = row ? row.n_tasks : "?";
   $("#chathead").innerHTML = `<h2>Task ${s.order} of ${n}</h2><span class="inst mono">${esc(s.instance)}</span>
@@ -462,6 +551,7 @@ function preparePlayback() {
   if (P.follow && s.memory) setTab("memory");
 }
 function setPlayUI() {
+  if (S.live && S.liveFocus) return;
   const s = S.sess, n = s ? s.turns.length : 0;
   $("#pb-play").textContent = P.on ? "Pause" : (P.prepared && P.k > 0 && !P.done ? "▶ Resume" : "▶ Play");
   $("#pb-play").classList.toggle("on", P.on);
@@ -630,30 +720,70 @@ function providerChanged() {
 }
 async function startLive(kind) {
   $("#runmenu").classList.remove("open");
-  try { const j = await api("api/live/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({cid: S.cid, kind, run_id: "demo_live", step_limit: 100, ...provider()})});
-    S.jobs[j.id] = j; toast(`live run started: ${j.arm} on ${j.cid}`); pollJobs(); }
+  try { const j = await api("api/live/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({cid: S.cid, kind, step_limit: 100, ...provider()})});
+    S.jobs[j.id] = j; toast(`live run started: ${NAMES[j.kind] || j.arm} on ${j.cid}`); await enterLive(j); pollJobs(); }
   catch (e) { toast("⚠ " + e.message, 5000); }
 }
+// ---------------------------------------------------------------- live view: the harness job streams into the transcript
+function runningJobFor(cid, kind) { return Object.values(S.jobs).find(j => j.cid === cid && j.kind === kind && j.status === "running"); }
+async function enterLive(job) {
+  if (S.live) { S.live.stop(); S.live.detach(); S.live = null; }
+  pause(); P.prepared = false; S.chat = []; S.file = null;
+  if (!job.custom) {
+    if (S.src === "custom") { S.src = "chains"; document.querySelectorAll("#srcseg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.src === "chains")); $("#newproj").hidden = true; $(".runlive").style.display = ""; setCmode("ask"); }
+  }
+  S.liveRc = null; if (job.custom) { setKind(job.kind); S.cid = job.cid; } S.order = job.order || null; S.sess = null;
+  S.live = new window.LiveFeed(null, job, {
+    onTask: t => { if (S.liveFocus) { S.order = t.order; liveHead(job, t); } renderChains(); },
+    onSession: sess => { if (!S.liveFocus) { renderChains(); return; }                        // the user is reading a saved session: leave it alone
+      const changed = !S.sess || S.sess.order !== sess.order || S.sess.turns.length !== sess.turns.length || S.sess.exit_status !== sess.exit_status; S.sess = sess; S.order = sess.order;
+      if (changed) { if (!S.file) renderPane(); renderChains(); } },
+    follow: t => { if (P.follow && S.liveFocus) followFile(t); },
+    onState: i => { setLiveUI(i); },
+    onTaskDone: async (order, sess) => { await Promise.all([refreshLiveRc(job), loadLiveRuns()]); if (S.run === job.run_id) await loadRun(); if (S.src === "custom") { await loadProjects(); renderProjects(); } else renderChains(); if (P.follow && S.liveFocus) setTab(sess.changes?.length ? "changes" : (job.kind !== "none" ? "memory" : "ledger")); },
+    onDone: async i => { const f = S.live, watching = S.liveFocus; toast(`live run ${i.status}: ${NAMES[job.kind]} on ${job.cid}`, 4000); S.live = null; S.liveFocus = false; setLiveUI();
+      await Promise.all([refreshLiveRc(job), loadLiveRuns()]); if (S.run === job.run_id) await loadRun();
+      if (job.custom) { await loadProjects(); await loadRun(); renderProjects(); if (watching && f.root) openSession(job.order); return; }
+      renderChains();
+      const ss = liveSessions(job); if (watching && f.root && ss.length) openRunSession(job.run_id, job.cid, job.kind, ss[ss.length - 1].order); },
+  });
+  S.liveFocus = true; S.live.attach($("#transcript")); S.live.start();
+  await refreshLiveRc(job); renderChains(); setLiveUI(); renderPane();
+}
+function liveHead(job, t) { pin(t); $("#chathead").innerHTML = `<h2>Task ${t.order}${t.n ? ` of ${t.n}` : ""}</h2><span class="inst mono">${esc(t.instance)}</span><span class="chip"><span class="dot" style="background:${COLOR[job.kind]};margin-right:6px"></span>${esc(NAMES[job.kind])}</span><span class="chip"><span class="live-dot on" style="margin-right:6px"></span>live · ${esc(job.cid)}</span>`; }
+function focusLive() { if (!S.live) return; pause(); P.prepared = false; S.liveFocus = true; if (S.live.job.custom) { S.cid = S.live.job.cid; setKind(S.live.job.kind); } S.live.attach($("#transcript")); S.sess = S.live.sess; S.order = S.live.order ?? null; S.file = null; const t = S.live.order != null ? S.live.task(S.live.order) : null; if (t && t.text) liveHead(S.live.job, t); else { pin(null); $("#chathead").innerHTML = `<h2>${esc(S.live.job.cid)}</h2><span class="chip"><span class="live-dot on" style="margin-right:6px"></span>live</span>`; } S.sess = S.live.sess; renderChains(); setLiveUI(); renderPane(); }
+function setLiveUI(i) {
+  const on = !!(S.live && S.liveFocus); $("#playbar").classList.toggle("live", on); $("#pb-live").hidden = !on;
+  if (!on) return;
+  i = i || S.live.info();
+  $("#pb-livetxt").innerHTML = `<b>${esc(i.phase)}</b> · task ${i.order ?? "–"}${i.n ? `/${i.n}` : ""} · step ${i.step} · ${i.done.length} graded · ${fmtClock(i.elapsed)} · ${tok(i.prompt + i.completion)} tok`;
+  $("#pb-status").textContent = i.model ? `${i.model} · ${i.n_calls} ledger calls` : "";
+}
+async function stopLive() { if (!S.live) return; try { await api(`api/live/${S.live.job.id}/stop`, { method: "POST" }); toast("stop requested — the harness exits after the current call"); } catch (e) { toast("⚠ " + e.message); } }
 async function pollJobs() {
   clearTimeout(pollJobs._t);
   let jobs; try { jobs = await api("api/live"); } catch { return; }
   const running = jobs.filter(j => j.status === "running");
   const mine = jobs.filter(j => j.cid === S.cid && (j.status === "running" || (Date.now()/1000 - (j.finished || 0)) < 120));
-  for (const j of jobs) { if (j.custom && j.status !== "running" && S.jobs[j.id] && S.jobs[j.id].status === "running") { S.jobs[j.id] = j;
-      if (S.src === "custom") { await Promise.all([loadProjects(), loadRun()]); renderProjects(); if (!S.sess || (S.cid === j.cid && S.order === j.order && S.kind === j.kind)) { setKind(j.kind); openSession(j.order); } } } }
+  for (const j of jobs) { if (!j.custom && j.status !== "running" && S.jobs[j.id] && S.jobs[j.id].status === "running") { S.jobs[j.id] = j; await loadLiveRuns(); renderChains(); }
+    if (j.custom && j.status !== "running" && S.jobs[j.id] && S.jobs[j.id].status === "running") { S.jobs[j.id] = j;
+      if (S.src === "custom" && !(S.live && S.live.job.id === j.id)) { await Promise.all([loadProjects(), loadRun()]); renderProjects(); if (!S.sess || (S.cid === j.cid && S.order === j.order && S.kind === j.kind)) { setKind(j.kind); openSession(j.order); } } } }
   let banner = $("#livebanner");
-  if (mine.length) {
+  if (mine.length && S.live && S.live.job.id === mine[0].id) { if (banner) banner.remove(); }
+  else if (mine.length) {
     const j = await api(`api/live/${mine[0].id}?tail=6`);
     if (!banner) { banner = document.createElement("div"); banner.id = "livebanner"; banner.className = "live-banner"; $("#transcript").prepend(banner); }
     banner.innerHTML = `<b>${j.custom ? `Task ${j.order}` : "Live run"} ${j.status}</b> · ${esc(j.arm)} on ${esc(j.cid)}${j.model ? ` · ${esc(j.model)}` : ""} → run <span class="mono">${esc(j.run_id)}</span> · ${j.results.length} session${j.results.length === 1 ? "" : "s"} done · ${j.n_calls} ledger calls
-      ${j.status !== "running" ? ` · <button class="linkbtn" id="gotolive">open</button>` : ""}<pre>${esc(j.log_tail.split("\n").slice(-4).join("\n"))}</pre>`;
-    const g = $("#gotolive"); if (g) g.onclick = async () => { if (j.custom) { setKind(j.kind); if (S.src !== "custom") await setSrc("custom"); S.cid = j.cid; await loadRun(); renderProjects(); openSession(j.order); return; } if (!S.meta.runs.includes(j.run_id)) { S.meta = await api("api/meta"); fillRuns(); } S.run = j.run_id; $("#run").value = S.run; S.kind = j.kind; setKind(j.kind); await loadRun(); openSession(1); };
+      · <button class="linkbtn" id="gotolive">${j.status === "running" ? "watch live" : "open"}</button><pre>${esc(j.log_tail.split("\n").slice(-4).join("\n"))}</pre>`;
+    const g = $("#gotolive"); if (g) g.onclick = async () => { if (j.status === "running") { enterLive(j); return; } if (j.custom) { setKind(j.kind); if (S.src !== "custom") await setSrc("custom"); S.cid = j.cid; await loadRun(); renderProjects(); openSession(j.order); return; } if (!S.meta.runs.includes(j.run_id)) { S.meta = await api("api/meta"); fillRuns(); } S.run = j.run_id; $("#run").value = S.run; S.kind = j.kind; setKind(j.kind); await loadRun(); openSession(1); };
   } else if (banner) banner.remove();
   if (running.length) pollJobs._t = setTimeout(pollJobs, 4000);
 }
 
 // ---------------------------------------------------------------- boot
-function fillRuns() { $("#run").innerHTML = S.meta.runs.filter(r => r !== "custom").map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join(""); if (S.run !== "custom") $("#run").value = S.run; }
+const isLiveRun = r => r.startsWith("live_") || r === "demo_live";
+function fillRuns() { const rs = S.meta.runs.filter(r => r !== "custom"), opt = r => `<option value="${esc(r)}">${esc(r)}</option>`;
+  $("#run").innerHTML = `<optgroup label="recorded runs">${rs.filter(r => !isLiveRun(r)).map(opt).join("")}</optgroup>` + (rs.some(isLiveRun) ? `<optgroup label="saved live runs">${rs.filter(isLiveRun).map(opt).join("")}</optgroup>` : ""); if (S.run !== "custom") $("#run").value = S.run; }
 function setKind(k) { S.kind = k; document.querySelectorAll("#armseg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === k)); }
 async function loadRun() {
   $("#chains").innerHTML = `<div class="empty">Loading ${esc(S.run)}…</div>`;
@@ -662,16 +792,16 @@ async function loadRun() {
   const a = sm?.arms || {};
   if (a.kv && a.mem0) { const d = (a.mem0.usd_chain - a.kv.usd_chain) / a.mem0.usd_chain; $("#savings").className = "chip " + (d > 0 ? "good" : "bad"); $("#savings").innerHTML = `Knowledge Vault <b>${d > 0 ? "−" : "+"}${(Math.abs(d)*100).toFixed(1)}%</b> cost vs Mem0 · ${usd(a.kv.usd_chain)} vs ${usd(a.mem0.usd_chain)} per chain · ${sm.common_chains} chain${sm.common_chains === 1 ? "" : "s"}`; }
   else { $("#savings").className = "chip"; $("#savings").textContent = "run incomplete for a Mem0 vs Knowledge Vault comparison"; }
-  if (S.src !== "custom" && (!S.cid || !rowFor(S.cid))) S.cid = (S.meta.default_cid && rowFor(S.meta.default_cid)) ? S.meta.default_cid : (rc.chains[0]?.cid || null);
+  if (S.src !== "custom" && !S.live && (!S.cid || !rowFor(S.cid))) S.cid = (S.meta.default_cid && rowFor(S.meta.default_cid)) ? S.meta.default_cid : (rc.chains[0]?.cid || null);
   renderChains();
 }
 (async function boot() {
   S.meta = await api("api/meta"); S.run = S.meta.default_run; S.price = S.meta.default_price_row;
   if (S.meta.live_enabled === false) { $(".runlive").style.display = "none"; const t = document.querySelector('#srcseg button[data-src="custom"]'); if (t) t.style.display = "none"; const o = document.querySelector('#cmode option[value="task"]'); if (o) o.remove(); }
   fillRuns(); $("#price").innerHTML = Object.entries(S.meta.price_rows).map(([k, v]) => `<option value="${esc(k)}">${esc(k)} · $${v.input}/$${v.output} per M</option>`).join(""); $("#price").value = S.price;
-  $("#run").onchange = async () => { S.run = $("#run").value; S.order = null; await loadRun(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order); };
-  $("#price").onchange = async () => { S.price = $("#price").value; await loadRun(); if (S.order) openSession(S.order); };
-  document.querySelectorAll("#armseg button").forEach(b => b.onclick = () => { setKind(b.dataset.k); renderChains(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(S.order && a.sessions.some(s => s.order === S.order) ? S.order : a.sessions[0].order); else { S.sess = null; $("#transcript").innerHTML = `<div class="empty">No ${esc(NAMES[S.kind])} run for this chain in ${esc(S.run)}.</div>`; $("#chathead").innerHTML = `<h2>${esc(S.cid)}</h2>`; renderPane(); } });
+  $("#run").onchange = async () => { S.run = $("#run").value; S.order = null; await loadRun(); const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) autoOpen(a.sessions[0].order); };
+  $("#price").onchange = async () => { S.price = $("#price").value; await Promise.all([loadRun(), loadLiveRuns()]); renderChains(); if (S.order) autoOpen(S.order); };
+  document.querySelectorAll("#armseg button").forEach(b => b.onclick = () => { setKind(b.dataset.k); renderChains(); const lj = runningJobFor(S.cid, S.kind); if (lj && (!S.live || S.live.job.id !== lj.id)) { enterLive(lj); return; } if (S.live && S.live.job.kind === S.kind && S.live.job.cid === S.cid) { focusLive(); return; } const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(S.order && a.sessions.some(s => s.order === S.order) ? S.order : a.sessions[0].order); else { S.sess = null; $("#transcript").innerHTML = `<div class="empty">No ${esc(NAMES[S.kind])} run for this chain in ${esc(S.run)}.</div>`; $("#chathead").innerHTML = `<h2>${esc(S.cid)}</h2>`; pin(null); renderPane(); } });
   $("#search").oninput = () => { S.filter = $("#search").value.trim().toLowerCase(); renderChains(); };
   document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => setTab(b.dataset.t));
   $("#send").onclick = ask; $("#q").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } };
@@ -681,12 +811,13 @@ async function loadRun() {
   $("#cmode").onchange = () => setCmode($("#cmode").value); $("#provider").onchange = providerChanged;
   $("#runlive").onclick = () => $("#runmenu").classList.toggle("open"); document.addEventListener("click", e => { if (!e.target.closest(".runlive")) $("#runmenu").classList.remove("open"); });
   document.querySelectorAll("#runmenu button[data-k]").forEach(b => b.onclick = () => startLive(b.dataset.k));
+  $("#pb-stop").onclick = stopLive;
   $("#pb-play").onclick = () => P.on ? pause() : play(); $("#pb-step").onclick = stepOnce; $("#pb-restart").onclick = restart; $("#pb-end").onclick = showEnd;
   $("#pb-speed").onchange = () => { P.speed = +$("#pb-speed").value; setPlayUI(); };
   $("#pb-auto").onchange = () => P.auto = $("#pb-auto").checked; $("#pb-follow").onchange = () => P.follow = $("#pb-follow").checked;
-  document.addEventListener("keydown", e => { if (e.code === "Space" && !e.target.closest("textarea, input, select")) { e.preventDefault(); P.on ? pause() : play(); } });
-  await loadRun();
-  const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) openSession(a.sessions[0].order);
+  document.addEventListener("keydown", e => { if (e.code === "Space" && !e.target.closest("textarea, input, select") && !(S.live && S.liveFocus)) { e.preventDefault(); P.on ? pause() : play(); } });
+  await Promise.all([loadRun(), loadLiveRuns()]); renderChains();
+  const a = rowFor(S.cid)?.arms[S.kind]; if (a?.sessions?.length) autoOpen(a.sessions[0].order);
   setCmode("ask"); await checkEndpoint(); pollJobs();
   if (new URLSearchParams(location.search).get("src") === "custom") setSrc("custom");
 })();

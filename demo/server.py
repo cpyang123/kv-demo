@@ -634,7 +634,7 @@ JOBS: dict = {}
 class LiveReq(BaseModel):
     cid: str
     kind: str                      # none | mem0 | kv
-    run_id: str = "demo_live"
+    run_id: str | None = None      # None -> a fresh live_<timestamp> run id (earlier live runs are kept); explicit ids are reused
     api_base: str | None = None    # local provider only; default = RSM_API_BASE or the sbatch endpoint file
     served_name: str = "coder-next"
     step_limit: int = 100
@@ -664,6 +664,24 @@ def live_start(req: LiveReq):
     return _start_live(req)
 
 
+LIVE_RUN_PREFIX = "live_"
+
+
+def _is_live_run(run_id):
+    return run_id.startswith(LIVE_RUN_PREFIX) or run_id == "demo_live"
+
+
+def _new_live_run_id():
+    """live_YYYYmmdd-HHMMSS, unique against existing run dirs and jobs started in the same second."""
+    base = time.strftime(LIVE_RUN_PREFIX + "%Y%m%d-%H%M%S")
+    taken = {j["run_id"] for j in JOBS.values()}
+    rid, n = base, 1
+    while rid in taken or (RUNS / rid).exists():
+        n += 1
+        rid = f"{base}_{n}"
+    return rid
+
+
 def _start_live(req):
     if os.environ.get("DEMO_DISABLE_LIVE") == "1":
         raise HTTPException(403, "live runs are disabled on this deployment (DEMO_DISABLE_LIVE=1)")
@@ -680,30 +698,32 @@ def _start_live(req):
         system = None
     arm = f"mem_{system}" if system else "seq"
     job = uuid.uuid4().hex[:8]
+    run_id = req.run_id or _new_live_run_id()
     LIVE_DIR.mkdir(parents=True, exist_ok=True)
     chains_file = LIVE_DIR / f"{job}.chains.txt"
     chains_file.write_text(req.cid + "\n")
     log = LIVE_DIR / f"{job}.log"
-    out_dir = RUNS / req.run_id / f"{req.cid}__s0__{arm}"
-    if out_dir.exists():
-        shutil.rmtree(out_dir)      # a fresh demo run; the harness would otherwise skip a complete chain
+    out_dir = RUNS / run_id / f"{req.cid}__s0__{arm}"
+    if out_dir.exists() and req.run_id:
+        shutil.rmtree(out_dir)      # an explicit run id re-runs the chain in place; the harness would otherwise skip a complete chain
     env = dict(os.environ)
     env.pop("RSM_ACTOR_NOTHINK", None)
     env.update(penv)                       # endpoint, keys, model names, strict/no-think switches (demo/providers.py)
     env.update({
         "RSM_LEDGER": "1", "RSM_SIF_DIR": str(SIF_DIR), "RSM_RUNS_DIR": str(RUNS),
         "RSM_HF_HOME": env.get("RSM_HF_HOME", env.get("HF_HOME", str(LIVE_DIR / "hf_home"))),
+        "RSM_LIVE_SAVE": "1",                  # harness/live_agent.py: trajectory saved after every model reply, atomically
         "PYTHONUNBUFFERED": "1",
     })
     cmd = [sys.executable, str(ROOT / "harness/mini_swe_agent.py"),
            *(["--memory-system", system] if system else ["--arm", "seq"]),
-           "--chains-file", str(chains_file), "--run-id", req.run_id,
+           "--chains-file", str(chains_file), "--run-id", run_id,
            "--step-limit", str(req.step_limit), "--served-name", model,
            "--endpoint-file", str(LIVE_DIR / "unused_endpoint")]
     lf = open(log, "w")
     lf.write("$ " + " ".join(cmd) + "\n\n"); lf.flush()
     p = subprocess.Popen(cmd, cwd=str(ROOT), env=env, stdout=lf, stderr=subprocess.STDOUT)
-    JOBS[job] = {"id": job, "cid": req.cid, "kind": req.kind, "arm": arm, "run_id": req.run_id,
+    JOBS[job] = {"id": job, "cid": req.cid, "kind": req.kind, "arm": arm, "run_id": run_id,
                  "started": time.time(), "status": "running", "returncode": None, "log": str(log),
                  "api_base": api_base, "provider": req.provider, "model": model, "pid": p.pid}
 
@@ -721,6 +741,43 @@ def live_list():
     return sorted(JOBS.values(), key=lambda j: j["started"], reverse=True)
 
 
+def _kind_of_arm(arm):
+    k = next((k for k, a in ARMS.items() if a == arm), None)
+    return k or ("kv" if arm.startswith("mem_") and "facts" not in arm else "mem0" if "facts" in arm else "none")
+
+
+@app.get("/api/liveruns")
+def live_runs(price: str | None = None):
+    """Every saved live run (run ids live_* and the legacy demo_live), one entry per chain × memory system, newest
+    first. The agent view lists them above the recorded run's chains; each entry opens like a recorded session."""
+    _set_price(price)
+    out = []
+    for rid in _runs():
+        if not _is_live_run(rid):
+            continue
+        for d in sorted((RUNS / rid).glob("*__s0__*")):
+            cid, arm = d.name.split("__s0__")
+            if cid not in CHAINS:
+                continue
+            kind = _kind_of_arm(arm)
+            x = load_chain_arm(rid, arm, cid, kind) or {"sessions": [], "complete": False}
+            ss = x["sessions"]
+            models = collections.Counter()
+            for sess in ss:
+                models.update({m: n for m, n in ((sess.get("tok") or {}).get("models") or {}).items() if m != "model not recorded"})
+            model = models.most_common(1)[0][0] if models else None
+            try:
+                started = min(p.stat().st_mtime for p in d.iterdir()) if any(d.iterdir()) else d.stat().st_mtime
+            except OSError:
+                started = 0
+            running = any(j["run_id"] == rid and j["cid"] == cid and j["arm"] == arm and j["status"] == "running" for j in JOBS.values())
+            out.append({"run": rid, "cid": cid, "arm": arm, "kind": kind, "repo": CHAINS[cid]["repo"], "n_tasks": CHAINS[cid]["n_tasks"],
+                        "model": model, "started": started, "running": running, "complete": x.get("complete", False),
+                        "resolved": sum(1 for s in ss if s["resolved"]), "usd": round(sum((s["tok"] or {}).get("usd") or 0 for s in ss), 4),
+                        "sessions": [{k: s.get(k) for k in ("order", "instance", "resolved", "n_steps")} | {"usd": (s["tok"] or {}).get("usd")} for s in ss]})
+    return sorted(out, key=lambda e: e["started"], reverse=True)
+
+
 @app.get("/api/live/{job}")
 def live_get(job: str, tail: int = 200):
     if job not in JOBS:
@@ -731,6 +788,33 @@ def live_get(job: str, tail: int = 200):
     j["results"] = _read_jsonl(d / "results.jsonl") if (d / "results.jsonl").exists() else []
     j["n_calls"] = sum(1 for _ in open(d / "calls.jsonl")) if (d / "calls.jsonl").exists() else 0
     return j
+
+
+@app.get("/api/live/{job}/state")
+def live_state(job: str, tail: int = 12):
+    """Where a live job is right now, for the streaming transcript view (index.html / compare.html poll this).
+
+    The harness saves the trajectory of the task in progress after every model reply (RSM_LIVE_SAVE=1), and
+    appends a results.jsonl row when a task is graded, so: done = graded orders, cur = the order being worked
+    on (None once the job has nothing left), has_traj = its trajectory exists (-> GET /api/session for it).
+    """
+    if job not in JOBS:
+        raise HTTPException(404, "no such job")
+    j = dict(JOBS[job])
+    d = RUNS / j["run_id"] / f"{j['cid']}__s0__{j['arm']}"
+    results = _read_jsonl(d / "results.jsonl") if (d / "results.jsonl").exists() else []
+    done = sorted({r["order"] for r in results if isinstance(r.get("order"), int)})
+    if j.get("custom"):
+        orders = [j["order"]]
+    else:
+        orders = [t["order"] for t in CHAINS[j["cid"]]["tasks"]] if j["cid"] in CHAINS else []
+    cur = next((o for o in orders if o not in done), None)
+    traj = _traj_file(d, cur) if cur is not None else None
+    phase = "finished" if j["status"] != "running" else "starting" if cur is not None and not traj and not done else "agent" if traj else "between tasks"
+    return {**j, "n_tasks": len(orders), "orders": orders, "done": done, "cur": cur, "has_traj": bool(traj), "phase": phase,
+            "results": [{k: r.get(k) for k in ("order", "instance", "resolved", "exit", "n_steps", "secs", "error", "mem_nodes", "mem_write_secs")} for r in results],
+            "n_calls": sum(1 for _ in open(d / "calls.jsonl")) if (d / "calls.jsonl").exists() else 0,
+            "log_tail": _tail(j["log"], tail), "now": time.time()}
 
 
 @app.post("/api/live/{job}/stop")
@@ -1154,7 +1238,8 @@ def custom_start(req: CustomTaskReq):
         env.pop("RSM_ACTOR_NOTHINK", None)
         env.update(penv)
         env.update({"RSM_LEDGER": "1", "RSM_SIF_DIR": str(SIF_DIR), "RSM_RUNS_DIR": str(RUNS),
-                    "RSM_HF_HOME": env.get("RSM_HF_HOME", env.get("HF_HOME", str(LIVE_DIR / "hf_home"))), "PYTHONUNBUFFERED": "1"})
+                    "RSM_HF_HOME": env.get("RSM_HF_HOME", env.get("HF_HOME", str(LIVE_DIR / "hf_home"))),
+                    "RSM_LIVE_SAVE": "1", "PYTHONUNBUFFERED": "1"})
         cmd = [sys.executable, str(HERE / "custom_runner.py"), "--project", req.project, "--order", str(order), "--kind", kind,
                "--sandbox", p["sandbox"], "--step-limit", str(req.step_limit), "--served-name", model]
         lf = open(log, "w")

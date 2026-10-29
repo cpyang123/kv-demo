@@ -207,3 +207,69 @@ def test_scrub_removes_keys_from_traj(tmp_path):
     assert d["info"]["config"]["model"]["model_kwargs"]["api_key"] == "REDACTED" and d["info"]["config"]["model"]["model_kwargs"]["max_tokens"] == 5
     assert key not in t.read_text() and key not in (tmp_path / "calls.jsonl").read_text()
     assert scrub.scrub_obj({"api_key": "EMPTY"})[1] == 0          # local vLLM placeholder is left alone
+
+
+# ------------------------------------------------------------------ live view: job state while a task is in progress
+
+def test_live_state_and_session_follow_a_task_in_progress(monkeypatch, tmp_path):
+    """The streaming transcript polls /api/live/{job}/state and /api/session for the task in progress: a trajectory that
+    is still growing (last reply without its observation yet, no results row) must be served, not 404'd."""
+    import glob, shutil
+    arm = S.ARMS["kv"]
+    src = pathlib.Path(S.RUNS) / "v3main100" / f"{SHOWCASE}__s0__{arm}"
+    monkeypatch.setattr(S, "RUNS", tmp_path)
+    out = tmp_path / "demo_live" / f"{SHOWCASE}__s0__{arm}"; out.mkdir(parents=True)
+    log = tmp_path / "job.log"; log.write_text("$ harness\n=== chain\n")
+    S.JOBS["fakejob1"] = {"id": "fakejob1", "cid": SHOWCASE, "kind": "kv", "arm": arm, "run_id": "demo_live", "started": 0.0, "status": "running",
+                          "returncode": None, "log": str(log), "api_base": "x", "provider": "local", "model": "m", "pid": 0}
+    try:
+        st = client.get("/api/live/fakejob1/state").json()
+        assert st["phase"] == "starting" and st["cur"] == 1 and st["done"] == [] and st["has_traj"] is False and st["n_tasks"] == 3
+        # the harness saved the trajectory right after a model reply: 3 complete steps + one whose command is still running
+        tf = sorted(glob.glob(f"{src}/traj_1_*.json"))[0]
+        t = json.load(open(tf)); part = dict(t); part["messages"] = t["messages"][:2 + 2 * 3 + 1]; part["info"] = dict(t["info"], exit_status="", submission="")
+        (out / os.path.basename(tf)).write_text(json.dumps(part))
+        st = client.get("/api/live/fakejob1/state").json()
+        assert st["phase"] == "agent" and st["has_traj"] is True and st["cur"] == 1
+        sess = client.get(f"/api/session?run=demo_live&arm={arm}&cid={SHOWCASE}&order=1")
+        assert sess.status_code == 200, sess.text
+        sess = sess.json()
+        assert len(sess["turns"]) == 4 and sess["turns"][3]["observation"] is None and sess["turns"][2]["observation"] is not None
+        assert not sess["exit_status"] and sess["result"]["resolved"] is None and sess["problem_statement"]
+        # task 1 graded, task 2 started
+        shutil.copy(tf, out / os.path.basename(tf))
+        (out / "results.jsonl").write_text(json.dumps({"order": 1, "instance": "i1", "resolved": True, "exit": "Submitted", "n_steps": 27}) + "\n")
+        tf2 = sorted(glob.glob(f"{src}/traj_2_*.json"))[0]; shutil.copy(tf2, out / os.path.basename(tf2))
+        st = client.get("/api/live/fakejob1/state").json()
+        assert st["done"] == [1] and st["cur"] == 2 and st["phase"] == "agent" and st["results"][0]["resolved"] is True
+        S.JOBS["fakejob1"]["status"] = "done"
+        st = client.get("/api/live/fakejob1/state").json()
+        assert st["phase"] == "finished" and "harness" in st["log_tail"]
+        assert client.get("/api/live/nope/state").status_code == 404
+        # a sandbox task is a single order: nothing before it counts as "done", nothing after it is expected
+        S.JOBS["fakejob2"] = {**S.JOBS["fakejob1"], "id": "fakejob2", "cid": "myproj", "run_id": "custom", "custom": True, "order": 2, "status": "running"}
+        st = client.get("/api/live/fakejob2/state").json()
+        assert st["orders"] == [2] and st["n_tasks"] == 1 and st["cur"] == 2 and st["done"] == [] and st["phase"] == "starting"
+    finally:
+        S.JOBS.pop("fakejob1", None); S.JOBS.pop("fakejob2", None)
+
+
+def test_live_runs_get_fresh_ids_and_are_listed(monkeypatch, tmp_path):
+    """A live run started from the UI (no run id) must never reuse a run id, so earlier live runs are kept on disk."""
+    assert S.LiveReq(cid=SHOWCASE, kind="kv").run_id is None
+    monkeypatch.setattr(S, "RUNS", tmp_path)
+    a = S._new_live_run_id(); assert a.startswith("live_")
+    (tmp_path / a).mkdir()
+    b = S._new_live_run_id(); assert b != a and b.startswith(a)
+    S.JOBS["fakejob3"] = {"id": "fakejob3", "run_id": b, "cid": SHOWCASE, "arm": S.ARMS["kv"], "status": "running"}
+    try:
+        assert S._new_live_run_id() not in (a, b)
+        # the listing: one entry per chain x memory system under live_* / demo_live run ids, recorded runs excluded
+        arm = S.ARMS["kv"]; src = ROOT / "runs" / "v3main100" / f"{SHOWCASE}__s0__{arm}"
+        import shutil; shutil.copytree(src, tmp_path / b / f"{SHOWCASE}__s0__{arm}")
+        os.symlink(ROOT / "runs" / "v3main100", tmp_path / "v3main100")
+        r = client.get("/api/liveruns"); assert r.status_code == 200
+        ents = r.json(); assert [e["run"] for e in ents] == [b]
+        e = ents[0]; assert e["cid"] == SHOWCASE and e["kind"] == "kv" and e["running"] is True and len(e["sessions"]) == 3 and e["resolved"] == 2 and e["usd"] > 0
+    finally:
+        S.JOBS.pop("fakejob3", None)

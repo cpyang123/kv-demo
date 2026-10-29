@@ -110,6 +110,29 @@
   footer .muted { color: var(--muted); font-size: 12px; }
   table.tot { border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; } .tot th, .tot td { padding: 2px 8px; text-align: right; white-space: nowrap; } .tot th:first-child, .tot td:first-child { text-align: left; } .tot th { color: var(--muted); font-weight: 600; }
   .jobs { font-size: 12px; color: var(--ink2); }
+  /* pinned task prompt per column (click to expand) */
+  .taskpin { border-bottom: 1px solid var(--border); background: var(--surface); }
+  .tp-head { display: flex; gap: 7px; align-items: center; width: 100%; text-align: left; border: 0; background: none; padding: 6px 12px; cursor: pointer; font-size: 12.5px; min-width: 0; }
+  .tp-head:hover { background: var(--hover); }
+  .tp-chev { color: var(--muted); width: 10px; flex: none; } .tp-n { font-weight: 700; color: var(--ink2); white-space: nowrap; flex: none; }
+  .tp-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .taskpin.open .tp-title { white-space: normal; }
+  .tp-inst { color: var(--muted); font-size: 11px; white-space: nowrap; flex: none; max-width: 30%; overflow: hidden; text-overflow: ellipsis; }
+  .tp-body { padding: 0 12px 8px 29px; } .tp-meta { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .tp-text { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--ink2); max-height: 32vh; overflow: auto; background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-family: inherit; }
+  /* live run streamed from the harness */
+  .live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; flex: none; }
+  .live-dot.on { background: var(--bad); box-shadow: 0 0 0 0 rgba(208,59,59,0.5); animation: pulse 1.4s ease-out infinite; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(208,59,59,0); } 100% { box-shadow: 0 0 0 0 rgba(208,59,59,0); } }
+  .live-status { border-left: 3px solid var(--bad); } .lf-phase { font-size: 12.5px; color: var(--ink2); }
+  details.sub summary { cursor: pointer; color: var(--accent); font-size: 12px; } details.sub pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 11.5px; color: var(--ink2); max-height: 120px; overflow: auto; }
+  details.lf-done { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  details.lf-done > summary { cursor: pointer; padding: 8px 12px; display: flex; gap: 7px; align-items: center; font-size: 12.5px; min-width: 0; list-style: none; flex-wrap: wrap; } details.lf-done > summary::-webkit-details-marker { display: none; }
+  details.lf-done > summary::before { content: "▸"; color: var(--muted); } details.lf-done[open] > summary::before { content: "▾"; }
+  details.lf-done > summary .meta { color: var(--muted); white-space: nowrap; } details.lf-done > summary .tp-title { flex: 1; }
+  .lf-done-body { padding: 12px 12px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border); }
+  .obs-bar button { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font-size: 12px; } .obs.open { max-height: none; }
+  .badge { font-size: 10.5px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--ink2); white-space: nowrap; }
+  .strip .lres { display: inline-flex; gap: 4px; align-items: center; }
   .custom-cfg { display: none; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; } .custom-cfg.open { display: inline-flex; }
   .custom-cfg select, .custom-cfg input { padding: 3px 6px; font-size: 12px; }
   @media (max-width: 1000px) { .live .st { white-space: normal; max-width: 100%; } .cols { grid-template-columns: minmax(0, 1fr); } .col { border-right: 0; border-bottom: 1px solid var(--border); } .app { height: auto; grid-template-rows: auto auto auto auto; } .transcript { max-height: 60vh; } .counters { grid-template-columns: repeat(3, 1fr); } }
@@ -144,10 +167,10 @@
 </div>
 
 <script type="module">
-import { SessionPlayer, NAMES, COLOR, esc, usd, tok, fmtClock, api } from "./static/player.js";
+import { SessionPlayer, LiveFeed, setTaskPin, NAMES, COLOR, esc, usd, tok, fmtClock, api } from "./static/player.js";
 const $ = s => document.querySelector(s);
 const SIDES = ["A", "B", "C"];
-const S = { meta: null, cfgs: null, price: null, pricing: "model", cid: null, n: 2, sel: {}, rc: {}, players: {}, stats: {}, auto: true, jobs: [], custom: {}, chain: {} };
+const S = { meta: null, cfgs: null, price: null, pricing: "model", cid: null, n: 2, sel: {}, rc: {}, players: {}, stats: {}, auto: true, jobs: [], custom: {}, chain: {}, feeds: {} };
 const colColor = side => ({ A: null, B: null, C: "var(--c3)" })[side];
 
 function priceRow() { return S.meta.price_rows[S.price] || { input: 0, cached_input: 0, output: 0 }; }
@@ -170,6 +193,7 @@ function buildColumns() {
       <div class="head"><span class="dot" id="dot${side}"></span><select id="sel${side}" class="ctl"></select>
         <span class="custom-cfg" id="cc${side}"><select id="cck${side}"><option value="kv">Knowledge Vault</option><option value="mem0">Mem0</option><option value="none">No memory</option></select><select id="ccp${side}"></select><input id="ccm${side}" list="models${side}" placeholder="model" style="width:130px"><datalist id="models${side}"></datalist><button class="btn" id="ccgo${side}">use</button></span></div>
       <div class="sub"><span class="chip" id="task${side}">–</span><span class="chip" id="res${side}"></span><span id="models${side}txt" class="muted"></span></div>
+      <div class="taskpin" id="pin${side}" hidden></div>
       <div class="strip" id="ctr${side}"></div><div class="bar"><div id="bar${side}" style="width:0"></div></div>
       <div class="transcript" id="tr${side}"></div></section>`).join("");
   for (const side of SIDES.slice(0, S.n)) {
@@ -200,10 +224,14 @@ function fillChains() {
   $("#cid").value = S.cid;
 }
 
+const nTasks = () => (S.meta.chains || []).find(c => c.cid === S.cid)?.n_tasks;
+const pinSess = (side, sess) => setTaskPin($(`#pin${side}`), sess ? { order: sess.order, n: nTasks(), instance: sess.instance, repo: sess.repo, text: sess.problem_statement } : null);
 async function loadSide(side) {
+  if (S.feeds[side]) { S.feeds[side].stop(); S.feeds[side].detach(); delete S.feeds[side]; }
   const c = cfgOf(side); const color = c ? (colColor(side) || COLOR[c.kind]) : "var(--none)";
   $(`#dot${side}`).style.background = color; $(`#col${side}`).style.setProperty("--arm", color);
   const p = new SessionPlayer($(`#tr${side}`), { kind: c?.kind, price: priceRow(), priceFn: m => priceFor(m), speed: +$("#speed").value,
+    onLoad: sess => pinSess(side, sess),
     onStats: st => { S.stats[side] = st; renderCounters(side); renderSummary(); },
     nextOrder: pl => { if (!S.auto) return null; const nx = sessionsFor(side).find(s => s.order === pl.sess.order + 1); return nx ? { run: runIdOf(c), arm: armOf(c), cid: S.cid, order: nx.order } : null; } });
   S.players[side] = p; S.stats[side] = null;
@@ -221,7 +249,7 @@ async function loadSide(side) {
       return { order: ss[i].order, resolved: ss[i].resolved, n_steps: ss[i].n_steps, steps, loop: longest, memory: sess ? (sess.memory || "").length : 0, exit: sess ? sess.exit_status : null };
     });
   }
-  if (!c || !ss.length) { $(`#tr${side}`).innerHTML = `<div class="empty">${c ? `No ${esc(c.label)} run for this chain yet. Use "Run all columns live".` : "Pick a configuration."}</div>`; $(`#task${side}`).textContent = "not run"; $(`#res${side}`).textContent = ""; $(`#models${side}txt`).textContent = c ? `${esc(c.provider)} · ${esc(c.model)}` : ""; renderCounters(side); return; }
+  if (!c || !ss.length) { $(`#tr${side}`).innerHTML = `<div class="empty">${c ? `No ${esc(c.label)} run for this chain yet. Use "Run all columns live".` : "Pick a configuration."}</div>`; $(`#task${side}`).textContent = "not run"; $(`#res${side}`).textContent = ""; $(`#models${side}txt`).textContent = c ? `${esc(c.provider)} · ${esc(c.model)}` : ""; pinSess(side, null); renderCounters(side); return; }
   await p.load({ run: runIdOf(c), arm: armOf(c), cid: S.cid, order: ss[0].order });
 }
 async function loadAll() { await loadRuns(); fillChains(); for (const side of SIDES.slice(0, S.n)) await loadSide(side); renderSummary(); }
@@ -299,13 +327,36 @@ $("#runlive").onclick = async () => {
   const cfgs = SIDES.slice(0, S.n).map(cfgOf).filter(Boolean).map(c => c.id === "__custom" ? { kind: c.kind, provider: c.provider, model: c.model, short: c.short } : c.id);
   $("#livest").className = "st"; $("#livest").textContent = "starting…";
   try { const r = await api("api/configs/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cid: S.cid, configs: cfgs, step_limit: +$("#steps").value || 100 }) });
-    S.jobs = r.jobs; $("#livest").textContent = `${r.jobs.length} run${r.jobs.length === 1 ? "" : "s"} started${r.errors.length ? " · " + r.errors.join("; ") : ""}`; if (r.errors.length) $("#livest").className = "st err"; renderSummary(); if (r.jobs.length) pollJobs(); }
+    S.jobs = r.jobs; $("#livest").textContent = `${r.jobs.length} run${r.jobs.length === 1 ? "" : "s"} started${r.errors.length ? " · " + r.errors.join("; ") : ""}`; if (r.errors.length) $("#livest").className = "st err"; renderSummary();
+    for (const side of SIDES.slice(0, S.n)) { const c = cfgOf(side); if (!c) continue; const job = r.jobs.find(j => j.config === (c.id === "__custom" ? c.short : c.id) && !S.feedsClaimed?.has(j.id)); if (job) { (S.feedsClaimed ||= new Set()).add(job.id); watchLive(side, job); } }
+    if (r.jobs.length) pollJobs(); }
   catch (e) { $("#livest").className = "st err"; $("#livest").textContent = e.message; }
 };
+// a column follows its harness job: the transcript grows step by step, the strip shows the live counters
+function watchLive(side, job) {
+  const p = S.players[side]; if (p) { p.pause(); p.sess = null; }
+  const c = cfgOf(side), color = colColor(side) || COLOR[job.kind]; $(`#dot${side}`).style.background = color; $(`#col${side}`).style.setProperty("--arm", color);
+  const priceOf = (prompt, completion, model) => { const pr = (model && priceFor(model)) || priceRow(); return ((prompt || 0) * pr.input + (completion || 0) * pr.output) / 1e6; };
+  const feed = new LiveFeed($(`#tr${side}`), job, {
+    onTask: t => setTaskPin($(`#pin${side}`), t),
+    onState: i => {
+      const s = i.sess, model = s && s.turns.length ? s.turns[s.turns.length - 1].model : null; let usdNow = 0; if (s) for (const t of s.turns) if (t.usage) usdNow += priceOf(t.usage.prompt, t.usage.completion, t.model);
+      const res = i.results.map(r => `<span class="${r.resolved === true ? "ok" : r.resolved === false ? "no" : "na"}" title="task ${r.order} · ${esc(r.exit || "")} · ${r.n_steps ?? "?"} steps">${r.resolved === true ? "✓" : r.resolved === false ? "✗" : "·"}</span>`).join(" ");
+      $(`#task${side}`).innerHTML = `<span class="live-dot ${i.status === "running" ? "on" : ""}" style="margin-right:6px"></span>${i.status === "running" ? "live" : esc(i.status)} · task ${i.order ?? "–"}${i.n ? ` of ${i.n}` : ""} · step ${i.step}`;
+      $(`#res${side}`).innerHTML = `<b>${esc(i.phase)}</b>`;
+      $(`#models${side}txt`).textContent = `${c ? c.provider : job.provider} · ${c ? c.model : job.model}${model ? ` → served by ${model}` : ""}`;
+      $(`#ctr${side}`).innerHTML = `<div class="stat"><span class="big">${usd(usdNow)}</span><span><b>${i.step}</b> steps</span><span><b>${tok(i.prompt + i.completion)}</b> tokens <span class="muted">(this task, actor)</span></span><span><b>${i.results.filter(r => r.resolved).length}</b>/${i.done.length} resolved <span class="lres">${res}</span></span><span class="muted">${fmtClock(i.elapsed)} wall · ${i.n_calls} ledger calls</span></div>`;
+      $(`#bar${side}`).style.width = i.n ? `${Math.min(100, 100 * (i.done.length + (i.order != null ? 0.5 : 0)) / i.n)}%` : "0%";
+    },
+    onDone: async () => { if (Object.values(S.feeds).every(f => !f.on)) { await pollJobs(); } },
+  });
+  S.feeds[side] = feed.start();
+}
 async function pollJobs() {
   const js = await Promise.all(S.jobs.map(j => api(`api/live/${j.id}?tail=3`).then(x => ({ ...x, config: j.config })).catch(() => j)));
   S.jobs = js; renderSummary();
   if (js.some(j => j.status === "running")) { setTimeout(pollJobs, 6000); return; }
+  if (Object.values(S.feeds).some(f => f.on)) return;                      // a column is still rendering its last task
   S.rc = {}; S.cfgs = await api("api/configs"); await loadAll(); $("#livest").textContent = "live runs finished — loaded";
 }
 

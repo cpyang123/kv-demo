@@ -51,7 +51,20 @@ Reaching it:
   then each agent step (thought, `$ command`, tool output with return code), the submitted patch,
   the official grading (F2P / P2P tests), and what was written to memory afterwards. The chat box
   at the bottom asks the local actor model about the session (`POST /api/ask`, context = the
-  transcript); **▶ Run this chain live** starts a new harness run for the chain.
+  transcript); **▶ Run this chain live** starts a new harness run for the chain and streams it
+  into this transcript as it happens (see *Live view* below).
+- **Pinned task** (between the session header and the playback bar, also above each column of
+  `/compare`) — the task's first line, instance id and chain position; click to expand the full
+  problem statement without scrolling the transcript.
+- **Live view** — a live run (chain or sandbox task) takes over the transcript: a status card
+  (phase, elapsed, graded tasks, harness log), the memory card and issue, then each step as the
+  harness produces it — the thought and `$ command` appear while the command executes, the output
+  when it returns — a "thinking" marker while the model generates, the grading/memory-writer phase,
+  and the next task below (finished tasks stay, collapsed). The left list marks the task in
+  progress "● live"; the right panel follows the partial session (files, ledger, changes). The
+  harness saves the trajectory after every model reply when `RSM_LIVE_SAVE=1` (set by the server;
+  `harness/live_agent.py`, atomic writes); the page polls `GET /api/live/<job>/state` and
+  `GET /api/session` every 1.5 s. The old playback controls return when the run ends.
 - **Playback bar** (under the session header) — ▶ Play replays the session step by step at
   emulated real-time speed: each thought is typed out, the command appears, a "running" pause
   stands in for its execution, then the tool output; after the last step come the grading phase
@@ -163,7 +176,8 @@ running difference ("Knowledge Vault −41% · $1.35 vs $2.31 …") plus the who
 "Play the whole chain" lets each side continue through its tasks on its own clock, so the cheaper
 method visibly finishes first. **▶ Run both live** starts the two harness runs for the chain on the
 selected model endpoint (local vLLM or the GoodVision SmartRouter, see below) into a fresh run id
-and switches to it when both finish. `?run=<id>&cid=<chain>` deep-links a comparison.
+and streams each column live as it runs (same live view as `/`), then reloads the recorded
+result when all finish. `?run=<id>&cid=<chain>` deep-links a comparison.
 
 ### Model endpoints (`demo/providers.py`)
 

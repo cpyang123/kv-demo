@@ -22,6 +22,61 @@ export function noteHtml(text) {
   }).join("\n");
 }
 
+
+// ---------------------------------------------------------------- transcript markup shared by the replay player and the live feed
+export function memoryHtml(s, kind) {
+  if (s.memory) return `<div class="card memory" style="--arm:${COLOR[kind]}"><div class="hd"><span class="dot" style="background:${COLOR[kind]}"></span>Memory injected from earlier sessions <span class="meta">· ${s.memory.length} chars</span></div><div class="note">${noteHtml(s.memory)}</div></div>`;
+  return `<div class="card" style="color:var(--muted);font-size:13px">No cross-session memory injected${s.order === 1 ? " — first task of the chain" : kind === "none" ? " — no-memory baseline" : " — the store was empty"}.</div>`;
+}
+export function issueHtml(s) {
+  return `<div class="msg user"><div class="who">Issue · ${esc(s.repo)}</div><div class="bubble">${esc(s.problem_statement)}</div></div>`;
+}
+/** One agent step. `pending` = the command is still executing (live feed): show the running marker instead of an observation. */
+export function turnHtml(t, { maxObs = 1200, pending = false } = {}) {
+  const o = t.observation;
+  let h = `<div class="msg assistant turn" data-k="${t.step}"><div class="who">agent · step ${t.step}${t.usage ? ` · ${tok(t.usage.prompt)} in / ${t.usage.completion} out` : ""}</div>
+    <div class="bubble th">${esc(t.thought)}</div>${t.command ? `<div class="cmd">${esc(t.command)}</div>` : ""}<div class="obsw">`;
+  if (o) { const long = o.output.length > maxObs;
+    h += `<div class="obs-bar"><span class="rc ${o.returncode ? "err" : ""}">rc ${o.returncode ?? "?"}</span><span>${o.chars.toLocaleString()} chars${o.truncated ? " (truncated in log)" : ""}</span>${long ? `<button data-more="${t.step}">show all</button>` : ""}</div><div class="obs" data-obs="${t.step}">${esc(long ? o.output.slice(0, maxObs) + "\n…" : o.output)}</div>`; }
+  else if (t.exit) h += `<div class="obs-bar"><span class="rc">${esc(t.exit)}</span></div>`;
+  else if (pending) h += `<div class="running">running</div>`;
+  return h + `</div></div>`;
+}
+/** The cards after the last step: submission, grade, memory written. */
+export function tailHtml(s, kind) {
+  let h = "";
+  const ch = s.changes || [], add = ch.reduce((a, f) => a + f.added, 0), rem = ch.reduce((a, f) => a + f.removed, 0), r = s.result || {};
+  if (s.exit_status === "Submitted" || ch.length) h += `<div class="card tail" data-tail="exit"><div class="hd">Submitted <span class="meta">· ${ch.length} file${ch.length === 1 ? "" : "s"} changed <span class="pm"><span class="a">+${add}</span> <span class="d">−${rem}</span></span></span></div>${ch.map(f => `<div class="mono" style="font-size:12px">${esc(f.path)}</div>`).join("")}</div>`;
+  else if (s.exit_status) h += `<div class="card tail" data-tail="exit"><div class="hd">Session ended: <span class="meta">${esc(s.exit_status)}</span></div>${r.error ? `<div class="note" style="color:var(--bad)">${esc(r.error)}</div>` : ""}</div>`;
+  if (r.resolved !== null && r.resolved !== undefined) {
+    const f2p = Object.entries(r.f2p || {});
+    h += `<div class="card tail" data-tail="grade"><div class="hd">${r.resolved ? `<span class="ok">✓ Resolved</span>` : `<span class="no">✗ Not resolved</span>`} <span class="meta">· F2P/P2P grading${r.secs ? ` · ${r.secs}s session` : ""}</span></div><ul class="tests">${f2p.map(([t, st]) => `<li><span class="${st === "PASSED" ? "ok" : "no"}">${st === "PASSED" ? "✓" : "✗"}</span><span class="mono" style="font-size:12px">${esc(t)}</span></li>`).join("")}${(r.p2p_failed || []).map(t => `<li><span class="no">✗</span><span class="mono" style="font-size:12px">${esc(t)}</span> <span class="badge">regression</span></li>`).join("")}</ul></div>`;
+  }
+  if (s.note_written) h += `<div class="card memory tail" data-tail="note" style="--arm:${COLOR[kind]}"><div class="hd"><span class="dot" style="background:${COLOR[kind]}"></span>Written to memory <span class="meta">· ${s.note_written.length} chars${s.tok && s.tok.writer_prompt ? ` · writer ${tok(s.tok.writer_prompt + s.tok.writer_completion)} tok${s.tok.writer_src === "estimate" ? " (est.)" : ""}` : ""}${r.mem_write_secs ? ` · ${r.mem_write_secs}s` : ""}</span></div><div class="note">${noteHtml(s.note_written)}</div></div>`;
+  else if (kind !== "none" && r.mem_nodes === 0) h += `<div class="card tail" data-tail="note" style="color:var(--muted);font-size:13px">The writer produced nothing for this session (0 items stored)${s.tok && s.tok.writer_prompt ? ` — it still cost ${tok(s.tok.writer_prompt + s.tok.writer_completion)} tokens` : ""}.</div>`;
+  return h;
+}
+/** The pinned task header: {order, n, instance, repo, text}. Returns {title, html} for a .taskpin element. */
+export function taskPinHtml(t) {
+  const text = (t.text || "").trim(), first = text.split("\n").map(l => l.trim()).find(Boolean) || "(no task text)";
+  return `<button class="tp-head" type="button" aria-expanded="false"><span class="tp-chev">▸</span><span class="tp-n">Task ${t.order}${t.n ? ` of ${t.n}` : ""}</span><span class="tp-title">${esc(first)}</span><span class="tp-inst mono">${esc(t.instance || "")}</span></button>
+    <div class="tp-body" hidden><div class="tp-meta">${esc(t.repo || "")}${t.instance ? ` · <span class="mono">${esc(t.instance)}</span>` : ""} · ${text.length.toLocaleString()} chars</div><pre class="tp-text">${esc(text)}</pre></div>`;
+}
+/** Fill a .taskpin element and wire the expand toggle (idempotent). Pass null to hide it. */
+export function expandObs(root, turns, step) {
+  const t = (turns || []).find(x => x.step === step), o = root.querySelector(`[data-obs="${step}"]`), b = root.querySelector(`[data-more="${step}"]`);
+  if (t && t.observation && o) { o.textContent = t.observation.output; o.classList.add("open"); } if (b) b.remove();
+}
+export function setTaskPin(el, t) {
+  if (!el) return;
+  if (!t) { el.hidden = true; el.innerHTML = ""; return; }
+  const open = el.classList.contains("open");
+  el.hidden = false; el.innerHTML = taskPinHtml(t);
+  const head = el.querySelector(".tp-head"), body = el.querySelector(".tp-body");
+  const set = o => { el.classList.toggle("open", o); body.hidden = !o; head.setAttribute("aria-expanded", o); el.querySelector(".tp-chev").textContent = o ? "▾" : "▸"; };
+  head.onclick = () => set(!el.classList.contains("open")); set(open);
+}
+
 export class SessionPlayer {
   /** root: container element. opts: {kind, price: {input, cached_input, output}, speed, follow(fn), onStats(fn), onDone(fn), nextOrder(fn)} */
   constructor(root, opts = {}) {
@@ -29,6 +84,7 @@ export class SessionPlayer {
     this.sess = null; this.plan = null; this.k = 0; this.phase = 0; this.on = false; this.token = 0; this.done = false; this.prepared = false;
     this.elapsed = 0; this.total = 0; this.counted = { steps: 0, actor: 0, usd: 0 };
     this.cum = { steps: 0, actor: 0, writer: 0, usd: 0, elapsed: 0, tasks: 0, resolved: 0, models: {} };   // carried across tasks of a chain
+    root.addEventListener("click", e => { const b = e.target.closest("[data-more]"); if (!b || !this.sess) return; expandObs(root, this.sess.turns, +b.dataset.more); });
   }
   price(prompt, completion, cached = 0, model = null) {
     const p = (this.opts.priceFn && this.opts.priceFn(model)) || this.opts.price || { input: 0, cached_input: 0, output: 0 };
@@ -46,35 +102,13 @@ export class SessionPlayer {
     this.root.innerHTML = `<div class="empty">Loading session…</div>`;
     try { this.sess = await api(`api/session?run=${encodeURIComponent(q.run)}&arm=${encodeURIComponent(q.arm)}&cid=${encodeURIComponent(q.cid)}&order=${q.order}`); }
     catch (e) { this.root.innerHTML = `<div class="empty">${esc(e.message)}</div>`; this.emit(); return false; }
-    this.render(); this.prepare(); return true;
+    this.render(); this.prepare(); if (this.opts.onLoad) this.opts.onLoad(this.sess, this); return true;
   }
   resetCum() { this.cum = { steps: 0, actor: 0, writer: 0, usd: 0, elapsed: 0, tasks: 0, resolved: 0, models: {} }; }
 
   render() {
-    const s = this.sess, kind = this.opts.kind || s.kind; let h = "";
-    if (s.memory) h += `<div class="card memory" style="--arm:${COLOR[kind]}"><div class="hd"><span class="dot" style="background:${COLOR[kind]}"></span>Memory injected from earlier sessions <span class="meta">· ${s.memory.length} chars</span></div><div class="note">${noteHtml(s.memory)}</div></div>`;
-    else h += `<div class="card" style="color:var(--muted);font-size:13px">No cross-session memory injected${s.order === 1 ? " — first task of the chain" : kind === "none" ? " — no-memory baseline" : " — the store was empty"}.</div>`;
-    h += `<div class="msg user"><div class="who">Issue · ${esc(s.repo)}</div><div class="bubble">${esc(s.problem_statement)}</div></div>`;
-    s.turns.forEach(t => {
-      const o = t.observation;
-      h += `<div class="msg assistant turn" data-k="${t.step}"><div class="who">agent · step ${t.step}${t.usage ? ` · ${tok(t.usage.prompt)} in / ${t.usage.completion} out` : ""}</div>
-        <div class="bubble th">${esc(t.thought)}</div>${t.command ? `<div class="cmd">${esc(t.command)}</div>` : ""}<div class="obsw">`;
-      if (o) { const long = o.output.length > 1200;
-        h += `<div class="obs-bar"><span class="rc ${o.returncode ? "err" : ""}">rc ${o.returncode ?? "?"}</span><span>${o.chars.toLocaleString()} chars</span></div><div class="obs">${esc(long ? o.output.slice(0, 1200) + "\n…" : o.output)}</div>`; }
-      else if (t.exit) h += `<div class="obs-bar"><span class="rc">${esc(t.exit)}</span></div>`;
-      h += `</div></div>`;
-    });
-    const ch = s.changes || [], add = ch.reduce((a, f) => a + f.added, 0), rem = ch.reduce((a, f) => a + f.removed, 0);
-    if (s.exit_status === "Submitted" || ch.length) h += `<div class="card tail" data-tail="exit"><div class="hd">Submitted <span class="meta">· ${ch.length} file${ch.length === 1 ? "" : "s"} changed <span class="pm"><span class="a">+${add}</span> <span class="d">−${rem}</span></span></span></div>${ch.map(f => `<div class="mono" style="font-size:12px">${esc(f.path)}</div>`).join("")}</div>`;
-    else if (s.exit_status) h += `<div class="card tail" data-tail="exit"><div class="hd">Session ended: <span class="meta">${esc(s.exit_status)}</span></div></div>`;
-    const r = s.result;
-    if (r.resolved !== null && r.resolved !== undefined) {
-      const f2p = Object.entries(r.f2p || {});
-      h += `<div class="card tail" data-tail="grade"><div class="hd">${r.resolved ? `<span class="ok">✓ Resolved</span>` : `<span class="no">✗ Not resolved</span>`} <span class="meta">· F2P/P2P grading${r.secs ? ` · ${r.secs}s session` : ""}</span></div><ul class="tests">${f2p.map(([t, st]) => `<li><span class="${st === "PASSED" ? "ok" : "no"}">${st === "PASSED" ? "✓" : "✗"}</span><span class="mono" style="font-size:12px">${esc(t)}</span></li>`).join("")}</ul></div>`;
-    }
-    if (s.note_written) h += `<div class="card memory tail" data-tail="note" style="--arm:${COLOR[kind]}"><div class="hd"><span class="dot" style="background:${COLOR[kind]}"></span>Written to memory <span class="meta">· ${s.note_written.length} chars${s.tok && s.tok.writer_prompt ? ` · writer ${tok(s.tok.writer_prompt + s.tok.writer_completion)} tok${s.tok.writer_src === "estimate" ? " (est.)" : ""}` : ""}${r.mem_write_secs ? ` · ${r.mem_write_secs}s` : ""}</span></div><div class="note">${noteHtml(s.note_written)}</div></div>`;
-    else if (kind !== "none" && r.mem_nodes === 0) h += `<div class="card tail" data-tail="note" style="color:var(--muted);font-size:13px">The writer produced nothing for this session (0 items stored)${s.tok && s.tok.writer_prompt ? ` — it still cost ${tok(s.tok.writer_prompt + s.tok.writer_completion)} tokens` : ""}.</div>`;
-    this.root.innerHTML = h;
+    const s = this.sess, kind = this.opts.kind || s.kind;
+    this.root.innerHTML = memoryHtml(s, kind) + issueHtml(s) + s.turns.map(t => turnHtml(t)).join("") + tailHtml(s, kind);
   }
 
   planTimes() {
@@ -188,4 +222,134 @@ export class SessionPlayer {
     this.emit();
   }
   restart() { this.pause(); if (!this.sess) return; this.render(); this.prepare(); this.root.scrollTop = 0; }
+}
+
+
+// ---------------------------------------------------------------- LiveFeed: follow a harness job as it runs
+// Polls GET /api/live/{job}/state (where the job is: task in progress, graded tasks, phase) and, while a task is
+// in progress, GET /api/session for it — the harness rewrites the trajectory after every model reply
+// (harness/live_agent.py, RSM_LIVE_SAVE=1), so the transcript grows step by step like a coding agent's console.
+// Finished tasks of a chain stay in the transcript, collapsed; the task in progress is appended below them.
+// opts: {interval, onTask(task, info), onSession(sess, info), onState(info), onTaskDone(order, sess, info), onDone(info), follow(turn)}
+export class LiveFeed {
+  constructor(root, job, opts = {}) {
+    this.root = root; this.job = job; this.opts = opts; this.interval = opts.interval || 1500;
+    this.on = false; this.state = null; this.order = undefined; this.sess = null; this.tasks = {}; this.n = job.custom ? 1 : 0;
+    this.doneShown = new Set(); this.finished = []; this.complete = 0; this.pinned = null; this.lastFollowed = 0;
+    this.obsFull = {};                                            // "order:step" -> full observation text ("show all")
+    this._click = e => { const b = e.target.closest("[data-more]"); if (!b) return; const key = b.dataset.key || `${this.order}:${b.dataset.more}`;
+      const o = this.root && this.root.querySelector(`[data-obs="${b.dataset.more}"][data-okey="${key}"]`) || this.root.querySelector(`[data-obs="${b.dataset.more}"]`);
+      if (o && this.obsFull[key] != null) { o.textContent = this.obsFull[key]; o.classList.add("open"); } b.remove(); };
+    if (root) root.addEventListener("click", this._click);
+  }
+  get kind() { return this.job.kind; }
+  attach(root) { if (this.root) this.root.removeEventListener("click", this._click); this.root = root; if (root) { root.addEventListener("click", this._click); this.renderAll(); } }
+  detach() { if (this.root) this.root.removeEventListener("click", this._click); this.root = null; }
+  start() { this.on = true; this.boot(); return this; }
+  stop() { this.on = false; clearTimeout(this._t); }
+  schedule() { clearTimeout(this._t); if (this.on) this._t = setTimeout(() => this.tick(), this.interval); }
+  async boot() {
+    try { const c = await api(`api/chain/${encodeURIComponent(this.job.cid)}?run=__live__`); for (const t of c.chain.tasks) this.tasks[t.order] = { ...t, repo: c.chain.repo }; if (!this.job.custom) this.n = c.chain.n_tasks; } catch {}
+    this.renderAll(); this.tick();
+  }
+  sessionUrl(order) { return `api/session?run=${encodeURIComponent(this.job.run_id)}&arm=${encodeURIComponent(this.job.arm)}&cid=${encodeURIComponent(this.job.cid)}&order=${order}`; }
+  async tick() {
+    if (!this.on) return;
+    let st; try { st = await api(`api/live/${this.job.id}/state`); } catch { this.schedule(); return; }
+    this.state = st; if (!this.job.custom && st.n_tasks) this.n = st.n_tasks;
+    for (const o of st.done) if (!this.doneShown.has(o)) { this.doneShown.add(o); await this.finishTask(o); }
+    if (st.cur !== this.order) { this.order = st.cur; this.sess = null; this.complete = 0; this.pinned = null; this.lastFollowed = 0; this.newTask(); }
+    if (st.cur != null && st.has_traj) {
+      try { const sess = await api(this.sessionUrl(st.cur)); if (this.order === st.cur) { this.sess = sess; this.renderTurns(); if (this.opts.onSession) this.opts.onSession(sess, this.info()); } }
+      catch {}                                                    // a trajectory mid-write: keep what we have, try again next tick
+    }
+    this.renderStatus();
+    if (this.opts.onState) this.opts.onState(this.info());
+    if (st.status !== "running") { this.on = false; if (this.opts.onDone) this.opts.onDone(this.info()); return; }
+    this.schedule();
+  }
+  phase() {
+    const st = this.state, s = this.sess;
+    if (!st) return "connecting";
+    if (st.status !== "running") return "finished";
+    if (st.cur == null) return "finishing";
+    if (!st.has_traj) return st.done.length ? "preparing" : "starting";
+    if (!s) return "loading";
+    if (s.exit_status) return "grading";
+    const last = s.turns[s.turns.length - 1];
+    if (last && last.command && !last.observation) return "running";
+    return "thinking";
+  }
+  info() {
+    const st = this.state || {}, s = this.sess, turns = s ? s.turns : [];
+    let prompt = 0, completion = 0; for (const t of turns) if (t.usage) { prompt += t.usage.prompt || 0; completion += t.usage.completion || 0; }
+    return { job: this.job, cid: this.job.cid, kind: this.job.kind, arm: this.job.arm, run_id: this.job.run_id, status: st.status || "running", phase: this.phase(),
+             order: this.order ?? null, n: this.n, done: st.done || [], results: st.results || [], step: turns.length, prompt, completion, n_calls: st.n_calls || 0,
+             elapsed: st.now && st.started ? st.now - st.started : 0, model: st.model, sess: s, finished: this.finished, log_tail: st.log_tail || "" };
+  }
+  task(order) { const t = this.tasks[order] || {}; const s = this.sess && this.sess.order === order ? this.sess : null;
+    return { order, n: this.n, instance: t.instance || (s && s.instance) || "", repo: t.repo || (s && s.repo) || "", text: (s && s.problem_statement) || t.problem_statement || "" }; }
+  // ---- rendering
+  renderAll() {
+    if (!this.root) return;
+    this.root.innerHTML = `<div class="card live-status" data-lf="status"></div><div data-lf="history"></div><div data-lf="cur"><div data-lf="head"></div><div data-lf="turns"></div><div data-lf="pending"></div><div data-lf="flight"></div></div>`;
+    for (const f of this.finished) this.root.querySelector('[data-lf="history"]').insertAdjacentHTML("beforeend", this.doneHtml(f.sess, f === this.finished[this.finished.length - 1]));
+    this.complete = 0; this.renderHead(); this.renderTurns(); this.renderStatus();
+  }
+  el(name) { return this.root ? this.root.querySelector(`[data-lf="${name}"]`) : null; }
+  newTask() {
+    const cur = this.el("cur"); if (cur) { cur.innerHTML = `<div data-lf="head"></div><div data-lf="turns"></div><div data-lf="pending"></div><div data-lf="flight"></div>`; }
+    this.renderHead();
+    if (this.order != null && this.opts.onTask) { const t = this.task(this.order); if (t.text) { this.pinned = this.order; this.opts.onTask(t, this.info()); } }
+  }
+  renderHead() {
+    const head = this.el("head"); if (!head) return;
+    if (this.order == null) { head.innerHTML = ""; return; }
+    const t = this.task(this.order);
+    head.innerHTML = (this.sess ? memoryHtml(this.sess, this.job.kind) : "") + (t.text ? issueHtml({ repo: t.repo, problem_statement: t.text }) : `<div class="card" style="color:var(--muted);font-size:13px">Task ${this.order}${this.n ? ` of ${this.n}` : ""} — waiting for the harness…</div>`);
+  }
+  renderTurns() {
+    const s = this.sess; if (!s || !this.root) return;
+    if (this.pinned !== s.order && this.opts.onTask) { this.pinned = s.order; this.opts.onTask(this.task(s.order), this.info()); }
+    if (this.complete === 0) this.renderHead();                   // first trajectory of this task: the memory card is known now
+    const turns = this.el("turns"), pending = this.el("pending"), flight = this.el("flight"); if (!turns) return;
+    const n = s.turns.length; let done = 0; while (done < n && (s.turns[done].observation || s.turns[done].exit)) done++;
+    for (let i = this.complete; i < done; i++) { const t = s.turns[i]; this.obsFull[`${s.order}:${t.step}`] = t.observation ? t.observation.output : null;
+      turns.insertAdjacentHTML("beforeend", turnHtml(t).replace(`data-obs="${t.step}"`, `data-obs="${t.step}" data-okey="${s.order}:${t.step}"`).replace(`data-more="${t.step}"`, `data-more="${t.step}" data-key="${s.order}:${t.step}"`));
+      if (this.opts.follow && t.command && t.step > this.lastFollowed) { this.lastFollowed = t.step; this.opts.follow(t, s); } }
+    if (done > this.complete) { this.complete = done; this.autoScroll(); }
+    pending.innerHTML = n > done ? s.turns.slice(done).map(t => turnHtml(t, { pending: true })).join("") : "";
+    const ph = this.phase();
+    flight.innerHTML = ph === "thinking" ? `<div class="msg assistant"><div class="who">agent · step ${n + 1}</div><div class="bubble th"><span class="thinking">thinking</span></div></div>`
+      : ph === "grading" ? `<div class="card tail" data-tail="exit"><div class="hd">Session ended: <span class="meta">${esc(s.exit_status)}</span></div></div><div class="card tail phase"><span class="running">grading: resetting the test files and running the F2P / P2P tests${this.job.kind !== "none" ? ", then the memory writer distils this session" : ""}</span></div>` : "";
+    if (n > done || ph === "grading") this.autoScroll();
+  }
+  renderStatus() {
+    const box = this.el("status"); if (!box) return;
+    const st = this.state, i = this.info(), ph = this.phase(), kind = this.job.kind;
+    const text = { connecting: "connecting to the harness…", starting: "starting: opening the task image in Apptainer and preparing the workspace", preparing: kind !== "none" ? `task ${this.order}: the memory layer retrieves notes from the earlier sessions` : `preparing task ${this.order}`,
+      loading: "loading the trajectory…", thinking: "the model is thinking", running: "the command is executing in the sandbox", grading: "grading the submission" + (kind !== "none" ? " and writing memory" : ""),
+      finishing: "wrapping up", finished: st && st.status === "done" ? "finished" : `ended: ${st ? st.status : "?"}` }[ph];
+    const live = st && st.status === "running";
+    box.innerHTML = `<div class="hd"><span class="live-dot ${live ? "on" : ""}"></span>${live ? "Live" : "Live run " + esc(st ? st.status : "")} <span class="meta">· <span class="dot" style="background:${COLOR[kind]}"></span> ${esc(NAMES[kind] || this.job.arm)} on ${esc(this.job.cid)}${i.model ? ` · ${esc(i.model)}` : ""} · ${fmtClock(i.elapsed)}${this.n ? ` · task ${this.order ?? "–"} of ${this.n}` : ""} · ${i.done.length} graded · ${i.n_calls} ledger calls</span></div>
+      <div class="lf-phase"><span class="${live ? "running" : ""}">${esc(text)}</span></div>
+      <details class="sub lf-log" ${ph === "starting" || ph === "finished" && st && st.status !== "done" ? "open" : ""}><summary>harness log</summary><pre>${esc((i.log_tail || "").split("\n").slice(-8).join("\n"))}</pre></details>`;
+  }
+  doneHtml(sess, open) {
+    const r = sess.result || {}, res = r.resolved === true ? `<span class="ok">✓ resolved</span>` : r.resolved === false ? `<span class="no">✗ not resolved</span>` : `<span class="na">not graded</span>`;
+    const html = memoryHtml(sess, this.job.kind) + issueHtml(sess) + sess.turns.map(t => turnHtml(t).replace(`data-obs="${t.step}"`, `data-obs="${t.step}" data-okey="${sess.order}:${t.step}"`).replace(`data-more="${t.step}"`, `data-more="${t.step}" data-key="${sess.order}:${t.step}"`)).join("") + tailHtml(sess, this.job.kind);
+    return `<details class="lf-done" ${open ? "open" : ""}><summary><span class="tp-n">Task ${sess.order}${this.n ? ` of ${this.n}` : ""}</span> ${res} <span class="meta">· ${esc(sess.exit_status || "")} · ${sess.turns.length} steps${r.secs ? ` · ${fmtClock(r.secs)}` : ""}${sess.tok ? ` · ${usd(sess.tok.usd)}` : ""}</span><span class="tp-title">${esc((sess.problem_statement || "").split("\n").map(l => l.trim()).find(Boolean) || "")}</span></summary><div class="lf-done-body">${html}</div></details>`;
+  }
+  async finishTask(order) {
+    let sess = null; try { sess = await api(this.sessionUrl(order)); } catch {}
+    if (!sess) return;
+    for (const t of sess.turns) this.obsFull[`${order}:${t.step}`] = t.observation ? t.observation.output : null;
+    this.finished.push({ order, sess });
+    const hist = this.el("history");
+    if (hist) { hist.querySelectorAll("details.lf-done[open]").forEach(d => d.open = false); hist.insertAdjacentHTML("beforeend", this.doneHtml(sess, true)); }
+    if (this.order === order) { this.order = undefined; this.sess = null; const cur = this.el("cur"); if (cur) cur.innerHTML = `<div data-lf="head"></div><div data-lf="turns"></div><div data-lf="pending"></div><div data-lf="flight"></div>`; }
+    this.autoScroll();
+    if (this.opts.onTaskDone) this.opts.onTaskDone(order, sess, this.info());
+  }
+  autoScroll() { const b = this.root; if (b && b.scrollHeight - b.scrollTop - b.clientHeight < 320) b.scrollTop = b.scrollHeight; }
 }
