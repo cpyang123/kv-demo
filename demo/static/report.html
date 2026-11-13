@@ -3,64 +3,69 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Knowledge Vault cost demo</title>
+<title>Report · Knowledge Vault</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%233987e5'/%3E%3Cstop offset='1' stop-color='%236250d6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='20' height='20' rx='5.5' fill='url(%23g)'/%3E%3Ccircle cx='10' cy='10' r='4.6' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M10 3.6v2M10 14.4v2M3.6 10h2M14.4 10h2' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='10' r='1.3' fill='%23fff'/%3E%3C/svg%3E">
 <style>
   :root {
     color-scheme: light;
-    --surface: #fcfcfb; --plane: #f9f9f7; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
-    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --surface: #fcfcfb; --plane: #f3f3f0; --ink: #0b0b0b; --ink2: #52514e; --muted: #6f6d67;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10); --hover: rgba(11,11,11,0.04); --code: #f6f6f3;
     --kv: #2a78d6; --mem0: #eb6834; --none: #898781;
-    --kv-wash: rgba(42,120,214,0.10); --mem0-wash: rgba(235,104,52,0.10);
     --good: #006300; --bad: #d03b3b; --status-good: #0ca30c; --status-bad: #d03b3b;
-    --div-pos: #2a78d6; --div-neg: #e34948; --div-mid: #f0efec;
     --accent: #2a78d6;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --surface: #1a1a19; --plane: #0d0d0d; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
-      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+      --surface: #1a1a19; --plane: #0f0f0e; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.05); --code: #111110;
       --kv: #3987e5; --mem0: #d95926; --none: #898781;
-      --kv-wash: rgba(57,135,229,0.12); --mem0-wash: rgba(217,89,38,0.12);
-      --good: #0ca30c; --bad: #e66767; --div-pos: #3987e5; --div-neg: #e66767; --div-mid: #383835;
+      --good: #0ca30c; --bad: #e66767;
       --accent: #3987e5;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --surface: #1a1a19; --plane: #0d0d0d; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --surface: #1a1a19; --plane: #0f0f0e; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.05); --code: #111110;
     --kv: #3987e5; --mem0: #d95926; --none: #898781;
-    --kv-wash: rgba(57,135,229,0.12); --mem0-wash: rgba(217,89,38,0.12);
-    --good: #0ca30c; --bad: #e66767; --div-pos: #3987e5; --div-neg: #e66767; --div-mid: #383835;
+    --good: #0ca30c; --bad: #e66767;
     --accent: #3987e5;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--plane); color: var(--ink);
     font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
   a { color: var(--accent); }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 60px; }
-  header { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; margin-bottom: 18px; }
-  header h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
-  header .sub { color: var(--ink2); margin: 2px 0 0; font-size: 14px; }
-  .controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-left: auto; }
+  /* top bar as on Compare: brand left, page nav + ⚙ together at the right (also when the bar wraps on a phone).
+     Page-local on purpose: theme.css loads after every page's styles and must not move the other pages' bars. */
+  header.top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 6px 14px; min-height: 48px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 12.5px; color: var(--ink2); }
+  .brand { font-weight: 700; display: flex; gap: 8px; align-items: center; white-space: nowrap; flex: none; }
+  .brand .mark { width: 18px; height: 18px; border-radius: 5px; display: inline-block; flex: none; }
+  .navgear { display: flex; gap: 10px; align-items: center; flex: none; margin-left: auto; }
   .pnav { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--plane); flex: none; }
   .pnav a { padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--ink2); text-decoration: none; }
   .pnav a[aria-current="page"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--border); } .pnav a:hover { color: var(--ink); }
+  header.top .btn { color: inherit; }
+  #gearbtn { padding-inline: 17px; }        /* as wide as the Agent and Compare ⚙ (they add a status dot), so the nav does not shift between pages */
+  .gearpanel select { width: 100%; }
+  @media (max-width: 560px) { header.top { gap: 6px 8px; padding: 6px 10px; } header.top .pnav a { padding: 4px 9px; } .navgear { gap: 8px; } }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 60px; }
+  .pagehead { margin-bottom: 14px; }
+  .pagehead h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  .pagehead .sub { color: var(--ink2); margin: 4px 0 0; font-size: 14px; max-width: 900px; }
   label.ctl { font-size: 13px; color: var(--ink2); display: flex; gap: 6px; align-items: center; }
-  select, input[type=text], input[type=number] { font: inherit; font-size: 14px; color: var(--ink);
+  select { font: inherit; font-size: 14px; color: var(--ink);
     background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; max-width: 100%; }
-  #cid, #live_cid { max-width: min(100%, 520px); min-width: 0; }
-  .explorer-head label.ctl { flex: 1 1 260px; min-width: 0; max-width: 100%; }
+  #cid { max-width: min(100%, 560px); min-width: 0; }
+  .explorer-head label.ctl { flex: 0 1 600px; min-width: 0; max-width: 100%; }
   .explorer-head #cid { flex: 1 1 auto; width: 100%; }
-  .live form label > input, .live form label > select { width: 100%; min-width: 0; }
-  footer code, .sub code { overflow-wrap: anywhere; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
   .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 3px; background: var(--surface); }
   .seg button { font: inherit; font-size: 15px; font-weight: 600; border: 0; background: transparent; color: var(--ink2);
     padding: 8px 18px; border-radius: 999px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
   .seg button .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .seg button[aria-pressed="true"] { background: var(--plane); color: var(--ink); box-shadow: inset 0 0 0 1px var(--border); }
+  .seg button:disabled { cursor: default; opacity: .6; }
   .toggle-row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 6px 0 18px; }
   .toggle-row .hint { color: var(--muted); font-size: 13px; }
   .hero { display: grid; grid-template-columns: auto 1fr; gap: 6px 28px; align-items: center; margin-bottom: 16px; }
@@ -68,7 +73,7 @@
   .hero .num.good { color: var(--good); } .hero .num.bad { color: var(--bad); }
   .hero .txt { font-size: 17px; color: var(--ink2); }
   .hero .txt b { color: var(--ink); }
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
   .tile .label { color: var(--ink2); font-size: 13px; }
   .tile .value { font-size: 30px; font-weight: 600; margin: 2px 0; }
   .tile .delta { font-size: 13px; color: var(--ink2); }
@@ -80,140 +85,160 @@
   .legend span { display: inline-flex; gap: 6px; align-items: center; }
   .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
   .legend i.sq { width: 10px; height: 10px; border-radius: 2px; }
-  svg { width: 100%; height: auto; display: block; overflow: visible; }
-  svg text { font-family: inherit; fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-  svg .lbl { fill: var(--ink2); font-size: 12px; }
+  .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .chart svg text { font-family: inherit; fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .chart svg .lbl { fill: var(--ink2); font-size: 12px; }
   .tip { position: fixed; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
     border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--ink); box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    display: none; z-index: 10; min-width: 180px; }
-  .tip .t { font-weight: 600; margin-bottom: 4px; }
+    display: none; z-index: 10; min-width: 180px; max-width: min(360px, calc(100vw - 16px)); }
+  .tip .t { font-weight: 600; margin-bottom: 2px; }
+  .tip .tsub { font-size: 12px; margin-bottom: 4px; }
   .tip .row { display: flex; justify-content: space-between; gap: 14px; }
   .tip .row span:first-child { display: inline-flex; gap: 6px; align-items: center; color: var(--ink2); }
   .tip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  th { color: var(--ink2); font-weight: 600; font-size: 12.5px; }
+  th { color: var(--ink2); font-weight: 600; font-size: 12.5px; white-space: normal; vertical-align: bottom; line-height: 1.3; }
   th:first-child, td:first-child { text-align: left; }
-  td .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
+  .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; flex: none; }
   tr.sel td { background: var(--plane); }
   .tabwrap { overflow-x: auto; }
   .section { margin-bottom: 16px; }
-  .explorer-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 10px; }
+  .explorer-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 4px; }
+  .explorer-head .go { margin-left: auto; }
+  .cnote { color: var(--ink2); font-size: 13.5px; margin: 0 0 12px; }
+  .go { font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .go:hover { text-decoration: underline; }
   .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink2); }
-  .badge.ok { color: var(--good); border-color: var(--good); } .badge.no { color: var(--bad); border-color: var(--bad); }
+  .badge.no { color: var(--bad); border-color: var(--bad); }
   .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 8px 0 14px; }
   .strip .s { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
-  .strip .s .n { font-weight: 600; display: flex; gap: 8px; align-items: center; }
-  .strip .s.sel { box-shadow: inset 0 0 0 2px var(--accent); }
+  .strip .s .n { font-weight: 600; display: flex; align-items: center; }
+  .strip .s.sel { box-shadow: inset 0 0 0 2px var(--sc, var(--accent)); }
   .strip .s .v { font-size: 22px; font-weight: 600; margin-top: 2px; } .strip .s .m { font-size: 13px; color: var(--ink2); }
   .tasks { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
   .task { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; min-width: 0; }
   .card, .tile, .strip .s, .chart { min-width: 0; }
-  .task .hd .inst, .task .hd .title { overflow-wrap: anywhere; }
   .task .hd { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
   .task .hd .ord { font-weight: 700; color: var(--ink2); }
-  .task .hd .inst { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
-  .task .hd .title { color: var(--ink2); flex-basis: 100%; font-size: 14px; }
+  .task .hd .sum { font-weight: 600; color: var(--ink); font-size: 14.5px; overflow-wrap: anywhere; min-width: 0; }
+  .task .raw { color: var(--muted); font-size: 13px; margin-top: 3px; overflow-wrap: anywhere; }   /* the issue's own first line: Show details */
   .res { font-weight: 600; font-size: 13px; display: inline-flex; gap: 5px; align-items: center; }
-  .res.ok { color: var(--status-good); } .res.no { color: var(--status-bad); } .res.na { color: var(--muted); }
+  .res.ok { color: var(--good); } .res.no { color: var(--status-bad); } .res.na { color: var(--muted); }
   .task .meter { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 6px; font-size: 13px; color: var(--ink2); }
   .task .meter b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .task .go { display: inline-block; margin-top: 10px; }
   .bar { height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden; display: flex; gap: 2px; margin: 4px 0 8px; }
   .bar div { height: 100%; border-radius: 4px; }
   details { margin-top: 6px; } summary { cursor: pointer; color: var(--accent); font-size: 13px; }
   pre { background: var(--plane); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 12.5px;
     white-space: pre-wrap; word-break: break-word; max-height: 360px; overflow: auto; margin: 6px 0 0; }
-  pre.mem { border-left: 3px solid var(--accent); }
+  pre.mem { border-left: 3px solid var(--sc, var(--accent)); }
+  /* memory notes and the issue, formatted as on the Agent and Compare pages (player.js noteHtml / md; .note and .md in theme.css) */
+  .membox, .issuebox { background: var(--plane); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px;
+    max-height: 360px; overflow: auto; margin: 6px 0 0; min-width: 0; }
+  .membox { border-left: 3px solid var(--sc, var(--accent)); }
+  .issuebox { white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+  .issuebox pre.mdcode { max-height: none; }
+  .bar .w { background: color-mix(in srgb, var(--sc, var(--accent)) 55%, var(--surface)); }   /* memory writing: the method's colour, lighter */
+  .barkey { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 12.5px; color: var(--muted); margin: 0 0 8px; }
+  .barkey span { display: inline-flex; gap: 6px; align-items: center; }
+  .barkey i { width: 14px; height: 8px; border-radius: 3px; display: inline-block; }
   button.btn { font: inherit; font-size: 14px; font-weight: 600; border: 1px solid var(--border); background: var(--surface);
     color: var(--ink); padding: 7px 14px; border-radius: 8px; cursor: pointer; }
-  button.btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
   button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .replay { margin-top: 8px; border-top: 1px solid var(--grid); padding-top: 8px; }
-  .step { border-left: 2px solid var(--grid); padding: 4px 0 4px 12px; margin: 6px 0; }
-  .step .k { font-size: 12px; color: var(--muted); }
-  .step .th { white-space: pre-wrap; font-size: 13.5px; }
-  .step code.cmd { display: block; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--plane);
-    border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; margin: 4px 0; white-space: pre-wrap; }
-  .step .obs { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--ink2); white-space: pre-wrap;
-    max-height: 140px; overflow: auto; background: var(--plane); border-radius: 6px; padding: 6px 8px; }
-  .live form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; align-items: end; }
-  .live form label { display: grid; gap: 4px; font-size: 13px; color: var(--ink2); }
-  .live .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: center; }
-  .live .msg { font-size: 13px; color: var(--ink2); }
-  .live .msg.err { color: var(--bad); }
-  .jobs td:first-child { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
-  pre.log { max-height: 320px; font-family: ui-monospace, Menlo, monospace; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-weight: 600; }
+  .linkbtn:hover { text-decoration: underline; }
+  .card.down h3 { font-size: 16px; margin-bottom: 4px; } .card.down .sub { color: var(--ink2); font-size: 14px; margin-bottom: 12px; }
   footer { color: var(--muted); font-size: 13px; margin-top: 24px; line-height: 1.5; }
-  footer p { margin: 4px 0; }
+  footer summary { font-size: 13.5px; font-weight: 600; }
+  footer p { margin: 6px 0; max-width: 900px; }
+  footer b { color: var(--ink2); }
   .muted { color: var(--muted); }
   .spin { color: var(--muted); font-size: 14px; padding: 20px; }
-  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } .charts { grid-template-columns: 1fr; }
-    .hero { grid-template-columns: 1fr; } .live form { grid-template-columns: 1fr; } .strip { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } .hero { grid-template-columns: 1fr; } .strip { grid-template-columns: 1fr; } }
 </style>
+<link rel="stylesheet" href="static/theme.css">
+<script src="static/catrain.js" defer></script>
 </head>
 <body>
+<header class="top">
+  <a class="brand" href="./" title="Knowledge Vault — start a new project in your sandbox"><svg class="mark" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="kvg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3987e5"/><stop offset="1" stop-color="#6250d6"/></linearGradient></defs><rect width="20" height="20" rx="5.5" fill="url(#kvg)"/><circle cx="10" cy="10" r="4.6" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M10 3.6v2M10 14.4v2M3.6 10h2M14.4 10h2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="1.3" fill="#fff"/></svg>Knowledge Vault</a>
+  <div class="navgear">
+    <nav class="pnav" aria-label="Pages"><a href="./">Agent</a><a href="compare">Compare</a><a aria-current="page" href="report">Report</a></nav>
+    <div class="gear" id="gear">
+      <button class="btn icon" id="gearbtn" type="button" aria-expanded="false" aria-controls="gearpanel" aria-label="Settings" title="Settings: recorded run, price row, details">⚙</button>
+      <div class="gearpanel" id="gearpanel" hidden>
+        <section><h4>Recorded run</h4>
+          <select id="run" class="ctl" aria-label="Recorded run" disabled></select>
+          <div class="gnote">Every chain solved once with each memory method, recorded for the paper.</div></section>
+        <section><h4>Cost</h4>
+          <label class="row">Price row <select id="price" class="ctl" disabled></select></label>
+          <div class="gnote">Tokens are turned into dollars at this price row, the same for every method.</div></section>
+        <section><label class="check"><input type="checkbox" id="details"> Show details</label>
+          <div class="gnote">Each task's instance id and the first line of its issue as written.</div></section>
+      </div>
+    </div>
+  </div>
+</header>
 <div class="wrap">
-  <header>
-    <div>
-      <h1>Knowledge Vault on ChainSWE — what memory costs</h1>
-      <p class="sub">Chains of sequential GitHub issues solved in one workspace. Toggle the memory system; every number comes from the harness's own ledger meters.</p>
-    </div>
-    <div class="controls">
-      <nav class="pnav" aria-label="Pages"><a href="./">Agent</a><a href="compare">Compare</a><a aria-current="page" href="report">Report</a></nav>
-      <label class="ctl">Run <select id="run"></select></label>
-      <label class="ctl">Price row <select id="price"></select></label>
-    </div>
-  </header>
+  <div class="pagehead">
+    <h1>Knowledge Vault on ChainSWE — what memory costs</h1>
+    <p class="sub">Each chain is a few related GitHub issues solved one after another in one repository, so memory can carry what the agent learned to the next task. Every number below comes from the recorded runs of the paper.</p>
+  </div>
 
   <div class="toggle-row">
-    <div class="seg" role="group" aria-label="Memory system">
-      <button id="t-mem0" aria-pressed="false"><span class="dot" style="background:var(--mem0)"></span>Mem0</button>
-      <button id="t-kv" aria-pressed="true"><span class="dot" style="background:var(--kv)"></span>Knowledge Vault</button>
+    <div class="seg" role="group" aria-label="Memory method">
+      <button type="button" id="t-kv" aria-pressed="true" disabled><span class="dot" style="background:var(--kv)"></span>Knowledge Vault</button>
+      <button type="button" id="t-mem0" aria-pressed="false" disabled><span class="dot" style="background:var(--mem0)"></span>Mem0</button>
     </div>
     <span class="hint" id="hint"></span>
   </div>
 
-  <div id="main"><div class="spin">Loading recorded runs…</div></div>
+  <div id="main"><div class="spin">Loading results…</div></div>
 
-  <div class="card section live" id="live">
-    <h3>Run a chain live through the harness</h3>
-    <p class="sub">Launches <code>harness/mini_swe_agent.py</code> with <code>RSM_LEDGER=1</code> against an OpenAI-compatible endpoint (vLLM). Needs the chain's Apptainer image in the SIF directory. Results land under the run id and show up in the explorer above.</p>
-    <form id="liveform" onsubmit="return false">
-      <label>Endpoint (OpenAI-compatible, ending in /v1) <input type="text" id="api_base" value="http://127.0.0.1:8000/v1"></label>
-      <label>Served model name <input type="text" id="served" value="coder-next"></label>
-      <label>Run id <input type="text" id="run_id" value="" placeholder="auto: live_<date>-<time> (keeps earlier live runs)"></label>
-      <label>Chain <select id="live_cid"></select></label>
-      <label>Step limit <input type="number" id="steps" value="100" min="5" max="200"></label>
-      <label>Knowledge Vault system <select id="kv_sys"></select></label>
-    </form>
-    <div class="actions">
-      <button class="btn primary" id="go-kv">Run with Knowledge Vault</button>
-      <button class="btn" id="go-mem0">Run with Mem0</button>
-      <button class="btn" id="go-none">Run without memory</button>
-      <button class="btn" id="check-ep">Check endpoint</button>
-      <span class="msg" id="livemsg"></span>
-    </div>
-    <div id="jobs"></div>
-  </div>
-
-  <footer id="foot"></footer>
+  <footer id="foot" hidden><details id="how"><summary>How the numbers are made</summary><div id="howbody"></div></details></footer>
 </div>
 <div class="tip" id="tip"></div>
 
 <script>
-const $ = (s, el=document) => el.querySelector(s);
+const $ = (s, el=document) => el.querySelector(s), enc = encodeURIComponent;
 const NAMES = { kv: "Knowledge Vault", mem0: "Mem0", none: "No memory" };
 const COLOR = { kv: "var(--kv)", mem0: "var(--mem0)", none: "var(--none)" };
-const S = { meta: null, run: null, price: null, sel: "kv", summary: null, cid: null, chain: null, jobs: {}, pollTimer: null };
+const RUN_LABEL = { v3main100: "Paper run (v3, 100 chains)", v2main100: "Paper run (v2)" };   // as in the Agent page's ⚙
+const S = { meta: null, sc: null, P: null, run: null, price: null, sel: "kv", summary: null, cid: null, chain: null, chainKey: "", names: {} };
 
-const fmtK = v => v == null ? "–" : (Math.abs(v) >= 1000 ? (v/1000).toFixed(2) + "M" : v.toFixed(v < 10 ? 1 : 0) + "K");
+const fmtK = v => !v ? "–" : (Math.abs(v) >= 1000 ? (v/1000).toFixed(2) + "M" : v.toFixed(v < 10 ? 1 : 0) + "K");
 const fmtTok = v => v == null ? "–" : (v >= 1e6 ? (v/1e6).toFixed(2)+"M" : v >= 1000 ? (v/1000).toFixed(1)+"K" : String(v));
 const fmtUsd = v => v == null ? "–" : "$" + v.toFixed(2);
-const pct = v => v == null ? "–" : (v*100).toFixed(1) + "%";
+const fmtSecs = s => s < 60 ? `${Math.round(s)}s` : `${Math.floor(s / 60)} min ${Math.round(s % 60)}s`;
+const pct = v => v == null ? "–" : (v*100).toFixed(1) + "%", f1 = v => v == null ? "–" : v.toFixed(1);
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const other = k => k === "kv" ? "mem0" : "kv";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const runLabel = r => RUN_LABEL[r] || r;
+const chainName = cid => S.names[cid] || cid;
+const agentRun = () => (S.sc && S.sc.run) || S.meta.default_run;       // the recorded run the Agent page's example chains play
+// memory notes (DID / WHERE / VERIFY rows; instance ids only with Show details) and the issue's markdown, exactly as the
+// Agent and Compare pages show them (static/player.js, loaded at boot); plain text if it could not be loaded
+const noteBox = (text, kind) => S.P && S.P.memNoteHtml ? `<div class="membox" style="--sc:${COLOR[kind]};--arm:${COLOR[kind]}">${S.P.memNoteHtml(text, kind)}</div>` : `<pre class="mem" style="--sc:${COLOR[kind]}">${esc(text)}</pre>`;
+const issueBox = text => S.P && S.P.md ? `<div class="issuebox md">${S.P.md(String(text).replace(/\r\n?/g, "\n"))}</div>` : `<pre>${esc(text)}</pre>`;
+// how a session ended, in the transcript's words (Agent / Compare)
+const exitWord = x => /LimitsExceeded/.test(x) ? "stopped at the step limit" : /ContextWindowExceeded/.test(x) ? "stopped: the conversation outgrew the model's context window"
+  : /RepeatedFormatError/.test(x) ? "stopped: the model kept replying in the wrong format" : /BadRequestError/.test(x) ? "ended with an error: the model provider refused the request"
+  : /^error:|Error$/.test(x) ? "ended with an error" : `session ended: ${x}`;
 
-async function api(path) { const r = await fetch(path); if (!r.ok) throw new Error((await r.json()).detail || r.statusText); return r.json(); }
+// like player.js: a body that is not JSON (a proxy's HTML error page) gives a plain message, not a parse error
+async function api(path) {
+  const r = await fetch(path), j = await r.json().catch(() => null), detail = j && typeof j.detail === "string" ? j.detail : null;
+  if (!r.ok || !j) { const e = new Error(detail || (r.ok ? "the server's answer could not be read" : `the server answered ${r.status}`)); e.detail = detail; throw e; }
+  return j;
+}
+// no answer at all, or an error page without the server's own message (a proxy while the server restarts)
+const unreachable = e => !e.detail;
+const downHtml = (title = "Couldn't reach the demo server", line = "It may be restarting — try again in a moment.") =>
+  `<div class="card down" role="alert"><h3>${esc(title)}</h3><p class="sub">${esc(line)}</p><button class="btn" type="button" data-retry>Try again</button></div>`;
+document.addEventListener("click", e => { if (e.target.closest("[data-retry]")) location.reload(); });
 
 function delta(cur, base, lowerIsGood, kind) {
   if (cur == null || base == null) return `<span class="d flat">–</span>`;
@@ -221,65 +246,108 @@ function delta(cur, base, lowerIsGood, kind) {
   const rel = base ? d / base : 0;
   const good = d === 0 ? "flat" : ((d < 0) === lowerIsGood ? "good" : "bad");
   const arrow = d === 0 ? "" : (d < 0 ? "▼ " : "▲ ");
-  const txt = kind === "pct" ? `${d >= 0 ? "+" : ""}${(d*100).toFixed(1)} pts` : `${d >= 0 ? "+" : "−"}${(Math.abs(rel)*100).toFixed(1)}%`;
+  const txt = kind === "pct" ? `${d >= 0 ? "+" : "−"}${Math.abs(d*100).toFixed(1)} points` : `${d >= 0 ? "+" : "−"}${(Math.abs(rel)*100).toFixed(1)}%`;
   return `<span class="d ${good}">${arrow}${txt}</span>`;
+}
+
+/** Chain names as on Compare: "<title> — <repo>" for the example chains, "<repo> · <date>" (from the id) for the rest. */
+function nameChains() {
+  const sc = new Map(((S.sc && S.sc.chains) || []).map(c => [c.cid, c])), base = {}, count = {}, seen = {};
+  for (const c of S.summary.chains) {
+    const m = /_(\d{4})(\d{2})(\d{2})(?:_[0-9a-f]+)?$/.exec(c.cid);
+    base[c.cid] = m ? `${c.repo} · ${m[1]}-${m[2]}-${m[3]}` : c.cid; count[base[c.cid]] = (count[base[c.cid]] || 0) + 1;
+  }
+  S.names = {};
+  for (const c of S.summary.chains) {
+    const x = sc.get(c.cid), b = base[c.cid];
+    S.names[c.cid] = x ? `${x.title} — ${x.repo}` : count[b] > 1 ? `${b} (${seen[b] = (seen[b] || 0) + 1})` : b;   // two chains of one repo on one day
+  }
 }
 
 // ------------------------------------------------------------------ summary view
 function renderMain() {
-  const a = S.summary.arms, sel = S.sel, oth = other(sel), A = a[sel], B = a[oth], N = a.none;
-  if (!A || !B) { const cov = S.summary.coverage || {}; const rec = S.meta.runs.find(r => !/^live_|^demo_live|^cfg__|^custom$/.test(r));
-    $("#main").innerHTML = `<div class="card"><b>Nothing to compare in ${esc(S.run)} yet.</b><div class="sub" style="margin-top:6px">A comparison needs chains completed by both ${NAMES[sel]} and ${NAMES[oth]}; this run has ${cov.kv ?? 0} complete chain${cov.kv === 1 ? "" : "s"} with Knowledge Vault, ${cov.mem0 ?? 0} with Mem0 and ${cov.none ?? 0} without memory.${rec ? ` Pick <a href="#" id="pickrec">${esc(rec)}</a> for the recorded comparison, or open the sessions in the <a href="./">agent view</a>.` : ""}</div></div>`;
-    const pr = $("#pickrec"); if (pr) pr.onclick = ev => { ev.preventDefault(); S.run = rec; $("#run").value = rec; loadSummary(); }; return; }
+  const sm = S.summary, a = sm.arms, sel = S.sel, oth = other(sel), A = a[sel], B = a[oth], N = a.none;
+  renderHow();
+  if (!A || !B) {
+    const cov = sm.coverage || {}, alt = recordedRuns().find(r => r !== S.run);
+    $("#hint").textContent = "";
+    $("#main").innerHTML = `<div class="card"><b>Nothing to compare in ${esc(runLabel(S.run))} yet.</b><div class="sub" style="margin-top:6px">A comparison needs chains finished with both ${NAMES[sel]} and ${NAMES[oth]}; this run has ${plural(cov.kv ?? 0, "finished chain")} with Knowledge Vault, ${cov.mem0 ?? 0} with Mem0 and ${cov.none ?? 0} without memory.${alt ? ` <a href="#" id="pickrec">Show ${esc(runLabel(alt))}</a>.` : ""}</div></div>`;
+    const pr = $("#pickrec"); if (pr) pr.onclick = ev => { ev.preventDefault(); S.run = alt; $("#run").value = alt; loadSummary(); };
+    return;
+  }
+  nameChains();
+  const n = sm.common_chains, P = sm.price || {};
   const saving = (B.usd_chain - A.usd_chain) / B.usd_chain;
   const heroGood = saving > 0;
-  const est = A.writer_src === "estimate" || B.writer_src === "estimate";
-  $("#hint").textContent = `${S.summary.common_chains} chains · ${A.n_sessions} sessions per arm · prices: ${S.summary.price_row}`;
+  $("#hint").textContent = `${plural(n, "chain")} · ${A.n_sessions} tasks per method`;
   const hero = `
     <div class="card hero section">
       <div class="num ${heroGood ? "good" : "bad"}">${heroGood ? "−" : "+"}${(Math.abs(saving)*100).toFixed(1)}%</div>
       <div class="txt"><b>${NAMES[sel]}</b> costs <b>${fmtUsd(A.usd_chain)}</b> per chain versus <b>${fmtUsd(B.usd_chain)}</b> for ${NAMES[oth]}
         ${N ? `(no memory at all: ${fmtUsd(N.usd_chain)})` : ""} — and resolves <b>${pct(A.resolve_later)}</b> of the later tasks
         (${NAMES[oth]}: ${pct(B.resolve_later)}${N ? `, no memory: ${pct(N.resolve_later)}` : ""}).
-        Priced at the <b>${esc(S.summary.price_row)}</b> row: $${S.summary.price.input}/M input, $${S.summary.price.output}/M output.</div>
+        Priced at $${P.input} per million input tokens and $${P.output} per million output tokens.</div>
     </div>`;
-  const tile = (label, value, d, note) => `<div class="card tile"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${d} vs ${NAMES[oth]}${note ? ` <span class="muted">· ${note}</span>` : ""}</div></div>`;
+  const tile = (label, value, d) => `<div class="card tile"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${d} vs ${NAMES[oth]}</div></div>`;
   const kpis = `<div class="kpis">
-    ${tile("Cost per chain", fmtUsd(A.usd_chain), delta(A.usd_chain, B.usd_chain, true))}
-    ${tile("Tokens per session (actor + writer)", fmtK(A.total_k), delta(A.total_k, B.total_k, true), est ? "writer side estimated" : "")}
-    ${tile("Later tasks resolved", pct(A.resolve_later), delta(A.resolve_later, B.resolve_later, false, "pct"))}
-    ${tile("Agent steps per session", A.steps.toFixed(1), delta(A.steps, B.steps, true))}
+    ${tile("Tokens per task (agent + memory writing)", fmtK(A.total_k), delta(A.total_k, B.total_k, true))}
+    ${tile("Agent steps per task", f1(A.steps), delta(A.steps, B.steps, true))}
   </div>`;
-  const charts = `<div class="charts">
-    <div class="card chart"><h3>Cumulative cost over the ${S.summary.common_chains} chains</h3><p class="sub">USD summed chain by chain (all sessions of a chain). The gap between the lines is the saving.</p>
+  const charts = n < 2 ? "" : `<div class="charts">
+    <div class="card chart"><h3>Cumulative cost over the ${n} chains</h3><p class="sub">Dollars added up chain by chain. The gap between the lines is the saving.</p>
       <div class="legend">${["kv","mem0","none"].filter(k => a[k]).map(k => `<span><i style="background:${COLOR[k]}"></i>${NAMES[k]}</span>`).join("")}</div>
       <div id="c-cum"></div></div>
     <div class="card chart"><h3>Per-chain cost: ${NAMES[sel]} minus ${NAMES[oth]}</h3><p class="sub" id="c-div-sub"></p>
-      <div class="legend"><span><i class="sq" style="background:var(--div-pos)"></i>${NAMES[sel]} cheaper</span><span><i class="sq" style="background:var(--div-neg)"></i>${NAMES[sel]} costlier</span></div>
+      <div class="legend"><span><i class="sq" style="background:var(--kv)"></i>Knowledge Vault cheaper</span><span><i class="sq" style="background:var(--mem0)"></i>Mem0 cheaper</span></div>
       <div id="c-div"></div></div>
   </div>`;
+  const est = k => a[k].writer_src === "estimate" && a[k].writer_k > 0;
   const rows = ["kv","mem0","none"].filter(k => a[k]).map(k => { const x = a[k]; return `<tr class="${k===sel?"sel":""}">
-    <td><span class="sw" style="background:${COLOR[k]}"></span>${NAMES[k]} <span class="muted">(${esc(x.arm)})</span></td>
-    <td>${pct(x.resolve_all)}</td><td>${pct(x.resolve_pos1)}</td><td>${pct(x.resolve_later)}</td><td>${x.steps.toFixed(1)}</td>
-    <td>${fmtK(x.actor_k)}</td><td>${fmtK(x.writer_k)}${x.writer_src==="estimate"?"*":""}</td><td>${fmtK(x.total_k)}</td>
-    <td>${fmtUsd(x.usd_session)}</td><td>${fmtUsd(x.usd_chain)}</td><td>${Math.round(x.injected_chars_later)}</td></tr>`; }).join("");
-  const table = `<div class="card section"><h3>Arms side by side</h3><p class="sub">Means over the ${S.summary.common_chains} chains complete in every arm. "Later" = tasks 2+ of a chain, where memory can act. Token sources: ${esc(A.tok_src)}${est ? "; * writer side estimated from the material the harness handed the writer (these runs predate the exact ledger)" : ""}.</p>
-    <div class="tabwrap"><table><thead><tr><th>System</th><th>Resolved (all)</th><th>Task 1</th><th>Later tasks</th><th>Steps/session</th><th>Actor K/session</th><th>Writer K/session</th><th>Total K/session</th><th>USD/session</th><th>USD/chain</th><th>Injected chars (later)</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
-  const explorer = `<div class="card section" id="explorer"><h3>Chain explorer</h3><p class="sub">Pick a chain: what was injected before each task, what the writer stored after it, and the full trajectory.</p>
-    <div class="explorer-head"><label class="ctl">Chain <select id="cid"></select></label><span id="cid-badges"></span></div>
+    <td><span class="sw" style="background:${COLOR[k]}"></span>${NAMES[k]}</td>
+    <td>${pct(x.resolve_all)}</td><td>${pct(x.resolve_pos1)}</td><td>${pct(x.resolve_later)}</td><td>${f1(x.steps)}</td>
+    <td>${fmtK(x.actor_k)}</td><td${est(k) ? ` title="estimated: these recorded runs did not meter memory writing exactly"` : ""}>${est(k) ? "≈" : ""}${fmtK(x.writer_k)}</td><td>${fmtK(x.total_k)}</td>
+    <td>${fmtUsd(x.usd_session)}</td><td>${fmtUsd(x.usd_chain)}</td><td>${x.injected_chars_later ? `${Math.round(x.injected_chars_later).toLocaleString("en-US")} chars` : "–"}</td></tr>`; }).join("");
+  const anyEst = ["kv","mem0","none"].some(k => a[k] && est(k));
+  const table = `<div class="card section"><h3>All methods side by side</h3><p class="sub">Averages over the ${plural(n, "chain")} every method finished. Later tasks are tasks 2 and on of a chain, where memory can help.${anyEst ? " ≈ = estimated, see How the numbers are made at the bottom." : ""}</p>
+    <div class="tabwrap"><table><thead><tr><th>Method</th><th>Tasks resolved</th><th>First task resolved</th><th>Later tasks resolved</th><th>Steps per task</th><th>Agent tokens</th><th>Memory tokens</th><th>Tokens per task</th><th>Cost per task</th><th>Cost per chain</th><th>Memory given to later tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  const explorer = `<div class="card section" id="explorer"><h3>Chain explorer</h3><p class="sub">Pick a chain to see, task by task, the memory each task was given and what was written to memory after it${S.run === agentRun() ? " — and watch every step in the Agent view" : ""}.</p>
+    <div class="explorer-head"><label class="ctl">Chain <select id="cid"></select></label><a class="go" id="cmp-link" href="compare">Compare side by side ▸</a></div>
+    <div class="cnote" id="cidnote"></div>
     <div id="chainview"></div></div>`;
   $("#main").innerHTML = hero + kpis + charts + table + explorer;
-  drawCumulative(); drawDiverging();
-  const sel_ = $("#cid");
-  sel_.innerHTML = S.summary.chains.map(c => `<option value="${esc(c.cid)}">${esc(c.cid)} — ${esc(c.repo)} (${c.n_tasks} tasks)</option>`).join("");
-  if (!S.cid || !S.summary.chains.some(c => c.cid === S.cid)) S.cid = S.summary.chains[0]?.cid;
-  sel_.value = S.cid; sel_.onchange = () => { S.cid = sel_.value; $("#live_cid").value = S.cid; loadChain(); };
-  loadChain();
+  if (n >= 2) { drawCumulative(); drawDiverging(); }
+  // the explorer: the example chains first (as on Compare), then every other chain of the run
+  const sel_ = $("#cid"), inRun = new Set(sm.chains.map(c => c.cid)), sc = ((S.sc && S.sc.chains) || []).filter(c => inRun.has(c.cid)), scIds = new Set(sc.map(c => c.cid));
+  const rest = sm.chains.filter(c => !scIds.has(c.cid)).sort((x, y) => chainName(x.cid).localeCompare(chainName(y.cid), "en", { sensitivity: "base", numeric: true }));
+  const opts1 = sc.map(c => `<option value="${esc(c.cid)}" title="${esc(c.blurb)}">${esc(chainName(c.cid))}</option>`).join(""),
+    opts2 = rest.map(c => `<option value="${esc(c.cid)}" title="${esc(c.cid)}">${esc(chainName(c.cid))}</option>`).join("");
+  sel_.innerHTML = sc.length && rest.length ? `<optgroup label="Example chains — where Knowledge Vault saves tokens">${opts1}</optgroup><optgroup label="The other ${rest.length} chains of the paper run">${opts2}</optgroup>` : opts1 + opts2;
+  if (S.wantCid) { S.cid = S.wantCid; S.wantCid = null; }
+  if (!inRun.has(S.cid)) S.cid = [S.sc && S.sc.default_cid, S.meta.default_cid].find(c => inRun.has(c)) || (sc[0] || sm.chains[0] || {}).cid || null;
+  if (S.fixUrl) { S.fixUrl = false; syncUrl(); }         // a link with an unknown chain or method: the URL shows what opened
+  sel_.value = S.cid; sel_.onchange = () => pickChain(sel_.value);
+  renderCidNote(); loadChain();
+}
+function renderCidNote() {
+  const c = ((S.sc && S.sc.chains) || []).find(x => x.cid === S.cid), r = S.summary.chains.find(x => x.cid === S.cid);
+  $("#cidnote").textContent = c ? c.blurb : r ? `${plural(r.n_tasks, "task")} on ${r.repo}.` : "";
+  $("#cid").title = c ? c.blurb : chainName(S.cid);
+  $("#cmp-link").href = `compare?cid=${enc(S.cid || "")}${S.run !== agentRun() ? `&run=${enc(S.run)}` : ""}`;
+}
+function pickChain(cid) { S.cid = cid; $("#cid").value = cid; syncUrl(); renderCidNote(); loadChain(); }
+/** ?cid= (the explorer's chain), ?kind= (the Knowledge Vault / Mem0 toggle) and ?run= (⚙ Recorded run, when not the default)
+ *  survive a reload and can be shared. */
+function syncUrl() {
+  const q = new URLSearchParams(location.search);
+  if (S.cid) q.set("cid", S.cid); else q.delete("cid");
+  q.set("kind", S.sel);
+  if (S.run && S.run !== S.meta.default_run) q.set("run", S.run); else q.delete("run");
+  history.replaceState(null, "", `${location.pathname}?${q}`);
 }
 
 // ------------------------------------------------------------------ charts (inline SVG)
 function tipShow(ev, html) { const t = $("#tip"); t.innerHTML = html; t.style.display = "block"; tipMove(ev); }
-function tipMove(ev) { const t = $("#tip"); const x = Math.min(ev.clientX + 14, window.innerWidth - t.offsetWidth - 8); t.style.left = x + "px"; t.style.top = (ev.clientY + 14) + "px"; }
+function tipMove(ev) { const t = $("#tip"); const x = Math.max(8, Math.min(ev.clientX + 14, window.innerWidth - t.offsetWidth - 8)); t.style.left = x + "px"; t.style.top = (ev.clientY + 14) + "px"; }
 function tipHide() { $("#tip").style.display = "none"; }
 function niceTicks(max, n=4) { const raw = max / n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p; const s = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; const out = []; for (let v = 0; v <= max + 1e-9; v += s) out.push(v); return out; }
 
@@ -287,15 +355,14 @@ function drawCumulative() {
   const keys = ["kv","mem0","none"].filter(k => S.summary.arms[k]);
   const ch = S.summary.chains, n = ch.length;
   const cum = {}; keys.forEach(k => { let s = 0; cum[k] = ch.map(c => (s += c[k].usd)); });
-  const W = 560, H = 260, m = {l: 44, r: 108, t: 10, b: 28}, pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const W = 560, H = 260, m = {l: 44, r: 122, t: 10, b: 28}, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const ymax = Math.max(...keys.map(k => cum[k][n-1])) * 1.05;
   const x = i => m.l + (n > 1 ? i / (n - 1) : 0.5) * pw, y = v => m.t + ph - v / ymax * ph;
   const ticks = niceTicks(ymax);
   let g = `<svg viewBox="0 0 ${W} ${H}" id="svg-cum">`;
   ticks.forEach(v => g += `<line x1="${m.l}" x2="${m.l+pw}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/><text x="${m.l-6}" y="${y(v)+4}" text-anchor="end">$${v >= 1000 ? (v/1000).toFixed(1)+"K" : v}</text>`);
   g += `<line x1="${m.l}" x2="${m.l+pw}" y1="${y(0)}" y2="${y(0)}" stroke="var(--axis)" stroke-width="1"/>`;
-  [1, Math.round(n/2), n].forEach(i => g += `<text x="${x(i-1)}" y="${H-8}" text-anchor="middle">${i}</text>`);
-  g += `<text x="${m.l+pw/2}" y="${H-8}" text-anchor="middle" dy="-14" style="display:none"></text>`;
+  [...new Set([1, Math.round(n/2), n])].forEach(i => g += `<text x="${x(i-1)}" y="${H-8}" text-anchor="middle">${i}</text>`);
   const order = [...keys].sort((a, b) => (a === S.sel) - (b === S.sel));   // selected drawn last (on top)
   order.forEach(k => {
     const d = cum[k].map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
@@ -305,7 +372,7 @@ function drawCumulative() {
   // end labels with collision avoidance
   const labs = keys.map(k => ({k, y: y(cum[k][n-1]), v: cum[k][n-1]})).sort((a, b) => a.y - b.y);
   for (let i = 1; i < labs.length; i++) if (labs[i].y - labs[i-1].y < 14) labs[i].y = labs[i-1].y + 14;
-  labs.forEach(l => g += `<text class="lbl" x="${x(n-1)+8}" y="${l.y+4}">${({kv:"KV",mem0:"Mem0",none:"None"})[l.k]} ${fmtUsd(l.v)}</text>`);
+  labs.forEach(l => g += `<text class="lbl" x="${x(n-1)+8}" y="${l.y+4}">${({kv:"KV",mem0:"Mem0",none:"No memory"})[l.k]} ${fmtUsd(l.v)}</text>`);
   g += `<line id="cum-x" x1="0" x2="0" y1="${m.t}" y2="${m.t+ph}" stroke="var(--axis)" stroke-width="1" style="display:none"/>`;
   g += `<rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="transparent" id="cum-hit"/></svg>`;
   $("#c-cum").innerHTML = g;
@@ -314,26 +381,25 @@ function drawCumulative() {
     const r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) / r.width * W;
     const i = Math.max(0, Math.min(n-1, Math.round((sx - m.l) / pw * (n-1))));
     xl.setAttribute("x1", x(i)); xl.setAttribute("x2", x(i)); xl.style.display = "";
-    tipShow(ev, `<div class="t">Chain ${i+1} · ${esc(ch[i].cid)}</div>` + keys.map(k => `<div class="row"><span><i style="background:${COLOR[k]}"></i>${NAMES[k]}</span><span>${fmtUsd(cum[k][i])} <span class="muted">(+${fmtUsd(ch[i][k].usd)})</span></span></div>`).join(""));
+    tipShow(ev, `<div class="t">${esc(chainName(ch[i].cid))}</div><div class="muted tsub">chain ${i+1} of ${n} · running total (this chain)</div>` + keys.map(k => `<div class="row"><span><i style="background:${COLOR[k]}"></i>${NAMES[k]}</span><span>${fmtUsd(cum[k][i])} <span class="muted">(+${fmtUsd(ch[i][k].usd)})</span></span></div>`).join(""));
   });
   hit.addEventListener("mouseleave", () => { xl.style.display = "none"; tipHide(); });
 }
 
 function drawDiverging() {
   const sel = S.sel, oth = other(sel);
-  const rows = S.summary.chains.map(c => ({cid: c.cid, repo: c.repo, d: c[sel].usd - c[oth].usd, a: c[sel].usd, b: c[oth].usd})).sort((p, q) => p.d - q.d);
+  const rows = S.summary.chains.map(c => ({cid: c.cid, d: c[sel].usd - c[oth].usd, a: c[sel].usd, b: c[oth].usd, kv: c.kv.usd, mem0: c.mem0.usd})).sort((p, q) => p.d - q.d);
   const n = rows.length, cheaper = rows.filter(r => r.d < 0).length;
-  $("#c-div-sub").textContent = `${NAMES[sel]} is cheaper on ${cheaper} of ${n} chains; sorted by difference. Hover a bar for the chain.`;
+  $("#c-div-sub").textContent = `${NAMES[sel]} is cheaper on ${cheaper} of ${n} chains. Each bar is one chain, sorted by the difference — hover to see it, click to open it in the chain explorer.`;
   const W = 560, H = 260, m = {l: 44, r: 10, t: 10, b: 28}, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const amax = Math.max(...rows.map(r => Math.abs(r.d))) * 1.05 || 1;
   const y = v => m.t + ph/2 - v / amax * (ph/2);
   const bw = Math.max(1, pw / n - 2);
   let g = `<svg viewBox="0 0 ${W} ${H}" id="svg-div">`;
-  const ticks = niceTicks(amax, 2);
-  ticks.forEach(v => [v, -v].forEach(t => { if (t === 0 && v !== 0) return; g += `<line x1="${m.l}" x2="${m.l+pw}" y1="${y(t)}" y2="${y(t)}" stroke="${t===0?"var(--axis)":"var(--grid)"}" stroke-width="1"/><text x="${m.l-6}" y="${y(t)+4}" text-anchor="end">${t<0?"−":""}$${Math.abs(t).toFixed(2)}</text>`; }));
-  rows.forEach((r, i) => {
+  niceTicks(amax, 2).forEach(v => (v ? [v, -v] : [0]).forEach(t => { g += `<line x1="${m.l}" x2="${m.l+pw}" y1="${y(t)}" y2="${y(t)}" stroke="${t===0?"var(--axis)":"var(--grid)"}" stroke-width="1"/><text x="${m.l-6}" y="${y(t)+4}" text-anchor="end">${t<0?"−":""}$${Math.abs(t).toFixed(2)}</text>`; }));
+  rows.forEach((r, i) => {          // each bar in the colour of the method that was cheaper on that chain, whichever is selected
     const x0 = m.l + i * (pw / n) + 1, h = Math.abs(y(r.d) - y(0)), top = Math.min(y(r.d), y(0));
-    g += `<rect x="${x0.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h, 0.5).toFixed(1)}" rx="${Math.min(2, bw/2)}" fill="${r.d <= 0 ? "var(--div-pos)" : "var(--div-neg)"}" data-i="${i}"/>`;
+    g += `<rect x="${x0.toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h, 0.5).toFixed(1)}" rx="${Math.min(2, bw/2)}" fill="${r.kv < r.mem0 ? "var(--kv)" : r.kv > r.mem0 ? "var(--mem0)" : "var(--axis)"}" data-i="${i}"/>`;
   });
   g += `<text x="${m.l}" y="${H-8}">cheapest for ${NAMES[sel]}</text><text x="${m.l+pw}" y="${H-8}" text-anchor="end">costliest</text></svg>`;
   $("#c-div").innerHTML = g;
@@ -342,145 +408,115 @@ function drawDiverging() {
     const r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) / r.width * W;
     const i = Math.floor((sx - m.l) / (pw / n)); if (i < 0 || i >= n) { tipHide(); return; }
     const row = rows[i];
-    tipShow(ev, `<div class="t">${esc(row.cid)}</div><div class="muted" style="font-size:12px;margin-bottom:4px">${esc(row.repo)}</div>
+    tipShow(ev, `<div class="t">${esc(chainName(row.cid))}</div>
       <div class="row"><span><i style="background:${COLOR[sel]}"></i>${NAMES[sel]}</span><span>${fmtUsd(row.a)}</span></div>
       <div class="row"><span><i style="background:${COLOR[oth]}"></i>${NAMES[oth]}</span><span>${fmtUsd(row.b)}</span></div>
-      <div class="row"><span>difference</span><span>${row.d < 0 ? "−" : "+"}${fmtUsd(Math.abs(row.d)).slice(0)}</span></div>`);
+      <div class="row"><span>difference</span><span>${row.d < 0 ? "−" : "+"}${fmtUsd(Math.abs(row.d))}</span></div>`);
   });
   svg.addEventListener("mouseleave", tipHide);
-  svg.addEventListener("click", ev => { const t = ev.target.closest("rect[data-i]"); if (!t) return; S.cid = rows[+t.dataset.i].cid; $("#cid").value = S.cid; $("#live_cid").value = S.cid; loadChain(); $("#explorer").scrollIntoView({behavior: "smooth"}); });
+  svg.addEventListener("click", ev => { const t = ev.target.closest("rect[data-i]"); if (!t) return; pickChain(rows[+t.dataset.i].cid); $("#explorer").scrollIntoView({behavior: "smooth"}); });
 }
 
 // ------------------------------------------------------------------ chain explorer
-async function loadChain() {
-  if (!S.cid) return;
-  const v = $("#chainview"); v.innerHTML = `<div class="spin">Loading chain…</div>`;
-  try { S.chain = await api(`api/chain/${encodeURIComponent(S.cid)}?run=${encodeURIComponent(S.run)}&price=${encodeURIComponent(S.price||"")}`); }
-  catch (e) { v.innerHTML = `<div class="muted">${esc(e.message)}</div>`; return; }
-  renderChain();
+async function loadChain(force) {
+  const v = $("#chainview"); if (!v) return;
+  if (!S.cid) { v.innerHTML = ""; return; }
+  const key = [S.cid, S.run, S.price].join("|");
+  if (!force && S.chain && S.chainKey === key) { renderChain(); return; }       // the toggle re-renders the page: no refetch
+  v.innerHTML = `<div class="spin">Loading chain…</div>`;
+  let c;
+  try { c = await api(`api/chain/${enc(S.cid)}?run=${enc(S.run)}&price=${enc(S.price || "")}`); }
+  catch (e) {
+    if (key !== [S.cid, S.run, S.price].join("|") || !$("#chainview")) return;
+    $("#chainview").innerHTML = `<div class="muted">${unreachable(e) ? "Couldn't reach the demo server — it may be restarting." : `Couldn't load this chain: ${esc(e.message)}.`} <button class="linkbtn" type="button" id="rechain">Try again</button></div>`;
+    $("#rechain").onclick = () => loadChain(true); return;
+  }
+  if (key !== [S.cid, S.run, S.price].join("|")) return;          // another chain was picked meanwhile
+  S.chain = c; S.chainKey = key; renderChain();
 }
 
 function renderChain() {
+  const v = $("#chainview"); if (!v) return;
   const c = S.chain, ch = c.chain, sel = S.sel, arms = c.arms;
-  $("#cid-badges").innerHTML = `<span class="badge">${esc(ch.repo)}</span><span class="badge">${esc(ch.source || "")}</span><span class="badge ${c.sif ? "ok" : "no"}">${c.sif ? "image available for live runs" : "image not pulled"}</span>`;
-  const strip = ["kv","mem0","none"].map(k => { const a = arms[k]; if (!a) return `<div class="s"><div class="n"><span class="sw" style="background:${COLOR[k]};width:10px;height:10px;border-radius:50%;display:inline-block"></span>${NAMES[k]}</div><div class="m">not run</div></div>`;
-    const usd = a.sessions.reduce((s, x) => s + x.tok.usd, 0), res = a.sessions.filter(x => x.resolved).length, steps = a.sessions.reduce((s, x) => s + (x.n_steps||0), 0), tok = a.sessions.reduce((s, x) => s + x.tok.raw_total, 0);
-    return `<div class="s ${k===sel?"sel":""}"><div class="n"><span style="background:${COLOR[k]};width:10px;height:10px;border-radius:50%;display:inline-block"></span>${NAMES[k]} <span class="muted" style="font-weight:400;font-size:12px">${esc(a.arm)}</span></div><div class="v">${fmtUsd(usd)}</div><div class="m">${res}/${a.sessions.length} resolved · ${steps} steps · ${fmtTok(tok)} tokens${a.complete ? "" : " · incomplete"}</div></div>`; }).join("");
+  const strip = ["kv","mem0","none"].map(k => { const a = arms[k], dot = `<span class="sw" style="background:${COLOR[k]}"></span>`;
+    if (!a) return `<div class="s"><div class="n">${dot}${NAMES[k]}</div><div class="m">no run of this chain</div></div>`;
+    const ss = a.sessions, usd = ss.reduce((s, x) => s + x.tok.usd, 0), res = ss.filter(x => x.resolved).length, steps = ss.reduce((s, x) => s + (x.n_steps||0), 0), tok = ss.reduce((s, x) => s + x.tok.raw_total, 0);
+    return `<div class="s ${k===sel?"sel":""}" style="--sc:${COLOR[k]}"><div class="n">${dot}${NAMES[k]}</div><div class="v">${fmtUsd(usd)}</div><div class="m">${res}/${ss.length} resolved · ${steps} steps · ${fmtTok(tok)} tokens${a.complete ? "" : " · not every task ran"}</div></div>`; }).join("");
   const A = arms[sel];
   let tasks = "";
-  if (!A) tasks = `<div class="muted">No ${NAMES[sel]} run for this chain in run "${esc(c.run)}".</div>`;
+  if (!A) tasks = `<div class="muted">No ${NAMES[sel]} run of this chain in ${esc(runLabel(c.run))}.</div>`;
   else {
-    const maxTok = Math.max(...A.sessions.map(s => s.tok.raw_total), 1);
+    const maxTok = Math.max(...A.sessions.map(s => s.tok.raw_total), 1), watch = S.run === agentRun();   // the Agent page plays the paper run
     tasks = A.sessions.map(s => {
       const t = ch.tasks.find(x => x.order === s.order) || {};
       const res = s.resolved === true ? `<span class="res ok">✓ resolved</span>` : s.resolved === false ? `<span class="res no">✗ not resolved</span>` : `<span class="res na">– not graded</span>`;
-      const act = s.tok.actor_prompt + s.tok.actor_completion, wri = s.tok.writer_prompt + s.tok.writer_completion;
+      const act = s.tok.actor_prompt + s.tok.actor_completion, wri = s.tok.writer_prompt + s.tok.writer_completion, est = s.tok.writer_src === "estimate";
+      const mem = (s.memory_text || "").length, note = (s.note_written || "").length;
       return `<div class="task">
-        <div class="hd"><span class="ord">Task ${s.order}</span><span class="inst">${esc(s.instance)}</span>${res}
-          ${s.linked === true ? `<span class="badge">linked to earlier task</span>` : s.linked === false ? `<span class="badge">independent</span>` : ""}
-          ${s.exit && s.exit !== "Submitted" ? `<span class="badge no">${esc(s.exit)}</span>` : ""}
-          <span class="title">${esc(t.title || "")}</span></div>
-        <div class="meter"><span>steps <b>${s.n_steps ?? "–"}</b></span><span>actor tokens <b>${fmtTok(act)}</b> <span class="muted">(${s.tok.n_calls_actor} calls)</span></span>
-          <span>writer-side <b>${fmtTok(wri)}</b>${s.tok.writer_src === "estimate" ? " <span class='muted'>est.</span>" : ""}</span>
-          <span>cost <b>${fmtUsd(s.tok.usd)}</b></span><span>injected <b>${s.injected_chars || 0}</b> chars</span><span>wall <b>${s.secs ?? "–"}s</b></span></div>
-        <div class="bar" title="actor vs writer-side tokens"><div style="width:${(act/maxTok*100).toFixed(1)}%;background:${COLOR[sel]}"></div><div style="width:${(wri/maxTok*100).toFixed(1)}%;background:var(--grid);filter:brightness(0.85)"></div></div>
-        ${s.memory_text ? `<details><summary>Memory injected before this task (${s.memory_text.length} chars)</summary><pre class="mem">${esc(s.memory_text)}</pre></details>` : `<div class="muted" style="font-size:13px">No memory injected before this task${s.order === 1 ? " (first task of the chain)" : ""}.</div>`}
-        ${s.note_written ? `<details><summary>Written to memory after this task (${s.note_written.length} chars)</summary><pre>${esc(s.note_written)}</pre></details>` : ""}
-        <details><summary>Problem statement</summary><pre>${esc(t.problem_statement || "")}</pre></details>
-        <div class="replay"><button class="btn" data-replay="${s.order}">Replay trajectory</button><div id="replay-${s.order}"></div></div>
+        <div class="hd"><span class="ord">Task ${s.order}</span><span class="sum">${esc(t.summary || t.title || "")}</span>${res}
+          ${s.linked === true ? `<span class="badge">builds on an earlier task</span>` : s.linked === false ? `<span class="badge">stands alone</span>` : ""}
+          ${s.exit && s.exit !== "Submitted" ? `<span class="badge no">${esc(exitWord(s.exit))}</span>` : ""}</div>
+        <div class="raw dt">${esc(s.instance || "")}${t.title ? ` · “${esc(t.title)}”` : ""}</div>
+        <div class="meter"><span>steps <b>${s.n_steps ?? "–"}</b></span><span>agent tokens <b>${fmtTok(act)}</b></span>${wri ? `<span>memory writing <b>${est ? "≈" : ""}${fmtTok(wri)}</b></span>` : ""}
+          <span>cost <b>${fmtUsd(s.tok.usd)}</b></span><span>time <b>${s.secs != null ? fmtSecs(s.secs) : "–"}</b></span></div>
+        <div class="bar" style="--sc:${COLOR[sel]}" title="agent tokens, then memory-writing tokens (full width = this chain's largest task)"><div style="width:${(act/maxTok*100).toFixed(1)}%;background:${COLOR[sel]}"></div><div class="w" style="width:${(wri/maxTok*100).toFixed(1)}%"></div></div>
+        ${mem ? `<details><summary>Memory given before this task (${mem.toLocaleString("en-US")} chars)</summary>${noteBox(s.memory_text, sel)}</details>` : `<div class="muted" style="font-size:13px">No memory given before this task${s.order === 1 ? " (first task of the chain)" : ""}.</div>`}
+        ${note ? `<details><summary>Written to memory after this task (${note.toLocaleString("en-US")} chars)</summary>${noteBox(s.note_written, sel)}</details>` : ""}
+        <details><summary>The issue</summary>${issueBox(t.problem_statement || "")}</details>
+        ${watch ? `<a class="go" href="./?src=chains&amp;cid=${enc(S.cid)}&amp;kind=${sel}&amp;order=${s.order}">Watch in the Agent view ▸</a>` : ""}
       </div>`; }).join("");
   }
-  $("#chainview").innerHTML = `<div class="strip">${strip}</div><div class="tasks">${tasks}</div>`;
-  document.querySelectorAll("[data-replay]").forEach(b => b.onclick = () => replay(+b.dataset.replay, b));
-}
-
-async function replay(order, btn) {
-  const A = S.chain.arms[S.sel]; const box = $(`#replay-${order}`);
-  if (box.innerHTML) { box.innerHTML = ""; btn.textContent = "Replay trajectory"; return; }
-  btn.disabled = true; box.innerHTML = `<div class="spin">Loading trajectory…</div>`;
-  try {
-    const t = await api(`api/traj?run=${encodeURIComponent(S.run)}&arm=${encodeURIComponent(A.arm)}&cid=${encodeURIComponent(S.cid)}&order=${order}`);
-    let html = "", step = 0;
-    t.messages.forEach((m, i) => {
-      if (m.role === "system") html += `<details><summary>System prompt</summary><pre>${esc(m.content)}</pre></details>`;
-      else if (m.role === "user" && i <= 1) html += `<details><summary>Task prompt as the agent saw it (${m.chars} chars)</summary><pre>${esc(m.content)}${m.truncated ? "\n…[truncated]" : ""}</pre></details>`;
-      else if (m.role === "assistant") {
-        step++;
-        const th = (m.content.match(/THOUGHT:([\s\S]*?)(?:```|$)/) || [, m.content])[1].trim();
-        const cmd = (m.content.match(/```mswea_bash_command\n([\s\S]*?)```/) || [, ""])[1].trim();
-        html += `<div class="step"><div class="k">step ${step}${m.usage ? ` · ${fmtTok(m.usage.prompt_tokens)} prompt / ${m.usage.completion_tokens} completion tokens` : ""}${m.exit_status ? ` · exit: ${esc(m.exit_status)}` : ""}</div><div class="th">${esc(th)}</div>${cmd ? `<code class="cmd">${esc(cmd)}</code>` : ""}`;
-      } else if (m.role === "user") html += `<div class="obs">${esc(m.content)}${m.truncated ? "\n…[truncated]" : ""}</div></div>`;
-    });
-    box.innerHTML = html; btn.textContent = "Hide trajectory";
-  } catch (e) { box.innerHTML = `<div class="muted">${esc(e.message)}</div>`; }
-  btn.disabled = false;
-}
-
-// ------------------------------------------------------------------ live runs
-async function startLive(kind) {
-  const msg = $("#livemsg"); msg.className = "msg"; msg.textContent = "starting…";
-  const body = { cid: $("#live_cid").value, kind, run_id: $("#run_id").value.trim() || null, api_base: $("#api_base").value.trim(),
-    served_name: $("#served").value.trim(), step_limit: +$("#steps").value || 100, memory_system: kind === "kv" ? $("#kv_sys").value : null };
-  try {
-    const r = await fetch("api/live/start", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
-    const j = await r.json(); if (!r.ok) throw new Error(j.detail || r.statusText);
-    msg.textContent = `started job ${j.id} (${j.arm} on ${j.cid})`; S.jobs[j.id] = j; pollJobs();
-  } catch (e) { msg.className = "msg err"; msg.textContent = e.message; }
-}
-async function pollJobs() {
-  clearTimeout(S.pollTimer);
-  let jobs; try { jobs = await api("api/live"); } catch { return; }
-  const details = await Promise.all(jobs.map(j => api(`api/live/${j.id}?tail=80`).catch(() => j)));
-  renderJobs(details);
-  if (details.some(j => j.status === "running")) S.pollTimer = setTimeout(pollJobs, 4000);
-  else if (details.length && !S.meta.runs.includes(details[0].run_id)) { S.meta = await api("api/meta"); fillRuns(); }
-}
-function renderJobs(jobs) {
-  if (!jobs.length) { $("#jobs").innerHTML = ""; return; }
-  const rows = jobs.map(j => { const el = (j.finished || Date.now()/1000) - j.started; const res = (j.results || []).map(r => r.resolved === true ? "✓" : r.resolved === false ? "✗" : "·").join(" ");
-    return `<tr><td>${j.id}</td><td style="text-align:left">${esc(j.cid)}</td><td style="text-align:left"><span class="sw" style="background:${COLOR[j.kind]}"></span>${esc(j.arm)}</td><td style="text-align:left">${esc(j.run_id)}</td><td>${esc(j.status)}</td><td>${Math.round(el/60)} min</td><td>${(j.results||[]).length} · ${res}</td><td>${j.n_calls ?? 0}</td>
-      <td style="text-align:left">${j.status === "running" ? `<button class="btn" data-stop="${j.id}">stop</button>` : `<a href="#" data-view="${j.run_id}">view in explorer</a>`}</td></tr>`; }).join("");
-  const latest = jobs[0];
-  $("#jobs").innerHTML = `<div class="tabwrap"><table class="jobs"><thead><tr><th>job</th><th style="text-align:left">chain</th><th style="text-align:left">arm</th><th style="text-align:left">run id</th><th>status</th><th>elapsed</th><th>sessions graded</th><th>ledger calls</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
-    <details open><summary>Log of job ${latest.id}</summary><pre class="log" id="joblog">${esc(latest.log_tail || "")}</pre></details>`;
-  const lg = $("#joblog"); if (lg) lg.scrollTop = lg.scrollHeight;
-  document.querySelectorAll("[data-stop]").forEach(b => b.onclick = async () => { await fetch(`api/live/${b.dataset.stop}/stop`, {method: "POST"}); pollJobs(); });
-  document.querySelectorAll("[data-view]").forEach(a => a.onclick = async ev => { ev.preventDefault(); S.meta = await api("api/meta"); fillRuns(); S.run = a.dataset.view; $("#run").value = S.run; await loadSummary(); });
+  const key = A ? `<div class="barkey" aria-hidden="true">Bars: <span><i style="background:${COLOR[sel]}"></i>agent tokens</span><span><i style="background:color-mix(in srgb, ${COLOR[sel]} 55%, var(--surface))"></i>memory writing</span><span>· full width = this chain's largest task</span></div>` : "";
+  v.innerHTML = `<div class="strip">${strip}</div>${key}<div class="tasks">${tasks}</div>`;
 }
 
 // ------------------------------------------------------------------ boot
-function fillRuns() {
-  const live = r => /^live_|^demo_live/.test(r), opt = r => `<option value="${esc(r)}">${esc(r)}</option>`, rs = S.meta.runs;
-  $("#run").innerHTML = `<optgroup label="recorded runs">${rs.filter(r => !live(r)).map(opt).join("")}</optgroup>` + (rs.some(live) ? `<optgroup label="saved live runs">${rs.filter(live).map(opt).join("")}</optgroup>` : "");
-  if (S.run) $("#run").value = S.run;
+// ⚙ Recorded run: the paper runs only (live, sandbox, router and test runs have their own views on the Agent page)
+function recordedRuns() { const rs = ["v3main100", "v2main100"].filter(r => S.meta.runs.includes(r)), d = S.meta.default_run; if (d && !rs.includes(d)) rs.push(d); return rs; }
+function fillRuns() { const rs = recordedRuns(); $("#run").innerHTML = rs.map(r => `<option value="${esc(r)}">${esc(runLabel(r))}</option>`).join(""); $("#run").value = S.run; $("#run").disabled = rs.length < 2; }
+function renderHow() {
+  const arms = S.summary ? Object.values(S.summary.arms || {}).filter(Boolean) : [], est = arms.some(x => x.writer_src === "estimate"), exact = arms.some(x => x.tok_src === "ledger");
+  $("#howbody").innerHTML = `<p><b>Resolved</b> means the issue's own tests pass after the agent's change: the tests written for the fix, and the tests that passed before it.</p>
+    <p><b>Tokens</b> are what the model server reported for every call of a task: the agent's own calls plus the calls that write memory. <b>Cost</b> turns tokens into dollars at one price row, the same for every method (⚙ › Cost changes it), so the differences come only from token counts — a conversion, not money spent.</p>
+    <p><b>Knowledge Vault</b> (ours) writes one short structured note after each task — what was done, where, how to check it, what to watch out for — and gives it to the next task. <b>Mem0</b> runs the official Mem0 fact-extraction prompts on each finished task and gives every fact it found to the next task. <b>No memory</b> starts every task from scratch. Both memory methods write with the same model as the agent.</p>
+    ${est ? `<p>Memory tokens marked ≈ are estimated from the text the memory step was given: these recorded runs predate exact metering. Their model server reported no prompt-cache hits, so no cache discount applies.</p>` : ""}${exact ? `<p>Runs without ≈ metered every model call exactly.</p>` : ""}`;
+  $("#foot").hidden = false;
 }
 async function loadSummary() {
-  $("#main").innerHTML = `<div class="spin">Computing ledger over run ${esc(S.run)}…</div>`;
-  try { S.summary = await api(`api/summary?run=${encodeURIComponent(S.run)}&price=${encodeURIComponent(S.price||"")}`); renderMain(); }
-  catch (e) { $("#main").innerHTML = `<div class="card">${esc(e.message)}</div>`; }
+  $("#main").innerHTML = `<div class="spin">Loading results…</div>`;
+  if (!S.run) { $("#hint").textContent = ""; $("#main").innerHTML = `<div class="card"><b>No recorded results on this server yet.</b></div>`; return; }
+  try { S.summary = await api(`api/summary?run=${enc(S.run)}&price=${enc(S.price||"")}`); }
+  catch (e) { S.summary = null; $("#hint").textContent = ""; $("#main").innerHTML = unreachable(e) ? downHtml() : downHtml("Couldn't load the results", e.message); return; }
+  renderMain();
 }
-function setSel(k) { S.sel = k; $("#t-kv").setAttribute("aria-pressed", k === "kv"); $("#t-mem0").setAttribute("aria-pressed", k === "mem0"); if (S.summary) renderMain(); }
+function paintSel() { $("#t-kv").setAttribute("aria-pressed", S.sel === "kv"); $("#t-mem0").setAttribute("aria-pressed", S.sel === "mem0"); }
+function setSel(k) { S.sel = k; paintSel(); syncUrl(); if (S.summary) renderMain(); }
+// ⚙: opens under the button; a click elsewhere or Esc closes it (Esc returns the focus to ⚙)
+{ const btn = $("#gearbtn"), panel = $("#gearpanel"); const setOpen = o => { panel.hidden = !o; btn.setAttribute("aria-expanded", o); };
+  btn.onclick = e => { e.stopPropagation(); setOpen(panel.hidden); };
+  document.addEventListener("click", e => { if (!panel.hidden && !e.target.closest("#gear")) setOpen(false); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !panel.hidden) { setOpen(false); btn.focus(); } });
+  // Show details: shared with the Agent and Compare pages (same stored choice)
+  let det = false; try { det = localStorage.getItem("kv-details") === "1"; } catch {}
+  const setDet = d => { document.body.classList.toggle("details", d); $("#details").checked = d; try { localStorage.setItem("kv-details", d ? "1" : "0"); } catch {} };
+  $("#details").onchange = () => setDet($("#details").checked); setDet(det); }
 (async function boot() {
-  S.meta = await api("api/meta");
-  S.run = S.meta.default_run; S.price = S.meta.default_price_row;
-  fillRuns();
-  $("#price").innerHTML = Object.entries(S.meta.price_rows).map(([k, v]) => `<option value="${esc(k)}">${esc(k)} ($${v.input}/${v.output} per M)</option>`).join("");
-  $("#price").value = S.price;
-  $("#run").onchange = () => { S.run = $("#run").value; loadSummary(); };
-  $("#price").onchange = () => { S.price = $("#price").value; loadSummary(); };
-  $("#t-kv").onclick = () => setSel("kv"); $("#t-mem0").onclick = () => setSel("mem0");
-  $("#api_base").value = S.meta.default_api_base; $("#served").value = S.meta.default_served_name;
-  $("#live_cid").innerHTML = S.meta.chains.map(c => `<option value="${esc(c.cid)}">${c.sif ? "● " : "○ "}${esc(c.cid)}</option>`).join("");
-  $("#kv_sys").innerHTML = S.meta.live_systems.kv.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
-  $("#go-kv").onclick = () => startLive("kv"); $("#go-mem0").onclick = () => startLive("mem0"); $("#go-none").onclick = () => startLive("none");
-  $("#check-ep").onclick = async () => { const m = $("#livemsg"); m.className = "msg"; m.textContent = "checking…"; const r = await api(`api/endpoint?api_base=${encodeURIComponent($("#api_base").value.trim())}`); m.className = r.ok ? "msg" : "msg err"; m.textContent = r.ok ? "endpoint answers /models" : "endpoint not reachable"; };
-  $("#foot").innerHTML = `<p><b>How the numbers are made.</b> Resolve = the official F2P/P2P grading of <code>harness/grading.py</code>. Tokens = per-call usage reported by the model server, summed by <code>harness.ledger.summarize</code>; USD = (uncached prompt × input + cached prompt × cached-input + completion × output) at one row of <code>harness/prices.json</code> for every arm — a conversion, not an expense, and the same row for all arms so differences come only from token counts.</p>
-    <p><b>Mem0 here</b> is the <code>factsall</code> arm: the official mem0 fact-extraction prompts (vendored verbatim, both branches) run on the session transcript, every extracted fact injected into the next task. <b>Knowledge Vault</b> is the <code>fusednote</code> arm: one structured note (DID / WHERE / VERIFY / CONTEXT / LESSON) distilled per session and injected into the next. Both write with the same local model as the actor.</p>
-    <p>Recorded runs predate the exact ledger, so their writer-side tokens are estimated from the material the harness handed the writer (flagged "est."), and their server did not report prefix-cache hits, so cache-aware equals raw. Live runs started below record every call exactly (<code>calls.jsonl</code>). SIF directory: <code>${esc(S.meta.sif_dir)}</code>; runs: <code>${esc(S.meta.runs_dir)}</code>.</p>`;
+  const q = new URLSearchParams(location.search);
+  try {
+    [S.meta, S.sc, S.P] = await Promise.all([api("api/meta"), api("api/showcase").catch(() => null), import("./static/player.js").catch(() => null)]);
+    S.price = S.meta.default_price_row;
+    const rs = recordedRuns(); S.run = rs.includes(q.get("run")) ? q.get("run") : rs.includes(S.meta.default_run) ? S.meta.default_run : rs[0] || null;
+    fillRuns();
+    $("#price").innerHTML = Object.entries(S.meta.price_rows).map(([k, v]) => `<option value="${esc(k)}" title="$${v.input} input / $${v.output} output per million tokens">${esc(k)} · $${v.input}/$${v.output} per M</option>`).join("");
+    $("#price").value = S.price; $("#price").disabled = false;
+    $("#run").onchange = () => { S.run = $("#run").value; syncUrl(); loadSummary(); };
+    $("#price").onchange = () => { S.price = $("#price").value; loadSummary(); };
+    const kn = (S.sc && S.sc.kind_notes) || {};
+    for (const k of ["kv", "mem0"]) { const b = $(`#t-${k}`); b.disabled = false; b.onclick = () => setSel(k); if (kn[k]) b.title = `${NAMES[k]}: ${kn[k]}`; }
+    S.sel = q.get("kind") === "mem0" ? "mem0" : "kv"; paintSel();
+    S.wantCid = q.get("cid"); S.fixUrl = q.has("cid") || q.has("kind");
+  } catch (e) { $("#hint").textContent = ""; $("#main").innerHTML = downHtml(); return; }     // the controls stay disabled
   await loadSummary();
-  const firstSif = S.meta.chains.find(c => c.sif);
-  $("#live_cid").value = (S.meta.chains.find(c => c.cid === S.cid)?.sif ? S.cid : firstSif?.cid) || $("#live_cid").value;
-  pollJobs();
 })();
 </script>
 </body>

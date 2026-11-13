@@ -3,6 +3,8 @@
 `local`           a vLLM server (OpenAI-compatible, no key) — the paper's setup, served by demo/slurm/serve_actor.sbatch
 `goodvision-test` GoodVision SmartRouter, test environment (https://api-test.goodvision.tech/v1)
 `goodvision-prod` GoodVision SmartRouter, production (https://api.goodvision.tech/v1)
+`azure`           Azure OpenAI (v1 OpenAI-compatible API) for the GPT models: AZURE_OPENAI_ENDPOINT + AZURE_OPENAI_API_KEY;
+                  when configured, GPT ids asked of GoodVision are served here instead (gpt_route()), to save router credit
 
 What is known about the GoodVision API and where it comes from is in demo/goodvision.md. The key is
 read from GOODVISION_API_KEY (environment, or demo/.env — git-ignored). `env_for_harness()` turns a
@@ -14,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import time
 import urllib.error
 import urllib.request
 
@@ -41,6 +44,28 @@ def load_env_file(path=ENV_FILE):
 
 load_env_file()
 
+
+def _azure_base():
+    """AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_BASE_URL (https://<resource>.openai.azure.com, with or without a path) -> its v1 OpenAI-compatible base."""
+    ep = (os.environ.get("AZURE_OPENAI_ENDPOINT") or os.environ.get("AZURE_OPENAI_BASE_URL") or "").strip().rstrip("/")
+    if not ep:
+        return None
+    if "/openai" in ep:
+        ep = ep.split("/openai")[0]
+    return ep + "/openai/v1"
+
+
+def azure_deployments():
+    """Model id -> Azure deployment name. AZURE_OPENAI_DEPLOYMENTS="gpt-5.5=my-gpt55,gpt-5.4-mini" (a bare name maps to itself);
+    unlisted GPT ids are assumed to be deployed under their own name."""
+    out = {}
+    for part in os.environ.get("AZURE_OPENAI_DEPLOYMENTS", "").split(","):
+        part = part.strip()
+        if part:
+            k, _, v = part.partition("=")
+            out[k.strip()] = (v or k).strip()
+    return out
+
 PROVIDERS = {
     "local": {
         "label": "Local vLLM (cluster GPU)",
@@ -60,6 +85,8 @@ PROVIDERS = {
         "models_hint": ["auto", "claude-sonnet-5", "gpt-5.6-sol", "gpt-5.2"],   # ids seen in the console's snippets; the market is authoritative
         "docs": "demo/goodvision.md",
         "console": "https://console-test.goodvision.tech/console/router-settings",
+        "probe_families": True,              # the router fronts several upstreams: ping one id per family
+        "market": True,                      # /models lists the ids requests may name
     },
     "goodvision-prod": {
         "label": "GoodVision SmartRouter (production)",
@@ -70,8 +97,53 @@ PROVIDERS = {
         "models_hint": ["auto", "claude-sonnet-5", "gpt-5.6-sol", "gpt-5.2"],
         "docs": "demo/goodvision.md",
         "console": "https://console.goodvision.tech",
+        "probe_families": True,
+        "market": True,
+    },
+    "azure": {
+        "label": "Azure OpenAI (GPT models)",
+        "api_base": _azure_base(),
+        "key_env": "AZURE_OPENAI_API_KEY",
+        "strict": True,                      # GPT-5 family: max_completion_tokens, default temperature
+        "default_model": os.environ.get("AZURE_OPENAI_DEFAULT_MODEL", "gpt-5.4"),
+        "models_hint": sorted(set(azure_deployments()) | {"gpt-5.5", "gpt-5.4-mini"}),
+        "docs": "demo/README.md",
+        "probe_families": False,
+        "market": False,                     # /models lists base models, not this resource's deployments
     },
 }
+
+
+def azure_ready():
+    return bool(PROVIDERS["azure"]["api_base"] and api_key("azure"))
+
+
+_AZ_HAS = {}           # model id -> (deployed?, checked at)
+
+
+def azure_has(model):
+    """Is `model` deployed on the Azure resource? Ids named in AZURE_OPENAI_DEPLOYMENTS are trusted; others are asked once
+    with a 16-token request (a hit is kept for the process, a miss re-checked after 5 min), so a GPT id Azure lacks
+    (e.g. gpt-5.5 on 2026-11-05) stays on the router instead of failing with DeploymentNotFound."""
+    if model in azure_deployments():
+        return True
+    hit = _AZ_HAS.get(model)
+    if hit and (hit[0] or time.time() - hit[1] < 300):
+        return hit[0]
+    ok = bool(probe_model("azure", model).get("ok"))
+    _AZ_HAS[model] = (ok, time.time())
+    return ok
+
+
+def gpt_route(provider, model):
+    """GPT ids asked of a GoodVision endpoint go to Azure when Azure is configured (DEMO_GPT_VIA_AZURE=0 turns it off);
+    `auto`, Claude ids and everything else stay where they were asked. -> (provider, model as the endpoint names it)."""
+    if (provider or "").startswith("goodvision") and model and str(model).startswith("gpt-") \
+            and os.environ.get("DEMO_GPT_VIA_AZURE", "1") != "0" and azure_ready() and azure_has(model):
+        provider = "azure"
+    if provider == "azure" and model:
+        model = azure_deployments().get(model, model)
+    return provider, model
 
 
 def api_key(name):
@@ -112,6 +184,20 @@ def _post_json(url, key, payload, timeout=30):
         return 0, {"error": {"code": type(e).__name__, "message": str(e)[:200]}}, {}
 
 
+def probe_model(name, model, api_base=None):
+    """One tiny completion against `model` -> {model, ok, code, message}. The model market (/models) is not the routing
+    policy: on 2026-11-01 claude-sonnet-5 was listed but every request for it failed with "No model offer satisfies the
+    effective policy", while claude-haiku-4-5 and gpt-5.2 answered. Only a request tells which ids a key can use."""
+    p = PROVIDERS[name]
+    base = (api_base or p["api_base"] or "").rstrip("/")
+    st2, body2, _ = _post_json(base + "/chat/completions", api_key(name), {"model": model, "messages": [{"role": "user", "content": "Say OK."}], "max_completion_tokens": 16}, timeout=60)
+    err = (body2.get("error") if isinstance(body2, dict) else None) or {}
+    if st2 != 200 and not err and isinstance(body2, dict) and body2.get("raw"):
+        err = {"message": body2["raw"]}
+    return {"model": model, "ok": st2 == 200, "code": None if st2 == 200 else (err.get("code") or str(st2)),
+            "message": None if st2 == 200 else (err.get("message") or "")[:200]}
+
+
 def check(name, api_base=None):
     """-> {name, api_base, has_key, ok, status, code, message, models, request_id}. Never raises."""
     p = PROVIDERS[name]
@@ -132,7 +218,7 @@ def check(name, api_base=None):
         out["models"] = sorted(m.get("id") for m in (data or []) if isinstance(m, dict) and m.get("id"))
         if not key and p.get("key_env"):
             out["message"] = "endpoint answered without a key"
-        if out["models"] and p["strict"]:
+        if out["models"] and p["strict"] and p.get("probe_families"):
             # Upstream availability is not masked by the router (2026-10-22: every Anthropic id failed at Bedrock with
             # "Access to Anthropic models is not allowed for this account" while GPT ids worked), so ping one id per family.
             fam = {}
@@ -148,7 +234,21 @@ def check(name, api_base=None):
             bad = [f"{k} ({v['model']}): {v['code']}" for k, v in fam.items() if not v["ok"]]
             if bad:
                 out["message"] = "upstream blocked for " + "; ".join(bad) + " — coding prompts under auto may route there"
-        if not out["models"] and p["strict"]:
+            # the default model is what the UI preselects: test it too unless a family probe already did
+            dm = out["default_model"]
+            if dm and dm != "auto" and dm in out["models"] and dm not in {v["model"] for v in fam.values()}:
+                out["default_probe"] = probe_model(name, dm, api_base=api_base)
+                if not out["default_probe"]["ok"]:
+                    d = out["default_probe"]
+                    out["message"] = ((out["message"] + "; ") if out["message"] else "") + f"default model {dm} refused: {d['code']} — {d['message']}"
+        if p["strict"] and not p.get("probe_families") and out["default_model"]:
+            # direct endpoints (Azure): /models lists base models, not deployments — ask the default deployment itself
+            dep = azure_deployments().get(out["default_model"], out["default_model"]) if name == "azure" else out["default_model"]
+            out["default_probe"] = probe_model(name, dep, api_base=api_base)
+            if not out["default_probe"]["ok"]:
+                d = out["default_probe"]
+                out["message"] = f"default model {out['default_model']} (deployment {dep}) refused: {d['code']} — {d['message']}"
+        if not out["models"] and p["strict"] and p.get("market"):
             # Authenticated but the model market is empty (seen 2026-10-20 with a fresh key): every request then
             # fails with 422 no_candidate. Probe one tiny completion so the UI shows the router's own code.
             st2, body2, _ = _post_json(base + "/chat/completions", key,

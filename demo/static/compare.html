@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Memory × model comparison</title>
+<title>Compare · Knowledge Vault</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%233987e5'/%3E%3Cstop offset='1' stop-color='%236250d6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='20' height='20' rx='5.5' fill='url(%23g)'/%3E%3Ccircle cx='10' cy='10' r='4.6' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M10 3.6v2M10 14.4v2M3.6 10h2M14.4 10h2' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='10' r='1.3' fill='%23fff'/%3E%3C/svg%3E">
 <style>
   :root {
     color-scheme: light;
-    --surface: #fcfcfb; --plane: #f3f3f0; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --surface: #fcfcfb; --plane: #f3f3f0; --ink: #0b0b0b; --ink2: #52514e; --muted: #6f6d67;
     --grid: #e1e0d9; --border: rgba(11,11,11,0.10); --hover: rgba(11,11,11,0.04); --sel: rgba(42,120,214,0.10);
-    --kv: #2a78d6; --mem0: #eb6834; --none: #898781; --accent: #2a78d6; --c3: #6250d6;
+    --kv: #2a78d6; --mem0: #eb6834; --memop: #7b5cd6; --rawcat: #138a7d; --none: #898781; --accent: #2a78d6;
     --good: #006300; --bad: #d03b3b; --status-good: #0ca30c; --status-bad: #d03b3b;
     --code: #f6f6f3; --term: #141413; --term-ink: #e8e7e1;
   }
@@ -18,7 +19,7 @@
       color-scheme: dark;
       --surface: #1a1a19; --plane: #0f0f0e; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
       --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.05); --sel: rgba(57,135,229,0.16);
-      --kv: #3987e5; --mem0: #d95926; --none: #898781; --accent: #3987e5; --c3: #9085e9;
+      --kv: #3987e5; --mem0: #d95926; --memop: #9a85ec; --rawcat: #2bb3a3; --none: #898781; --accent: #3987e5;
       --good: #0ca30c; --bad: #e66767; --code: #111110; --term: #0b0b0a; --term-ink: #d9d8d1;
     }
   }
@@ -26,7 +27,7 @@
     color-scheme: dark;
     --surface: #1a1a19; --plane: #0f0f0e; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
     --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.05); --sel: rgba(57,135,229,0.16);
-    --kv: #3987e5; --mem0: #d95926; --none: #898781; --accent: #3987e5; --c3: #9085e9;
+    --kv: #3987e5; --mem0: #d95926; --memop: #9a85ec; --rawcat: #2bb3a3; --none: #898781; --accent: #3987e5;
     --good: #0ca30c; --bad: #e66767; --code: #111110; --term: #0b0b0a; --term-ink: #d9d8d1;
   }
   * { box-sizing: border-box; }
@@ -34,10 +35,14 @@
   code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   button, select, input { font: inherit; color: inherit; }
   a { color: var(--accent); text-decoration: none; }
+  /* one top bar (brand · view · playback · same model · live runs · nav · ⚙), a status line only while there is a message, the columns, the footer */
   .app { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); height: 100vh; }
+  .app > header.top { grid-row: 1; } .app > #stline { grid-row: 2; } .app > #cols, .app > #memview { grid-row: 3; } .app > footer { grid-row: 4; }
   .app > * { min-width: 0; }
   select { min-width: 0; max-width: 100%; }
-  header.top { display: flex; align-items: center; gap: 10px; padding: 6px 14px; min-height: 48px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
+  header.top { display: flex; align-items: center; gap: 8px 10px; padding: 6px 14px; min-height: 48px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); }
+  header.top .pbgrp { display: inline-flex; gap: 6px; align-items: center; flex: none; }
+  @media (max-width: 1499px) { header.top .brand .sub { display: none; } }
   .brand { font-weight: 700; display: flex; gap: 8px; align-items: center; white-space: nowrap; flex: none; }
   .brand .mark { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg, var(--kv), #6250d6); display: inline-block; }
   .brand .sub { color: var(--muted); font-weight: 400; }
@@ -46,28 +51,100 @@
   label.ctl { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--ink2); white-space: nowrap; }
   .spacer { flex: 1; }
   .pnav { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--plane); flex: none; }
+  /* page nav + ⚙ stay together at the right, also when the bar wraps (as on Report) */
+  .navgear { display: flex; gap: 10px; align-items: center; flex: none; margin-left: auto; white-space: nowrap; }
+  @media (max-width: 1199px) { header.top .sm-long { display: none; } }
   .pnav a { padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
   .pnav a[aria-current="page"] { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--border); } .pnav a:hover { color: var(--ink); }
-  .lf-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: var(--muted); margin: 2px 0 4px; font-variant-numeric: tabular-nums; }
-  .controls { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); }
+  /* ⚙ What to compare: where the runs come from (Example chains | Saved live runs | Sandbox projects), one select, one plain line */
+  .gear .gearpanel { width: 420px; }          /* beats theme.css's 340 px: the closed select shows "<title> — <repo>" */
+  .gearpanel #cid { width: 100%; max-width: none; }
+  .gearpanel #chainnote .bm { color: var(--muted); }
+  .gearpanel #chainnote { color: var(--ink2); }
+  .gearpanel .srcseg { display: flex; width: 100%; }
+  .gearpanel .srcseg button { flex: 1 1 auto; min-width: 0; justify-content: center; text-align: center; padding: 4px 6px; white-space: normal; line-height: 1.25; }
+  /* a wrapped top bar: the panel hangs from the bar's right edge, so it never runs off the left of a phone screen */
+  @media (max-width: 1000px) { header.top { position: relative; } header.top .gear { position: static; }
+    header.top .gear .gearpanel { top: calc(100% + 4px); right: 10px; left: auto; width: min(420px, calc(100vw - 20px)); max-width: none; } }
   .btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; cursor: pointer; font-weight: 600; font-size: 12.5px; white-space: nowrap; }
   .btn.primary, .btn.on { background: var(--accent); color: #fff; border-color: transparent; } .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .pb-opt { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
-  .live { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; flex-wrap: wrap; }
-  .live .st { font-size: 12px; color: var(--muted); max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .live .st.err { color: var(--bad); }
-  .cols { display: grid; grid-template-columns: repeat(var(--ncols, 2), minmax(0, 1fr)); min-height: 0; }
-  .col { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--border); }
+  .btn.sm { padding: 1px 9px; font-size: 12px; border-radius: 7px; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-weight: 600; }
+  .linkbtn:hover { text-decoration: underline; }
+  .pb-opt { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; cursor: pointer; }
+  .live { display: inline-flex; gap: 6px; align-items: center; flex: none; }
+  /* the status line: exists only while there is a message; one clipped line that opens on click; × dismisses it */
+  #stline { display: flex; gap: 8px; align-items: flex-start; padding: 3px 14px 4px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); font-size: 12px; min-width: 0; }
+  #stline .st { flex: 1 1 auto; min-width: 0; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #stline .st.err { color: var(--bad); }
+  #stline .st.clip { cursor: pointer; } #stline .st.clip::after { content: " ▾"; color: var(--muted); }
+  #stline .st.open { white-space: pre-wrap; overflow: visible; word-break: break-word; cursor: pointer; }
+  #stline .st.open::after { content: " ▴"; color: var(--muted); }
+  #stline .stx { flex: none; background: none; border: 0; padding: 0 2px; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; }
+  #stline .stx:hover { color: var(--ink); }
+  /* columns = memory methods: Knowledge Vault left, the other memory methods in the middle, no memory right */
+  .cols { display: grid; grid-template-columns: repeat(var(--ncols, 3), minmax(0, 1fr)); min-height: 0; }
+  .col { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--border); container-type: inline-size; overflow: hidden; }
   .col:last-child { border-right: 0; }
-  .col .head { padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .col .head select { max-width: 100%; min-width: 0; width: 100%; flex: 1 1 200px; font-weight: 600; }
-  .col .sub { padding: 4px 12px 6px; background: var(--surface); font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--border); }
+  /* column chrome, collapsed: 1) name + API + Model on one line  2) the task row  3) one line of numbers */
+  .col .head { padding: 5px 8px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  .hname { display: flex; gap: 5px; align-items: center; min-width: 0; font-size: 13.5px; flex: 0 1 auto; cursor: help; }
+  .hname b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ours { font-size: 10px; font-weight: 650; padding: 0 5px; line-height: 1.5; border-radius: 999px; color: var(--kv); border: 1px solid color-mix(in srgb, var(--kv) 40%, transparent); background: color-mix(in srgb, var(--kv) 10%, transparent); white-space: nowrap; flex: none; }
+  .hname .recchip { flex: none; font-size: 11px; padding: 0 7px; cursor: default; }
+  .hsel { display: flex; gap: 6px; min-width: 0; flex: 1 1 150px; justify-content: flex-end; }
+  /* API takes the room, Model is as wide as its longest id (at most half): "Recorded (paper run)" + "Qwen3.8-27B" stay readable */
+  .hsel { gap: 5px; }
+  .hsel select.ctl { flex: 1 1 0; min-width: 0; width: 100%; max-width: 260px; padding: 3px 2px 3px 5px; font-size: 12.5px; }
+  .hsel select.ctl[id^="model-"] { flex: 0 1 auto; width: auto; max-width: 50%; }
+  /* wide columns: name + selects on one line; narrower ones: the selects get their own line in every column (stays aligned) */
+  @container (min-width: 490px) { .col .head { flex-wrap: nowrap; } }
+  @container (max-width: 489.9px) { .hsel { flex-basis: 100%; justify-content: stretch; } .hsel select.ctl { max-width: none; } }
+  .hsel .static { font-size: 12px; color: var(--ink2); padding: 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the task row: "Task 1/3 · step 4/27 — title ✓ ▸" (click: the whole task text); live status, model and stop sit in it too */
+  .col .taskpin { border-bottom: 1px solid var(--border); background: var(--surface); }
+  .trow1 { display: flex; align-items: center; min-width: 0; }
+  .trow1 .tp-head { flex: 1 1 auto; padding: 4px 10px; gap: 6px; }
+  .trow1 .tp-n { font-weight: 650; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .trow1 .tp-n .live-dot { margin-right: 5px; vertical-align: 0; }
+  .trow1 .tp-title { color: var(--ink); }
+  .trow1 .tp-title:not(:empty)::before { content: "— "; color: var(--muted); }
+  .trow1 .tp-res { flex: none; font-size: 12px; white-space: nowrap; } .trow1 .tp-res:empty { display: none; }
+  .trow1 .tp-chev { order: 9; }
+  .trow1 .colstop { margin-right: 8px; flex: none; }
+  /* columns narrower than ~460 px (3 columns on a laptop, 4–5 side by side): two tidy lines instead of a name cut to a few letters —
+     line 1 "Task 1/3 · 27 steps ✓ resolved" (live: "● live · task 1/3 · step 8" with ■ Stop at its right), line 2 the task's name ▸ */
+  @container (max-width: 460px) {
+    .trow1 { position: relative; }
+    .trow1 .tp-head { flex-wrap: wrap; row-gap: 0; }
+    .trow1 .tp-head::before { content: ""; order: 5; flex: 0 0 100%; height: 0; }      /* the line break */
+    .trow1 .tp-n { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .trow1 .tp-title { order: 10; flex: 1 1 0; } .trow1 .tp-title:not(:empty)::before { content: none; }
+    .trow1 .tp-chev { order: 11; }
+    .trow1 .colstop { position: absolute; top: 3px; right: 8px; margin: 0; }
+    .trow1:has(> .colstop:not([hidden])) .tp-n { margin-right: 76px; } .trow1:has(> .colstop.armed) .tp-n { margin-right: 156px; }   /* "■ Stop? click again" */
+  }
+  .taskpin .tp-body { padding: 0 10px 8px 26px; max-height: 34vh; overflow-y: auto; } .col .taskpin .tp-text { max-height: none; }
+  .taskpin.open .trow1 .tp-title { white-space: nowrap; }
+  .trow1 .tp-head:disabled { cursor: default; background: none; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
   .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink2); white-space: nowrap; }
-  .ok { color: var(--status-good); font-weight: 700; } .no { color: var(--status-bad); font-weight: 700; } .na { color: var(--muted); }
-  .strip { padding: 6px 12px 7px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--ink2); }
-  .strip .stat { display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; font-variant-numeric: tabular-nums; }
-  .strip .stat b { color: var(--ink); font-size: 15px; } .strip .stat .big { font-size: 20px; font-weight: 700; color: var(--ink); }
+  .chip:empty { display: none; }
+  .ok { color: var(--good); font-weight: 700; } .no { color: var(--status-bad); font-weight: 700; } .na { color: var(--muted); }
+  .strip { padding: 3px 10px 4px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 12px; color: var(--ink2); }
+  .strip:empty { display: none; }
+  /* collapsed (default): one line — numbers, then the current task's dots as far as they fit; the ▸ toggles every column */
+  .strip .sline { display: flex; gap: 10px; align-items: center; min-width: 0; white-space: nowrap; font-variant-numeric: tabular-nums; min-height: 20px; }
+  .strip .stat { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; }
+  .strip .stat > * + * { margin-left: 8px; } .strip .stat > .u { margin-left: 4px; }
+  @container (max-width: 380px) { .strip .stat .s-wc, .strip .stat .s-steps, .strip .stat .s-clock { display: none; } }
+  @container (max-width: 290px) { .strip .stat .s-usd { display: none; } }
+  .strip .stat b { color: var(--ink); font-size: 13px; } .strip .stat .big { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .strip .sline .idots { display: flex; gap: 3px; flex: 1 1 0; min-width: 0; overflow: hidden; align-items: center; flex-wrap: nowrap; }
+  .strip .sline .idots .d2.future { display: none; }
+  .strip .ptog { flex: none; margin-left: auto; font-size: 12px; font-weight: 600; }
+  .strip .rows { display: none; } .app.prog-open .strip .rows { display: block; } .app.prog-open .strip .sline .idots { display: none; }
+  .strip .sline .muted { overflow: hidden; text-overflow: ellipsis; }
   .trow { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
   .trow .tl { width: 22px; color: var(--muted); font-weight: 600; font-size: 11px; flex: none; }
   .trow .dots { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; min-width: 0; }
@@ -75,31 +152,39 @@
   .d2.ok { background: var(--status-good); border-color: transparent; } .d2.fail { background: var(--status-bad); border-color: transparent; } .d2.submit { background: var(--accent); border-color: transparent; }
   .d2.current { box-shadow: 0 0 0 2px var(--accent); animation: blink 1s steps(1) infinite; }
   .d2.pending { background: transparent; border: 1px solid var(--border); }
-  .d2.future { background: transparent; border: 1px solid var(--border); opacity: 0; }
-  .trow:hover .d2.future { opacity: 0.45; }
+  .d2.future { background: transparent; border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent); opacity: .35; }
+  .trow:hover .d2.future { opacity: .75; }
   .d2, .trow .tl { cursor: pointer; } .d2:hover { transform: scale(1.4); } .trow .tl:hover { color: var(--accent); }
   .d2.loop { background: transparent; border: 2px solid var(--status-bad); }
   .trow .tag { font-size: 10.5px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--ink2); white-space: nowrap; flex: none; }
   .trow .tag.loop { color: var(--bad); border-color: var(--bad); } .trow .tag.none { color: var(--muted); }
   .trow .tres { width: 16px; text-align: center; flex: none; font-weight: 700; font-size: 12px; } .trow .tres.pend { color: var(--muted); font-weight: 400; }
-  .strip .legend { font-size: 10.5px; color: var(--muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; } .strip .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
+  .legend { display: inline-flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); } .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
   .bar { height: 3px; background: var(--grid); } .bar div { height: 100%; background: var(--arm, var(--accent)); transition: width .25s linear; }
   .transcript { flex: 1; overflow-y: auto; padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 12px; }
   .msg .who { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
   .bubble { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 9px 13px; white-space: pre-wrap; word-break: break-word; font-size: 13.5px; }
+  .bubble.th:empty { display: none; }          /* a reply that was only a command: no empty thought bubble (the replay types into it) */
   .msg.user .bubble { border-top-left-radius: 4px; max-height: 200px; overflow: auto; }
   .msg.assistant .bubble { background: transparent; border: 0; padding: 0 2px; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 9px 13px; }
   .card.memory { border-left: 3px solid var(--arm, var(--accent)); }
   .card .hd { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 13px; margin-bottom: 4px; } .card .hd .meta { color: var(--muted); font-weight: 400; }
-  .note { white-space: pre-wrap; word-break: break-word; font-size: 12.5px; max-height: 240px; overflow: auto; }
+  .note { white-space: pre-wrap; word-break: break-word; font-size: 12.5px; }
+  .card:not(.memory) .note { max-height: 240px; overflow: auto; }   /* the memory card grows with the column instead of scrolling inside it */
+  /* Full history pastes whole earlier sessions in verbatim: raw text in a scroll box; MemOp's guidance is markdown */
+  .note.rawtext { white-space: pre-wrap; font-family: var(--mono, ui-monospace, monospace); font-size: 11.5px; line-height: 1.45; color: var(--ink2); max-height: 300px; overflow: auto; }
+  .note.md { font-size: 12.5px; }
   .note b.tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; margin-right: 6px; color: var(--ink2); background: var(--hover); border: 1px solid var(--border); font-family: inherit; }
   .note .inst { color: var(--muted); font-weight: 600; }
+  body:not(.details) .note .nl-inst { display: none; }
   .cmd { background: var(--term); color: var(--term-ink); border-radius: 8px; padding: 7px 11px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; } .cmd::before { content: "$ "; color: #8fd38f; }
+  .obs:empty { display: none; }
   .obs { background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--ink2); max-height: 170px; overflow: auto; }
   .obs-bar { display: flex; gap: 10px; align-items: center; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
   .rc { font-size: 11px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); } .rc.err { color: var(--bad); border-color: var(--bad); }
-  .tests { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12.5px; } .tests li { display: flex; gap: 8px; align-items: baseline; }
+  .tests { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12.5px; } .tests li { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+  details.tlist > summary { cursor: pointer; font-size: 12.5px; color: var(--ink2); margin-top: 4px; } details.tlist > summary:hover { color: var(--ink); }
   .pm .a { color: var(--good); } .pm .d { color: var(--bad); }
   .turn[hidden], .tail[hidden] { display: none; }
   .th.typing::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
@@ -108,12 +193,34 @@
   .tail.phase { color: var(--muted); font-size: 13px; }
   @keyframes blink { 50% { opacity: 0; } }
   .empty { color: var(--muted); padding: 20px; text-align: center; }
-  footer.sum { border-top: 1px solid var(--border); background: var(--surface); padding: 8px 14px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  /* a column without a run for (chain, API, model): one line, then the run button or the plain reason */
+  .colempty { display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 28px 14px; }
+  .colempty .msg1 { color: var(--ink2); font-size: 13px; }
+  .colempty .why { font-size: 12.5px; max-width: 46ch; }
+  /* columns open on their first task in full, so theme.css's "Press ▶ Play all" hint for an empty transcript is off here */
+  #cols .transcript::before { content: none; display: none; }
+  /* footer: one sentence about tokens, then the whole-chain table */
+  footer.sum { border-top: 1px solid var(--border); background: var(--surface); padding: 6px 14px 7px; display: flex; gap: 8px 26px; align-items: flex-start; flex-wrap: wrap; font-size: 13px; }
   footer.sum > * { min-width: 0; } .tabwrap { max-width: 100%; overflow-x: auto; }
-  footer .hero { font-size: 22px; font-weight: 700; } footer .hero.good { color: var(--good); } footer .hero.bad { color: var(--bad); }
-  footer .muted { color: var(--muted); font-size: 12px; }
-  table.tot { border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; } .tot th, .tot td { padding: 2px 8px; text-align: right; white-space: nowrap; } .tot th:first-child, .tot td:first-child { text-align: left; } .tot th { color: var(--muted); font-weight: 600; }
-  .jobs { font-size: 12px; color: var(--ink2); }
+  footer .fleft { flex: 1 1 320px; display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
+  footer .fline { display: flex; gap: 6px 14px; align-items: baseline; flex-wrap: wrap; }
+  footer .ftog { font-size: 12.5px; white-space: nowrap; }
+  /* collapsed (default): the hero sentence + "details ▸"; expanded: + the whole-chain table, the dot legend, the notes */
+  footer.sum:not(.open) .fmore { display: none; }
+  footer .hero { font-size: 14.5px; line-height: 1.4; color: var(--ink2); } footer .hero b { color: var(--ink); }
+  footer .hero .good { color: var(--good); font-weight: 650; } footer .hero .more { color: var(--ink); font-weight: 650; }
+  footer .muted, .muted { color: var(--muted); } footer .muted { font-size: 12px; }
+  table.tot { border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; } .tot th, .tot td { padding: 2px 8px; text-align: right; white-space: nowrap; } .tot th:first-child, .tot td:first-child, .tot td.mdl, .tot th.mdl { text-align: left; } .tot th { color: var(--muted); font-weight: 600; }
+  .tot td.mdl { color: var(--ink2); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  .tot .dot { margin-right: 6px; vertical-align: -1px; }
+  .tot td.more { color: var(--bad); } .tot td.less { color: var(--good); }
+  .jobs { font-size: 12px; color: var(--ink2); flex-basis: 100%; }
+  .cols > .empty.boot { grid-column: 1 / -1; padding: 48px 20px; }
+  .bootfail { grid-column: 1 / -1; padding: 56px 20px; text-align: center; color: var(--ink2); }
+  .bootfail h2 { margin: 0 0 6px; font-size: 17px; color: var(--ink); } .bootfail p { margin: 0 0 16px; }
+  .strip .sfail { color: var(--bad); font-size: 12px; padding: 1px 0 2px; }
+  .strip .spart { color: var(--muted); font-size: 12px; padding: 1px 0 2px; }
+  .mc-bar .mc-name { color: var(--ink2); font-weight: 650; }
   /* pinned task prompt per column (click to expand) */
   .taskpin { border-bottom: 1px solid var(--border); background: var(--surface); }
   .tp-head { display: flex; gap: 7px; align-items: center; width: 100%; text-align: left; border: 0; background: none; padding: 6px 12px; cursor: pointer; font-size: 12.5px; min-width: 0; }
@@ -137,251 +244,1089 @@
   .obs-bar button { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font-size: 12px; } .obs.open { max-height: none; }
   .badge { font-size: 10.5px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--ink2); white-space: nowrap; }
   .strip .lres { display: inline-flex; gap: 4px; align-items: center; }
-  .custom-cfg { display: none; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; } .custom-cfg.open { display: inline-flex; }
-  .custom-cfg select, .custom-cfg input { padding: 3px 6px; font-size: 12px; }
-  @media (max-width: 1000px) { .live .st { white-space: normal; max-width: 100%; } .cols { grid-template-columns: minmax(0, 1fr); } .col { border-right: 0; border-bottom: 1px solid var(--border); } .app { height: auto; grid-template-rows: auto auto auto auto; } .transcript { max-height: 60vh; } .counters { grid-template-columns: repeat(3, 1fr); } }
+  /* memory view: Full history keeps whole sessions; keep each cell scrollable */
+  .mc-cell[data-kind="rawcat"] .note.rawtext { max-height: 260px; }
+  /* settings: the Columns section */
+  .gearpanel { max-height: calc(100vh - 64px); overflow-y: auto; }
+  #colchecks { display: grid; gap: 9px; }
+  .gearpanel label.check.colck { align-items: flex-start; gap: 8px; cursor: pointer; }
+  .colck input { margin-top: 3px; } .colck .dot { margin-top: 5px; }
+  .colck .ck-t { display: flex; flex-direction: column; min-width: 0; color: var(--ink); }
+  .colck .tag { font-size: 10.5px; font-weight: 600; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+  .gearpanel label.colck input:disabled ~ .ck-t { opacity: .6; }
+  @media (max-width: 1000px) { .gearpanel { max-height: calc(100vh - 130px); } .cols { grid-template-columns: minmax(0, 1fr); } .col { border-right: 0; border-bottom: 1px solid var(--border); } .app { height: auto; grid-template-rows: auto auto auto auto; } .transcript { max-height: 60vh; } }
+  @media (max-width: 560px) { header.top { gap: 6px 8px; padding: 6px 10px; } header.top .pnav a { padding: 4px 9px; } .navgear { gap: 8px; } }
 </style>
+<link rel="stylesheet" href="static/theme.css">
+<script src="static/catrain.js" defer></script>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><span class="mark"></span>Knowledge Vault <span class="sub">· memory × model comparison</span></div>
-    <label class="ctl">Chain <select id="cid" class="ctl"></select></label>
-    <label class="ctl">Columns <select id="ncols" class="ctl"><option value="2">2</option><option value="3">3</option></select></label>
-    <label class="ctl">Pricing <select id="pricing" class="ctl"><option value="model">per model actually used (list prices)</option><option value="global">one global row</option></select></label>
-    <select id="price" class="ctl" title="global price row"></select>
-    <span class="spacer"></span>
-    <nav class="pnav" aria-label="Pages"><a href="./">Agent</a><a aria-current="page" href="compare">Compare</a><a href="report">Report</a></nav>
-  </header>
-  <div class="controls">
-    <button class="btn primary" id="play">▶ Play all</button>
-    <button class="btn" id="step">Step all ›</button>
-    <button class="btn" id="restart">Restart</button>
-    <button class="btn" id="end">Show all</button>
-    <select id="speed" class="ctl"><option value="0.5">0.5×</option><option value="1" selected>1× real time</option><option value="2">2×</option><option value="4">4×</option><option value="10">10×</option></select>
-    <label class="pb-opt"><input type="checkbox" id="auto" checked> play the whole chain</label>
-    <div class="live">
-      <label class="pb-opt">steps <input type="number" id="steps" value="100" min="5" max="200" class="ctl" style="width:64px;padding:3px 6px"></label>
-      <button class="btn" id="runlive">▶ Run all columns live on this chain</button>
-      <span class="st" id="livest"></span>
+    <a class="brand" href="./" title="Knowledge Vault — start a new project in your sandbox"><svg class="mark" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="kvg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3987e5"/><stop offset="1" stop-color="#6250d6"/></linearGradient></defs><rect width="20" height="20" rx="5.5" fill="url(#kvg)"/><circle cx="10" cy="10" r="4.6" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M10 3.6v2M10 14.4v2M3.6 10h2M14.4 10h2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="1.3" fill="#fff"/></svg>Knowledge Vault <span class="sub">· compare memory methods</span></a>
+    <div class="seg" id="viewseg" role="group" aria-label="View"><button type="button" data-view="play" aria-pressed="true">Transcripts</button><button type="button" data-view="memory" aria-pressed="false" title="What each memory method retrieved before and wrote after every task, and the store it kept">Memory</button></div>
+    <div class="pbgrp">
+      <button class="btn primary" id="play" disabled>▶ Play all</button>
+      <button class="btn icbtn" id="step" title="Reveal one more step in every column, side by side" aria-label="Step all" disabled>›</button>
+      <button class="btn icbtn" id="restart" title="Back to the start: every column rewinds to the beginning of its first task — ▶ Play all replays it" aria-label="Restart" disabled>↺</button>
+      <button class="btn icbtn" id="end" title="Reveal the whole current task in every column · on a completed task, reveal the next one" aria-label="Show all" disabled>⇥</button>
     </div>
-  </div>
-  <div class="cols" id="cols"></div>
+    <label class="pb-opt" id="samewrap" hidden title="Same model in all columns: changing the API or model in one column changes every column that can run it"><input type="checkbox" id="same" checked> <span>Same model<span class="sm-long"> everywhere</span></span></label>
+    <span class="spacer"></span>
+    <div class="live">
+      <button class="btn" id="runlive" hidden>▶ Run live</button>
+      <button class="btn stop" id="stoplive" hidden>■ Stop</button>
+    </div>
+    <div class="navgear">
+    <nav class="pnav" aria-label="Pages"><a href="./" id="nav-agent">Agent</a><a aria-current="page" href="compare">Compare</a><a href="report">Report</a></nav>
+    <div class="gear" id="gear">
+      <button class="btn icon" id="gearbtn" aria-expanded="false" aria-controls="gearpanel" aria-label="Settings" title="Settings: what to compare, columns, pricing, playback, live runs, details"><span class="gdot" id="epdot"></span>⚙</button>
+      <div class="gearpanel" id="gearpanel" hidden>
+        <section id="chainsec"><h4>What to compare</h4>
+          <div class="seg srcseg" id="srcseg" role="group" aria-label="Where the runs come from" hidden>
+            <button type="button" data-src="example" aria-pressed="true" title="Chains of coding tasks from the paper's benchmark: the columns replay its recorded runs">Example chains</button>
+            <button type="button" data-src="saved" aria-pressed="false" title="Runs a model made live on this server, on the Agent page or here">Saved live runs</button>
+            <button type="button" data-src="project" aria-pressed="false" title="Your own projects from the Agent page (Your sandbox)">Sandbox projects</button>
+          </div>
+          <select id="cid" class="ctl" aria-label="Example chain"></select>
+          <div class="gnote" id="chainnote"></div></section>
+        <section id="colsec"><h4>Columns</h4>
+          <div class="gnote" id="colnote">Knowledge Vault (ours) is always the left column.</div>
+          <div id="colchecks"></div></section>
+        <section><h4>Knowledge Vault</h4>
+          <label class="row">Version <select id="kvsys" class="ctl" title="Knowledge Vault version"></select></label>
+          <div class="gnote" id="kvsys-note"></div></section>
+        <section><h4>Cost</h4>
+          <label class="row">Pricing <select id="pricing" class="ctl"><option value="model">per model used (list prices)</option><option value="global">one price row for all</option></select></label>
+          <label class="row">Price row <select id="price" class="ctl" title="global price row"></select></label>
+          <div class="gnote">Recorded sessions carry no model id, so they always use the price row.</div></section>
+        <section id="playsec"><h4>Playback</h4>
+          <label class="row">Speed <select id="speed" class="ctl"><option value="0.5">0.5×</option><option value="1" selected>1× real time</option><option value="2">2×</option><option value="4">4×</option><option value="10">10×</option></select></label>
+          <label class="check"><input type="checkbox" id="auto" checked> Play the whole chain</label></section>
+        <section><h4>Live runs</h4>
+          <label class="row">Step limit <input type="number" id="steps" value="100" min="5" max="200" class="ctl"></label>
+          <div class="gnote">A live run is not a replay: the model really works on the chain's tasks in a sandbox — about $1–5 of router credit per column.</div>
+          <div class="gnote" id="epnote"></div></section>
+        <section><label class="check"><input type="checkbox" id="details"> Show details</label>
+          <div class="gnote">Instance ids, the issue card in each column, the model and cost of each step, pricing notes.</div></section>
+      </div>
+    </div>
+    </div>
+  </header>
+  <div id="stline" role="status" hidden><span class="st" id="livest" role="button" tabindex="0" title="click to show the whole message"></span><button class="stx" id="stx" type="button" aria-label="Dismiss the message" title="Dismiss">×</button></div>
+  <div class="cols" id="cols"><div class="empty boot">Loading the comparison…</div></div>
+  <div class="cols-mem" id="memview" hidden></div>
   <footer class="sum" id="sum"></footer>
 </div>
 
 <script type="module">
-import { SessionPlayer, LiveFeed, setTaskPin, NAMES, COLOR, esc, usd, tok, fmtClock, api } from "./static/player.js";
-const $ = s => document.querySelector(s);
-const SIDES = ["A", "B", "C"];
-const S = { meta: null, cfgs: null, price: null, pricing: "model", cid: null, n: 2, sel: {}, rc: {}, players: {}, stats: {}, auto: true, jobs: [], custom: {}, chain: {}, feeds: {} };
-const colColor = side => ({ A: null, B: null, C: "var(--c3)" })[side];
+import { SessionPlayer, LiveFeed, md, NAMES, COLOR, esc, usd, tok, fmtClock, api, getSession, sessionCache, memoryCompareHtml, memorySegHtml, setModelPrices, costOf, armStop, stopJobs, kvVersion, wireKvSetting, endText, taskName } from "./static/player.js";
+const $ = s => document.querySelector(s), enc = encodeURIComponent;
+// Columns are memory methods, fixed by position: ours left, the other memory methods in the middle, no memory right.
+const KINDS = ["kv", "mem0", "memop", "rawcat", "none"], OPTIONAL = KINDS.slice(1), DEFAULT_COLS = ["kv", "mem0", "none"];
+// what the harness runs live (and sandbox projects use): the server says (meta.live_kinds, MemOp included once it runs live);
+// older servers: Knowledge Vault, Mem0, No memory. Full history only exists in the recorded paper run.
+let LIVE_KINDS = ["kv", "mem0", "none"];
+const REC = "rec", REC_MODEL = "Qwen3.8-27B";       // "API" of the recorded paper run, and the model it used
+const NOTES = { kv: "ours — after each task a writer distils a short note for the next task", mem0: "extracts facts from each session and passes them to the next task",
+  memop: "keeps one guidance document, rewritten after every task", rawcat: "pastes the earlier sessions in verbatim (nothing summarised)", none: "every task starts from scratch" };   // fallback for /api/showcase kind_notes
+const WRITES = { kv: "Knowledge Vault writes one short note per task", mem0: "Mem0 extracts facts", memop: "MemOp rewrites one guidance document", rawcat: "Full history pastes the earlier sessions in verbatim" };
+// src = what the columns compare (⚙ What to compare): "example" (a showcase chain: the recorded paper run, or a model picked per
+// column), "saved" (the saved live runs of one chain × model: S.savedModel) or "project" (a sandbox project of the Agent page).
+const S = { meta: null, cfgs: null, sc: null, price: null, pricing: "model", cid: null, cols: DEFAULT_COLS.slice(), api: {}, same: true, recRun: null, projects: [],
+            src: "example", savedModel: null, savedRun: null, saved: [], last: {},
+            rc: {}, players: {}, stats: {}, chain: {}, feeds: {}, pinT: {}, served: {}, ltok: {}, auto: true, jobs: [], provs: null, view: "play", memMode: "written", built: "", progOpen: false, footOpen: false, booting: true,
+            rcErr: {},        // rcKey -> true: that api/runchains request failed (not cached: the next load asks again)
+            gen: 0,           // generation of what is compared: a pick / load superseded by a newer one stops after its await
+            ending: 0 };      // live feeds whose run just ended and is being saved and reloaded (playback stays off meanwhile)
+for (const k of KINDS) S.api[k] = { api: REC, model: REC_MODEL };
+const store = { get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+
+const kname = k => NAMES[k] || k;
+const knote = k => ((S.sc && S.sc.kind_notes) || {})[k] || NOTES[k] || "";
+/** A column name's tooltip: "Knowledge Vault (ours) — after each task a writer distils …", "Mem0 — extracts facts …" */
+const ktip = k => { const n = knote(k), m = n.match(/^ours\s*[—–:-]\s*/); return m ? `${kname(k)} (ours) — ${n.slice(m[0].length)}` : `${kname(k)}${n ? ` — ${n}` : ""}`; };
+const pct = x => `${Math.round(Math.abs(x) * 100)}%`;
+const andList = xs => xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] || "";      // "Mem0, MemOp and No memory"
+const fewer = x => Math.round(x * 100) >= 100 ? ">99%" : pct(x);       // never "100% fewer"
+const mtok = v => v == null ? "–" : v >= 1e5 ? (v / 1e6).toFixed(2) + "M" : tok(v);
+const cfgRun = (p, m) => "cfg__" + `${p}__${m}`.replace(/[^A-Za-z0-9.]+/g, "-").replace(/^-|-$/g, "");   // = server.py config_run_id
+const recRun = () => S.recRun || S.sc.run;
+const recLabel = () => recRun() === S.sc.run ? "Recorded run" : `Recorded run (${recRun()})`;
+const scChain = cid => (S.sc.chains || []).find(c => c.cid === cid) || null;
+const metaChain = cid => (S.meta.chains || []).find(c => c.cid === cid) || null;
+const project = () => S.src === "project" ? (S.projects || []).find(p => p.name === S.cid) || null : null;
+const chainName = cid => scChain(cid)?.title || metaChain(cid)?.repo || cid;
+const isLiveRun = r => /^(live_|cfg__)/.test(r || "") || r === "demo_live";
+/** "Nov 5" (with the year when it isn't this year); "" for an unknown date */
+const fmtDay = t => { if (!t) return ""; const d = new Date(t * 1000); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) }); };
+const fmtHM = t => new Date(t * 1000).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const fmtWhen = t => t ? `${fmtDay(t)}, ${fmtHM(t)}` : "";
+const provOf = name => (S.provs || S.meta.providers || []).find(p => p.name === name) || null;
+const provLabel = name => provOf(name)?.label || name;
+const repoName = cid => String(scChain(cid)?.repo || metaChain(cid)?.repo || cid).split(" ")[0].split("/").pop();
+const nTasks = () => project()?.tasks?.length || scChain(S.cid)?.n_tasks || metaChain(S.cid)?.n_tasks || 0;
+/** The status line under the top bar: a message hides after 8 s (unless opened), an error stays until ×. hint: cleared by the first playback action. */
+function status(text, err = false, hint = false) {
+  const st = $("#livest"); clearTimeout(status._t); st.className = "st" + (err ? " err" : ""); st.textContent = text || ""; $("#stline").hidden = !text; status.hint = !!(text && hint);
+  if (text && !err) status._t = setTimeout(() => { if (!st.classList.contains("open")) status(""); }, 8000);
+}
 
 function priceRow() { return S.meta.price_rows[S.price] || { input: 0, cached_input: 0, output: 0 }; }
 function priceFor(model) {
   if (S.pricing !== "model" || !model) return null;
-  const t = S.cfgs.prices; let best = null;
+  const t = S.cfgs.prices || {}; let best = null;
   for (const k in t) if ((model === k || model.startsWith(k)) && (!best || k.length > best.length)) best = k;
   return best ? t[best] : null;
 }
-function cfgOf(side) { const id = S.sel[side]; if (id === "__custom") return S.custom[side]; return (S.cfgs.configs || []).find(c => c.id === id); }
-function runIdOf(c) { return c.run_id || ("cfg__" + `${c.provider}__${c.model}`.replace(/[^A-Za-z0-9.]+/g, "-").replace(/^-|-$/g, "")); }
-function armOf(c) { return S.meta.arms[c.kind]; }
-function sessionsFor(side) { const c = cfgOf(side); if (!c) return []; const rc = S.rc[runIdOf(c)]; const ch = rc?.chains?.find(x => x.cid === S.cid); return ch?.arms?.[c.kind]?.sessions || []; }
 function cost(s) { return S.pricing === "model" && s.usd_model != null ? s.usd_model : s.usd; }
+
+// ---------------------------------------------------------------- what each column shows
+/** Columns on screen: the chosen memory methods; a sandbox project (deep link from the Agent page): KV + the methods that ran in it. */
+function visibleCols() {
+  const p = project(); if (!p) return S.cols;
+  const ran = Object.entries(p.arms || {}).filter(([, a]) => (a.orders || []).length).map(([k]) => k);
+  return LIVE_KINDS.filter(k => k === "kv" || ran.includes(k));
+}
+/** Where a column's sessions come from: the recorded paper run, the run of an endpoint × model (cfg__…), a saved live run
+ *  (⚙ Saved live runs: the method's newest run with that model) or the sandbox runs. */
+function colSrc(k) {
+  if (project()) return { api: "sandbox", model: null, run: "custom" };
+  if (S.src === "saved") return savedSrc(k);
+  const c = S.api[k];
+  if (c.api === REC || !LIVE_KINDS.includes(k)) return { api: REC, model: REC_MODEL, run: recRun() };
+  return { api: c.api, model: c.model, run: cfgRun(c.api, c.model) };
+}
+const rcKey = run => `${run}|${S.cid}|${S.price}`;
+function armData(k) { const rc = S.rc[rcKey(colSrc(k).run)]; return rc?.chains?.find(x => x.cid === S.cid)?.arms?.[k] || null; }
+const sessionsFor = k => armData(k)?.sessions || [];
+const armOf = k => armData(k)?.arm || ((S.sc && S.sc.arms) || {})[k] || S.meta.arms[k];   // server-picked arm (Knowledge Vault version setting)
+async function loadRuns() {
+  if (!S.cid) return;
+  const runs = [...new Set(visibleCols().map(k => colSrc(k).run))].filter(run => run && !S.rc[rcKey(run)]);
+  // an endpoint × model that never ran has no run directory: ask /api/meta (refreshed at most every 5 s) instead of a 404
+  const known = run => run === "custom" || (S.meta.runs || []).includes(run), ours = run => S.jobs.some(j => j.run_id === run && (j.status === "running" || (j.results || []).length));
+  if (runs.some(r => !known(r)) && (Date.now() - (loadRuns.metaAt || 0) > 5000 || runs.some(r => !known(r) && ours(r)))) { loadRuns.metaAt = Date.now(); const m = await api("api/meta").catch(() => null); if (m) S.meta.runs = m.runs; }
+  await Promise.all(runs.map(async run => { const key = rcKey(run);
+    if (!known(run)) { S.rc[key] = { chains: [] }; return; }
+    const kinds = `&kinds=${(run === recRun() && !project() ? KINDS : LIVE_KINDS).join(",")}`;      // live runs: every method that runs live
+    // a failed request is not "no sessions": it is not cached (the next load asks again) and the column says it couldn't load
+    try { S.rc[key] = await api(`api/runchains?run=${enc(run)}&price=${enc(S.price)}${kinds}&cid=${enc(S.cid)}`); delete S.rcErr[key]; }
+    catch { S.rcErr[key] = true; } }));
+}
+/** Column k's run could not be read (api/runchains failed): not "no run yet". */
+const rcFailed = k => { const key = rcKey(colSrc(k).run); return !!S.rcErr[key] && !S.rc[key]; };
+/** A model label for the footer / memory view: recorded → the paper model; endpoint → the model id; sandbox → what served it. */
+function servedOf(k) { const m = {}; for (const s of sessionsFor(k)) for (const [x, n] of Object.entries(s.models || {})) if (x !== "model not recorded") m[x] = (m[x] || 0) + n; return Object.entries(m).sort((a, b) => b[1] - a[1]); }
+function modelText(k, long = false) {
+  const src = colSrc(k), sv = servedOf(k);
+  if (src.api === "sandbox") return sv.length ? sv.map(([m]) => m).join(", ") : "sandbox";
+  if (src.api === REC) return `${REC_MODEL} (recorded)`;
+  if (!src.model) return sv.length ? sv.map(([m]) => m).join(", ") : "model not recorded";
+  const via = long ? (src.api === "saved" ? " · saved live run" : ` · ${provLabel(src.api)}`) : "";
+  return src.model === "auto" && sv.length ? `auto → ${sv.map(([m, n]) => `${m}×${n}`).join(", ")}${via}` : `${src.model}${via}`;
+}
+
+// ---------------------------------------------------------------- endpoint models
+// Agent runs need a chat model: drop image / audio / embedding / legacy completion ids and dated snapshots of an alias in the list.
+const NOT_AGENT = /dall-e|sora|whisper|tts|transcribe|audio|realtime|image|embedding|search|similarity|canvas|computer-use|deep-research|translate|instruct|diarize|^gpt-live|^aoai-|^mai-|^text-|^code-(cushman|davinci|search)|^(ada|babbage|curie|davinci)$/i;
+const DATED = /-\d{4}-\d{2}-\d{2}.*$/;
+function modelsFor(name) {
+  const p = provOf(name); if (!p) return { sug: [], rest: [], runs: [] };
+  const listed = p.models && p.models.length, raw = (listed ? p.models : (p.models_hint || [])).filter(m => !NOT_AGENT.test(m)), have = new Set(raw);
+  const all = [...new Set(raw.filter(m => !(DATED.test(m) && have.has(m.replace(DATED, "")))))];
+  const runs = all.filter(m => (S.meta.runs || []).includes(cfgRun(name, m)));
+  const presets = (S.cfgs.configs || []).filter(c => c.provider === name && !c.recorded).map(c => c.model);
+  const sug = [...new Set([...runs, p.default_model, ...(p.models_hint || []), ...presets])].filter(m => m && (!listed || all.includes(m)));
+  return { sug, rest: all.filter(m => !sug.includes(m)), runs };
+}
+function defaultModel(name) { const p = provOf(name), { sug, rest } = modelsFor(name); return p && p.default_model && [...sug, ...rest].includes(p.default_model) ? p.default_model : sug[0] || rest[0] || p?.default_model || "auto"; }
+function modelOptsHtml(apiName, cur) {
+  if (apiName === REC) return `<option value="${REC_MODEL}">${REC_MODEL}</option>`;
+  const { sug, rest, runs } = modelsFor(apiName), o = m => `<option value="${esc(m)}">${esc(m)}</option>`;
+  const extra = cur && !sug.includes(cur) && !rest.includes(cur) ? o(cur) : "";      // a model from the URL that the endpoint does not list
+  // one flat list (no group headings): models with runs saved on this server first, then the suggested ones, then the rest
+  return extra + [...new Set([...runs, ...sug, ...rest])].map(o).join("");
+}
+
+// ---------------------------------------------------------------- chains: the showcase list, filtered by the columns on screen
+const others = (cols = S.cols) => cols.filter(k => k !== "kv");
+/** null when Knowledge Vault wins on this chain against every enabled column (≥ margin fewer tokens, at least as many tasks resolved); else why not. */
+function verdict(ch, cols = S.cols) {
+  const st = ch.stats || {}, kv = st.kv, m = S.sc.margin ?? 0.2;
+  if (!kv) return { k: "kv", text: "no Knowledge Vault run there" };
+  for (const k of others(cols)) {
+    const o = st[k];
+    if (!o) return { k, text: `no ${kname(k)} run there` };
+    if (o.tokens <= kv.tokens) return { k, text: `${kname(k)} used fewer tokens than Knowledge Vault there` };
+    if (kv.tokens > (1 - m) * o.tokens) return { k, text: `Knowledge Vault saved only ${pct(1 - kv.tokens / o.tokens)} of the tokens vs ${kname(k)} there` };
+    if (kv.resolved < o.resolved) return { k, text: `${kname(k)} resolved more tasks there (${o.resolved} vs ${kv.resolved})` };
+  }
+  return null;
+}
+const saving = (ch, cols = S.cols) => { const os = others(cols).filter(k => ch.stats[k]); return os.length ? Math.min(...os.map(k => 1 - ch.stats.kv.tokens / ch.stats[k].tokens)) : null; };
+function chainList(cols = S.cols) {
+  return (S.sc.chains || []).filter(ch => !verdict(ch, cols)).map(ch => ({ ch, save: saving(ch, cols) })).sort((a, b) => (b.save ?? 0) - (a.save ?? 0));
+}
+/** ⚙ What to compare › Example chains: the showcase chains where Knowledge Vault saves tokens, sorted by that saving. */
+function exampleOpts() {
+  const list = chainList(), cur = S.cid; let h = "";
+  if (cur && !list.some(x => x.ch.cid === cur)) {
+    const ch = scChain(cur);
+    h += `<option value="${esc(cur)}">${ch ? `${esc(ch.title)} — ${esc(ch.repo)} (not a showcase chain for these columns)` : `${esc(metaChain(cur)?.repo || cur)} (not a showcase chain)`}</option>`;
+  }
+  return h + list.map(({ ch }) => `<option value="${esc(ch.cid)}" title="${esc(ch.blurb)}">${esc(ch.title)} — ${esc(ch.repo)}</option>`).join("");      // sorted by Knowledge Vault's saving (chainList)
+}
+function pickDefault() { const list = chainList(); return list.some(x => x.ch.cid === S.sc.default_cid) ? S.sc.default_cid : list[0]?.ch.cid || S.sc.default_cid || S.meta.default_cid || null; }
+
+// ---------------------------------------------------------------- ⚙ What to compare › Saved live runs
+const savedKey = (cid, model) => `${cid}|${model ?? ""}`;
+/** cfg__<api>-<model> (= server.py config_run_id) -> {provider, model}: the longest endpoint prefix, the model id as the endpoint or a session names it. */
+function cfgParse(run, seen = []) {
+  let best = null;
+  for (const p of S.meta.providers || []) { const pre = cfgRun(p.name, "") + "-"; if (run.startsWith(pre) && (!best || pre.length > best.pre.length)) best = { p, pre }; }
+  if (!best) return { provider: null, model: run.replace(/^cfg__/, "") };
+  const m = [best.p.default_model, ...(best.p.models_hint || []), ...seen].find(x => x && cfgRun(best.p.name, x) === run);
+  return { provider: best.p.name, model: m || run.slice(best.pre.length) };
+}
+/** Every saved live run on this server, one entry per chain × model, newest first: the Agent page's live_* runs (api/liveruns, model =
+ *  the one that served it) and this page's cfg__<api>-<model> runs (api/runchains). Each entry: {cid, model, runs: {kind: [run, newest first]}, newest}. */
+async function loadSaved() {
+  const [lr, jobs] = await Promise.all([api(`api/liveruns?price=${enc(S.price)}`).catch(() => []), api("api/live").catch(() => [])]);
+  const cfg = (S.meta.runs || []).filter(r => r.startsWith("cfg__"));
+  const rcs = await Promise.all(cfg.map(r => api(`api/runchains?run=${enc(r)}&price=${enc(S.price)}&kinds=${LIVE_KINDS.join(",")}`).catch(() => ({ chains: [] }))));
+  // when a run started: its arm's "started" (servers that send it), api/liveruns, or a job of this server's session (api/live)
+  const key = (r, c, k) => `${r}|${c}|${k}`, when = {}, at = (kk, t) => { if (t) when[kk] = Math.max(when[kk] || 0, t); };
+  for (const j of jobs) if (!j.custom) at(key(j.run_id, j.cid, j.kind), j.started);
+  for (const e of lr) at(key(e.run, e.cid, e.kind), e.started);
+  const ents = [];
+  for (const e of lr) if (!e.run.startsWith("cfg__") && KINDS.includes(e.kind) && (e.sessions || []).length)
+    ents.push({ run: e.run, cid: e.cid, kind: e.kind, model: e.model || "", provider: null, started: when[key(e.run, e.cid, e.kind)] || 0, n: e.sessions.length });
+  cfg.forEach((r, i) => {
+    const cs = rcs[i].chains || [], seen = [...new Set(cs.flatMap(c => Object.values(c.arms || {}).flatMap(a => a.sessions.flatMap(s => Object.keys(s.models || {})))))];
+    const { provider, model } = cfgParse(r, seen);
+    for (const c of cs) for (const [kind, a] of Object.entries(c.arms || {})) if (KINDS.includes(kind) && (a.sessions || []).length) {
+      at(key(r, c.cid, kind), a.started);
+      ents.push({ run: r, cid: c.cid, kind, model, provider, started: when[key(r, c.cid, kind)] || 0, n: a.sessions.length });
+    }
+  });
+  const gs = new Map();
+  for (const e of ents) {
+    const id = savedKey(e.cid, e.model), g = gs.get(id) || { cid: e.cid, model: e.model, runs: {}, newest: 0 };
+    (g.runs[e.kind] = g.runs[e.kind] || []).push(e); g.newest = Math.max(g.newest, e.started); gs.set(id, g);
+  }
+  for (const g of gs.values()) for (const k in g.runs) g.runs[k].sort((a, b) => b.started - a.started);
+  S.saved = [...gs.values()].sort((a, b) => b.newest - a.newest || chainName(a.cid).localeCompare(chainName(b.cid)) || a.model.localeCompare(b.model));
+}
+const savedGroup = () => S.src === "saved" ? S.saved.find(g => g.cid === S.cid && g.model === (S.savedModel ?? "")) || null : null;
+/** A saved entry's runs: [{run, started (its newest column), kinds}] */
+const groupRuns = g => { const m = new Map(); for (const [k, es] of Object.entries(g?.runs || {})) for (const e of es) { const r = m.get(e.run) || { run: e.run, started: 0, kinds: new Set() }; r.kinds.add(k); r.started = Math.max(r.started, e.started); m.set(e.run, r); } return [...m.values()]; };
+/** The run the columns come from: ?run= (S.savedRun) when it belongs to the entry, else the run with sessions of the most columns on
+ *  screen (newest on ties). A column whose method has no session there falls back to its newest run with the model ("other run"). */
+function baseRun(g) {
+  const rs = groupRuns(g); if (!rs.length) return null;
+  if (S.savedRun && rs.some(r => r.run === S.savedRun)) return S.savedRun;
+  const ks = visibleCols(), cover = r => ks.filter(k => r.kinds.has(k)).length;
+  return rs.sort((a, b) => cover(b) - cover(a) || b.started - a.started)[0].run;
+}
+/** "<chain title, else repo> · <model> · Knowledge Vault + Mem0 · Nov 5" */
+const savedLabel = g => [chainName(g.cid), g.model || "model not recorded", KINDS.filter(k => g.runs[k]?.length).map(kname).join(" + "), fmtDay(g.newest)].filter(Boolean).join(" · ");
+/** The endpoint that would run model m live: the one its saved runs used, else an answering endpoint that lists it (the server's default first). */
+function runProv(m, g) {
+  if (!m) return null;
+  const used = g && Object.values(g.runs).flat().find(e => e.provider); if (used) return used.provider;
+  const ps = (S.provs || []).filter(p => p.ok && (p.models || []).includes(m));
+  return (ps.find(p => p.name === S.meta.default_provider) || ps[0])?.name || null;
+}
+/** A column in "Saved live runs": its method's session in the base run (baseRun), else its newest saved run with the chosen model
+ *  (other: true); none: where ▶ Run live would save one. */
+function savedSrc(k) {
+  const g = savedGroup(), m = S.savedModel ?? "", base = baseRun(g), es = g?.runs[k] || [], e = es.find(x => x.run === base) || es[0] || null, prov = runProv(m, g);
+  const next = prov && LIVE_KINDS.includes(k) ? cfgRun(prov, m) : null;
+  return { api: prov || "saved", model: m, run: e ? e.run : next, saved: e, next, other: !!(e && e.run !== base), base };
+}
+
+// ---------------------------------------------------------------- ⚙ What to compare › Sandbox projects
+const later = (a, b) => (a > b) - (a < b);
+/** The Agent page's sandbox projects with at least one task run, newest first. */
+const projList = () => (S.projects || []).filter(p => Object.values(p.arms || {}).some(a => (a.orders || []).length)).sort((a, b) => later(b.created || "", a.created || ""));
+const projLabel = p => { const n = (p.tasks || []).length; return [p.name, p.label, `${n} task${n === 1 ? "" : "s"}`].filter(Boolean).join(" · "); };
+
+// ---------------------------------------------------------------- ⚙ What to compare: the source switch, the select, the line under it
+const SRCS = ["example", "saved", "project"], SRC_ARIA = { example: "Example chain", saved: "Saved live run", project: "Sandbox project" };
+const srcHas = s => s === "example" ? !!(S.sc.chains || []).length : s === "saved" ? S.saved.length > 0 : projList().length > 0;
+const srcValue = () => S.src === "saved" ? savedKey(S.cid, S.savedModel) : S.cid || "";
+function fillWhat() {
+  const sel = $("#cid"), val = srcValue(); let h = "";
+  if (S.src === "saved") {
+    if (!savedGroup()) h += `<option value="${esc(val)}">${esc([chainName(S.cid), S.savedModel || "model not recorded", "no saved runs here"].join(" · "))}</option>`;
+    h += S.saved.map(g => `<option value="${esc(savedKey(g.cid, g.model))}">${esc(savedLabel(g))}</option>`).join("");
+  } else if (S.src === "project") {
+    const ps = projList(), p = project();
+    if (p && !ps.includes(p)) h += `<option value="${esc(p.name)}">${esc(projLabel(p))}</option>`;
+    h += ps.map(x => `<option value="${esc(x.name)}">${esc(projLabel(x))}</option>`).join("");
+  } else h = exampleOpts();
+  sel.innerHTML = h; sel.value = val; sel.setAttribute("aria-label", SRC_ARIA[S.src]);
+  // the switch lists only the sources that have something on this server, and hides when only one has
+  const shown = SRCS.filter(s => s === S.src || srcHas(s)), seg = $("#srcseg");
+  seg.hidden = shown.length < 2;
+  seg.querySelectorAll("button").forEach(b => { b.hidden = !shown.includes(b.dataset.src); b.setAttribute("aria-pressed", b.dataset.src === S.src); });
+}
+/** ⚙ What to compare: one plain line under the select — what the columns show now. */
+function renderNote() {
+  const b = $("#chainnote"), n = nTasks(), tasks = `${n} task${n === 1 ? "" : "s"}`, p = project(), ch = scChain(S.cid), mc = metaChain(S.cid);
+  if (p) b.innerHTML = `Each column shows the tasks you ran in <b>${esc(p.name)}</b> with its memory method, on the Agent page <span class="bm">· ${tasks}</span>.`;
+  else if (S.src === "saved") {
+    // a column streaming a live run now is neither "another run" nor "no run yet"
+    const g = savedGroup(), ks = visibleCols().filter(k => !jobOfCol(k)), none = ks.filter(k => !g?.runs[k]?.length && !sessionsFor(k).length).map(kname), other = ks.filter(k => colSrc(k).other).map(kname);
+    b.innerHTML = `Each column shows its method's live run with ${S.savedModel ? `<b>${esc(S.savedModel)}</b>` : "this model"} on this chain <span class="bm">· ${esc(mc?.repo || ch?.repo || S.cid)} · ${tasks}</span>.`
+      + `${other.length ? ` ${esc(andList(other))} ${other.length === 1 ? "comes" : "come"} from another run with this model.` : ""}${none.length ? ` No run yet: ${esc(none.join(", "))}.` : ""}`;
+  } else {
+    const picked = visibleCols().some(k => LIVE_KINDS.includes(k) && colSrc(k).api !== REC), sif = (ch || mc)?.sif && S.meta.live_enabled !== false;
+    const what = picked ? "Each column shows its method's run with the model picked in its header, or the paper's recorded run."
+      : `Each column replays the paper's recorded run of its method${sif ? "; pick a model in a column's header to run it live" : ""}.`;
+    b.innerHTML = ch ? `${esc(ch.blurb)} <span class="bm">· ${tasks}</span><br>${what}` : mc ? `${esc(mc.repo)} <span class="bm">· ${tasks} · not one of the example chains</span><br>${what}`
+      : "A chain is a few coding tasks on one repository, done one after another — memory carries what the agent learned to the next task.";
+  }
+  $("#cid").title = S.src === "example" ? (ch ? ch.blurb : "A chain is a few coding tasks on one repository, done one after another — memory carries what the agent learned to the next task") : "";
+  setGearTitle();
+}
+/** The ⚙ button's tooltip names what is compared (its select lives in the panel) and the endpoint status. */
+function setGearTitle() {
+  const p = project(), ch = scChain(S.cid);
+  const what = p ? `your project ${p.name}` : S.src === "saved" ? `saved live runs of ${chainName(S.cid)} with ${S.savedModel || "an unrecorded model"}` : ch ? `${ch.title} — ${ch.repo}` : S.cid || "none";
+  $("#gearbtn").title = `Settings · comparing: ${what} · columns, pricing, playback, live runs, details${S.epNote ? ` · ${S.epNote}` : ""}`;
+}
+/** ⚙ What to compare › the switch: show that source's newest item (or the one picked there before); Example chains: the recorded runs again. */
+async function setSrc(src) {
+  if (src === S.src) return;
+  S.last[S.src] = srcValue(); S.src = src; S.savedRun = null;
+  // first visit of a source: its newest item where Knowledge Vault and another method both ran (something to compare), else its newest
+  const both = ks => ks.includes("kv") && ks.some(k => k !== "kv");
+  if (src === "saved") { const g = S.saved.find(x => savedKey(x.cid, x.model) === S.last.saved) || S.saved.find(x => both(Object.keys(x.runs))) || S.saved[0]; S.cid = g ? g.cid : S.cid; S.savedModel = g ? g.model : ""; }
+  else if (src === "project") { const ps = projList(), ran = p => Object.keys(p.arms || {}).filter(k => (p.arms[k].orders || []).length);
+    S.cid = (ps.find(x => x.name === S.last.project) || ps.find(x => both(ran(x))) || ps[0])?.name || null; }
+  else { S.cid = S.last.example || pickDefault(); for (const k of KINDS) S.api[k] = { api: REC, model: REC_MODEL }; }
+  status(""); await openWhat();
+}
+/** The select or the switch changed what is compared: rebuild the columns when their kind changes, then load everything. */
+async function openWhat() { const g = ++S.gen; renderColChecks(); buildColumns(); await adoptJobs(); if (g !== S.gen) return; await loadAll(); }
 
 // ---------------------------------------------------------------- columns
 function buildColumns() {
-  const box = $("#cols"); box.style.setProperty("--ncols", S.n);
-  box.innerHTML = SIDES.slice(0, S.n).map(side => `<section class="col" id="col${side}">
-      <div class="head"><span class="dot" id="dot${side}"></span><select id="sel${side}" class="ctl"></select>
-        <span class="custom-cfg" id="cc${side}"><select id="cck${side}"><option value="kv">Knowledge Vault</option><option value="mem0">Mem0</option><option value="none">No memory</option></select><select id="ccp${side}"></select><input id="ccm${side}" list="models${side}" placeholder="model" style="width:130px"><datalist id="models${side}"></datalist><button class="btn" id="ccgo${side}">use</button></span></div>
-      <div class="sub"><span class="chip" id="task${side}">–</span><span class="chip" id="res${side}"></span><span id="models${side}txt" class="muted"></span></div>
-      <div class="taskpin" id="pin${side}" hidden></div>
-      <div class="strip" id="ctr${side}"></div><div class="bar"><div id="bar${side}" style="width:0"></div></div>
-      <div class="transcript" id="tr${side}"></div></section>`).join("");
-  for (const side of SIDES.slice(0, S.n)) {
-    const sel = $(`#sel${side}`);
-    sel.innerHTML = (S.cfgs.configs || []).map(c => `<option value="${esc(c.id)}">${esc(c.label)}${c.provider_ok || c.recorded ? "" : " (endpoint unavailable)"}</option>`).join("") + `<option value="__custom">custom: memory × endpoint × model…</option>`;
-    sel.value = S.sel[side] || sel.options[0].value; S.sel[side] = sel.value;
-    sel.onchange = async () => { S.sel[side] = sel.value; $(`#cc${side}`).classList.toggle("open", sel.value === "__custom"); if (sel.value !== "__custom") { await loadRuns(); await loadSide(side); fillChains(); renderSummary(); } else fillCustom(side); };
-    $(`#ccgo${side}`).onclick = async () => { S.custom[side] = { id: "__custom", kind: $(`#cck${side}`).value, provider: $(`#ccp${side}`).value, model: $(`#ccm${side}`).value.trim() || "auto", label: `custom ${$(`#cck${side}`).value} + ${$(`#ccm${side}`).value.trim() || "auto"}`, short: `${$(`#cck${side}`).value}+${$(`#ccm${side}`).value.trim() || "auto"}` }; await loadRuns(); await loadSide(side); fillChains(); renderSummary(); };
+  const ks = visibleCols(), sig = ks.join(",") + "|" + S.src;
+  if (sig === S.built && $("#cols").children.length) return;
+  S.built = sig;
+  for (const k of Object.keys(S.feeds)) { S.feeds[k].stop(); S.feeds[k].detach(); delete S.feeds[k]; }
+  for (const k of Object.keys(S.players)) { S.players[k].destroy(); delete S.players[k]; S.stats[k] = null; }
+  const box = $("#cols"); box.style.setProperty("--ncols", ks.length);
+  box.innerHTML = ks.map(k => `<section class="col" id="col-${k}" data-kind="${k}" style="--arm:${COLOR[k]}" aria-label="${esc(kname(k))}">
+      <div class="head">
+        <div class="hname" id="hname-${k}" title="${esc(ktip(k))}"><span class="dot" style="background:${COLOR[k]}"></span><b>${esc(kname(k))}</b>${k === "kv" ? `<span class="ours">ours</span>` : ""}<span class="chip recchip" id="rec-${k}" hidden title="Live runs aren't available for ${esc(kname(k))} in the demo, so this column shows the recorded paper run (${REC_MODEL})">recorded run</span></div>
+        <div class="hsel" id="hsel-${k}"></div>
+      </div>
+      <div class="taskpin" id="pin-${k}"><div class="trow1"><button class="tp-head" type="button" id="tph-${k}" aria-expanded="false" title="Show the whole task"><span class="tp-n" id="task-${k}">–</span><span class="tp-title" id="ttl-${k}"></span><span class="tp-res" id="res-${k}"></span><span class="tp-chev" id="chev-${k}">▸</span></button><button class="btn sm stop colstop" id="stop-${k}" hidden>■ Stop</button></div><div class="tp-body" id="tpb-${k}" hidden></div></div>
+      <div class="strip" id="ctr-${k}"></div><div class="bar"><div id="bar-${k}" style="width:0"></div></div>
+      <div class="transcript" id="tr-${k}"></div></section>`).join("");
+  for (const k of ks) { fillColSelects(k); $(`#tph-${k}`).onclick = () => openPin(k, !$(`#pin-${k}`).classList.contains("open")); }
+}
+/** The task row's title (the task's short summary, else the issue's first line) + the whole task text behind it
+ *  (t = {order, instance, repo, text, summary}; null = no task). */
+function setPin(k, t) {
+  const el = $(`#pin-${k}`); if (!el) return;
+  const text = ((t && t.text) || "").trim();
+  S.pinT[k] = text ? t : null; $(`#ttl-${k}`).textContent = text ? taskName(t.summary, text) : ""; pinTip(k);
+  $(`#tpb-${k}`).innerHTML = text ? `<div class="tp-meta">${esc(t.repo || "")}${t.instance ? ` · <span class="mono">${esc(t.instance)}</span>` : ""} · ${text.length.toLocaleString()} chars</div><div class="tp-text md">${md(text)}</div>` : "";
+  $(`#tph-${k}`).disabled = !text; $(`#chev-${k}`).hidden = !text;
+  if (!text) openPin(k, false); else openPin(k, el.classList.contains("open"));
+}
+/** The task row's tooltip: the task's whole name (its id with Show details), and which model served a live or router run. */
+function pinTip(k) {
+  const b = $(`#tph-${k}`), t = S.pinT[k]; if (!b) return;
+  const name = t ? taskName(t.summary, t.text) : "", inst = t && t.instance && document.body.classList.contains("details") ? ` (${t.instance})` : "";
+  b.title = [name + inst, S.served[k] ? `served by ${S.served[k]}` : ""].filter(Boolean).join("\n");
+}
+function openPin(k, o) {
+  const el = $(`#pin-${k}`); if (!el) return; o = o && !!$(`#tpb-${k}`).innerHTML;
+  el.classList.toggle("open", o); $(`#tpb-${k}`).hidden = !o; $(`#tph-${k}`).setAttribute("aria-expanded", o); $(`#chev-${k}`).textContent = o ? "▾" : "▸";
+}
+/** "Task 2/3 · step 4/27" (the task row's lead) */
+const taskLead = (task, n, step, nSteps) => `Task ${task}${n ? `/${n}` : ""}${step != null ? ` · step ${step}${nSteps != null ? `/${nSteps}` : ""}` : ""}`;
+/** A column header's two selects: API (the recorded paper run or a model endpoint) and Model. Sandbox projects and saved live
+ *  runs (⚙ What to compare picks them): a static label instead. */
+function fillColSelects(k) {
+  const box = $(`#hsel-${k}`); if (!box) return;
+  const rec = $(`#rec-${k}`);
+  if (project()) { const sv = servedOf(k); box.innerHTML = `<span class="static">as run in your sandbox${sv.length ? ` · ${esc(sv.map(([m]) => m).join(", "))}` : ""}</span>`; rec.hidden = true; return; }
+  if (S.src === "saved") {
+    // the columns come from one run (baseRun); a method without a session there shows its newest run with the model, and says so
+    const src = colSrc(k), e = src.saved, m = src.model || "model not recorded", when = e && e.started ? `started ${fmtWhen(e.started)}` : "";
+    const fin = !e && S.feeds[k] && !S.feeds[k].on ? jobWord(S.feeds[k].info().status).toLowerCase() : "";      // its live run just ended (listed after the last one)
+    const txt = jobOfCol(k) ? `${m} · running live` : fin ? `${m} · live run, ${fin}` : e ? (src.other ? `${m} · other run${e.started ? `, ${fmtDay(e.started)} ${fmtHM(e.started)}` : ""}` : `${m} · live run${e.started ? ` ${fmtDay(e.started)}` : ""}`)
+      : LIVE_KINDS.includes(k) ? `${m} · no run yet` : "no live runs";
+    const tip = jobOfCol(k) ? `${kname(k)} is running live with ${m} on this chain now.` : fin ? `${kname(k)}'s live run with ${m} on this chain, just now.`
+      : e ? (src.other ? `Not in the run the other columns show: ${kname(k)}'s newest live run with ${m} on this chain${when ? `, ${when}` : ""} (${e.run}).` : `${kname(k)}'s live run with ${m} on this chain${when ? `, ${when}` : ""} (${e.run}).`)
+      : LIVE_KINDS.includes(k) ? `${kname(k)} has no live run with ${m} on this chain yet.` : `${kname(k)} only exists in the paper's recorded run.`;
+    box.innerHTML = `<span class="static" title="${esc(tip)}">${esc(txt)}</span>`; rec.hidden = true; return;
   }
+  const live = LIVE_KINDS.includes(k), cur = live ? S.api[k].api : REC;
+  // endpoints that don't answer are left out (⚙ › Live runs names them; their saved runs are in ⚙ › What to compare), unless this column shows one
+  const provs = (S.provs || S.meta.providers || []).filter(p => !S.provs || p.ok || (live && p.name === cur));
+  const apiOpts = `<option value="${REC}" title="the paper's recorded run · ${REC_MODEL}">${esc(recLabel())}</option>` + provs.map(p => { const down = S.provs && !p.ok;
+    return `<option value="${esc(p.name)}"${live ? "" : ` disabled title="live runs aren't available for this method in the demo"`}${down ? ` title="not answering right now"` : ""}>${esc(p.label)}</option>`; }).join("");
+  const tip = live ? "" : ` title="Live runs aren't available for ${esc(kname(k))} in the demo: it shows the recorded paper run"`;
+  const tipA = live ? ` title="API: where ${esc(kname(k))}'s sessions come from — the recorded paper run, or a model endpoint for a live run"` : tip, tipM = live ? ` title="Model"` : tip;
+  box.innerHTML = `<select id="api-${k}" class="ctl" aria-label="${esc(kname(k))}: API"${tipA}>${apiOpts}</select>` +
+    `<select id="model-${k}" class="ctl" aria-label="${esc(kname(k))}: model"${tipM}>${modelOptsHtml(cur, live ? S.api[k].model : REC_MODEL)}</select>`;
+  const a = $(`#api-${k}`), m = $(`#model-${k}`);
+  a.value = cur; m.value = cur === REC ? REC_MODEL : S.api[k].model;
+  a.onchange = () => setApi(k, a.value); m.onchange = () => setApi(k, a.value, m.value);
+  rec.hidden = live || !visibleCols().some(x => LIVE_KINDS.includes(x) && colSrc(x).api !== REC);
 }
-function fillCustom(side) {
-  const ps = S.provs || []; $(`#ccp${side}`).innerHTML = ps.map(p => `<option value="${esc(p.name)}">${esc(p.label)}</option>`).join("");
-  const p = ps.find(x => x.ok) || ps[0]; if (p) { $(`#ccp${side}`).value = p.name; $(`#models${side}`).innerHTML = (p.models.length ? p.models : p.models_hint).map(m => `<option value="${esc(m)}">`).join(""); $(`#ccm${side}`).value = p.default_model || ""; }
+/** API / Model changed in column k. "Same model in all columns": every column that can run it follows. */
+async function setApi(k, apiName, model) {
+  if (!LIVE_KINDS.includes(k)) return;
+  const g = ++S.gen;
+  if (apiName !== REC && !model) model = S.api[k].api === apiName ? S.api[k].model : defaultModel(apiName);
+  const v = apiName === REC ? { api: REC, model: REC_MODEL } : { api: apiName, model };
+  const before = Object.fromEntries(visibleCols().map(x => [x, colSrc(x).run]));
+  for (const t of S.same ? LIVE_KINDS : [k]) S.api[t] = { ...v };
+  for (const t of visibleCols()) fillColSelects(t);
+  await adoptJobs(); if (g !== S.gen) return;
+  await loadRuns(); if (g !== S.gen) return;
+  await Promise.all(visibleCols().filter(x => colSrc(x).run !== before[x]).map(loadCol)); if (g !== S.gen) return;
+  renderNote(); renderSummary(); setStopBtn(); setSameVis(); if (S.view === "memory") renderMem(); syncUrl();
+}
+const pinSess = (k, sess) => setPin(k, sess ? { order: sess.order, n: nTasks(), instance: sess.instance, repo: sess.repo, text: sess.problem_statement, summary: sess.summary } : null);
+/** One dot per agent step, per task (the strip above the transcript). */
+async function stepChain(run, arm, ss, cid = S.cid) {
+  const all = await Promise.all(ss.map(x => getSession({ run, arm, cid, order: x.order }).catch(() => null)));
+  return all.map((sess, i) => {
+    const steps = sess ? sess.turns.map(t => { const o = t.observation; const fmt = !t.command || (o && /^\s*Format error/i.test(o.output || "")); const ok = !!(o && o.returncode === 0);
+      return { cmd: t.command || "", loop: false, kind: t.exit === "Submitted" ? "submit" : (fmt || (o && o.returncode !== 0) || (t.exit && t.exit !== "Submitted")) ? "fail" : ok ? "ok" : "ok",
+        title: `step ${t.step}${o ? ` · ${o.returncode === 0 ? "ok" : `exit ${o.returncode ?? "?"}`}` : ""}${t.exit ? ` · ${t.exit === "Submitted" ? "submitted" : endText(t.exit)}` : ""}${fmt ? " · the reply had no valid command" : ""}\n$ ${(t.command || "").slice(0, 100)}` }; }) : [];
+    // a run of identical consecutive commands (≥ 5) = the agent stuck in a loop; mark it so the viewer does not read it as a memory effect
+    let longest = 0, j = 0;
+    while (j < steps.length) { let q = j; while (q + 1 < steps.length && steps[q + 1].cmd && steps[q + 1].cmd === steps[j].cmd) q++; const len = q - j + 1; if (len >= 5) { for (let r = j; r <= q; r++) { steps[r].loop = true; steps[r].title += `\n↻ the same command ${len}× in a row (steps ${j + 1}–${q + 1})`; } longest = Math.max(longest, len); } j = q + 1; }
+    return { order: ss[i].order, resolved: ss[i].resolved, n_steps: ss[i].n_steps, steps, loop: longest, memory: sess ? (sess.memory || "").length : 0, exit: sess ? sess.exit_status : null,
+             name: taskName(ss[i].summary || (sess && sess.summary), sess && sess.problem_statement) };
+  });
+}
+/** The task after `order` in column k's run: its next session with a higher order (a sandbox project can skip a task: 1 and 3). */
+const nextSess = (k, order) => sessionsFor(k).filter(s => s.order > order).sort((a, b) => a.order - b.order)[0] || null;
+async function loadCol(k) {
+  const my = (S.ltok[k] = (S.ltok[k] || 0) + 1), cid = S.cid;      // the chain this load is for: a newer pick may change S.cid meanwhile
+  if (S.feeds[k]) { S.feeds[k].stop(); S.feeds[k].detach(); delete S.feeds[k]; }
+  if (S.players[k]) S.players[k].destroy();
+  const tr = $(`#tr-${k}`); if (!tr) return;
+  const src = colSrc(k), ss = sessionsFor(k), arm = armOf(k);
+  // global pricing: no per-model price at all (the recorded price row, as the footer uses), also at a task's end (snapToLedger)
+  const p = new SessionPlayer(tr, { kind: k, price: priceRow(), priceFn: S.pricing === "model" ? m => priceFor(m) : null, speed: +$("#speed").value,
+    onLoad: sess => pinSess(k, sess),
+    onStats: st => { if (S.players[k] !== p) return; S.stats[k] = st; renderCounters(k); renderSummary(); },
+    nextOrder: pl => { if (!S.auto || cid !== S.cid) return null; const nx = nextSess(k, pl.sess.order); return nx ? { run: src.run, arm, cid, order: nx.order } : null; } });
+  S.players[k] = p; S.stats[k] = null; S.chain[k] = [];
+  if (k === "kv") { const id = String(arm || "").replace(/^mem_/, ""), v = (S.meta.kv_versions || []).find(x => x.id === id);     // the version: in the name's tooltip
+    $("#hname-kv").title = ktip("kv") + (ss.length && id ? `\nVersion: ${v ? v.label : id}` : ""); }
+  S.served[k] = ""; pinTip(k);
+  const job = jobOfCol(k);
+  if (job) { watchLive(k, job); return; }
+  if (!ss.length) { showEmpty(k); return; }
+  const chain = await stepChain(src.run, arm, ss, cid); if (my !== S.ltok[k] || cid !== S.cid) return;
+  S.chain[k] = chain;
+  await p.load({ run: src.run, arm, cid, order: ss[0].order });
+}
+async function loadAll() {
+  const g = ++S.gen;             // a newer pick (or load) supersedes this one: its late answers must not reset what plays now
+  S.replayPending = false; fillWhat(); for (const k of visibleCols()) fillColSelects(k); setSameVis();
+  await loadRuns(); if (g !== S.gen) return;
+  renderNote(); await Promise.all(visibleCols().map(loadCol)); if (g !== S.gen) return;
+  renderSummary(); setRunBtn(); setStopBtn(); if (S.view === "memory") renderMem(); syncUrl();
 }
 
-async function loadRuns() {
-  const ids = new Set(SIDES.slice(0, S.n).map(cfgOf).filter(Boolean).map(runIdOf));
-  await Promise.all([...ids].map(async rid => { if (!S.rc[rid]) S.rc[rid] = await api(`api/runchains?run=${encodeURIComponent(rid)}&price=${encodeURIComponent(S.price)}`).catch(() => ({ chains: [] })); }));
+// ---------------------------------------------------------------- a column without a run: say why in one line, offer the live run
+/** Can column k run live on this chain right now? {ok, why} */
+function liveCheck(k) {
+  const src = colSrc(k), ch = scChain(S.cid) || metaChain(S.cid);
+  if (project()) return { ok: false, why: "Sandbox tasks run from the Agent page (Your sandbox)." };
+  if (S.meta.live_enabled === false) return { ok: false, why: "Live runs are turned off on this server." };
+  if (!LIVE_KINDS.includes(k)) return { ok: false, why: `${kname(k)} only exists in the paper's recorded run: it can't run live in the demo.` };
+  if (src.api === REC) return { ok: false, why: "Recorded paper runs can't be repeated here: pick an API and a model above to run it live." };
+  if (S.src === "saved" && !src.model) return { ok: false, why: "This run didn't record its model, so it can't be repeated here." };
+  if (!S.provs) return { ok: false, why: "Checking the model endpoint…" };
+  if (src.api === "saved") return { ok: false, why: `No model endpoint on this server offers ${src.model} right now, so it can't run live here.` };
+  const p = provOf(src.api);
+  if (!p || !p.ok) return { ok: false, why: `${provLabel(src.api)} isn't answering right now, so it can't run live.`, raw: p && p.message ? String(p.message).slice(0, 200) : "" };
+  if (!ch || ch.sif === false) return { ok: false, why: "This chain's sandbox image isn't on this server, so it can't run live here." };
+  if (jobOfCol(k)) return { ok: false, why: "It is running now." };
+  return { ok: true, why: "" };
 }
-function fillChains() {
-  const sides = SIDES.slice(0, S.n); const lists = sides.map(side => { const c = cfgOf(side); if (!c) return []; return (S.rc[runIdOf(c)]?.chains || []).filter(ch => ch.arms[c.kind]).map(ch => ch.cid); });
-  const all = [...new Set(lists.flat())]; const common = all.filter(cid => lists.every(l => l.includes(cid)));
-  const ordered = [...common, ...all.filter(c => !common.includes(c))];
-  const names = Object.fromEntries((S.meta.chains || []).map(c => [c.cid, c]));
-  $("#cid").innerHTML = ordered.map(cid => `<option value="${esc(cid)}">${common.includes(cid) ? "" : "◌ "}${esc(cid)} — ${esc(names[cid]?.repo || "")}</option>`).join("") || `<option value="">no chain has sessions for these configurations yet — pick one below and run</option>`;
-  if (!ordered.includes(S.cid)) S.cid = (S.meta.default_cid && ordered.includes(S.meta.default_cid)) ? S.meta.default_cid : (ordered[0] || S.cid);
-  if (!ordered.length) { const sif = (S.meta.chains || []).filter(c => c.sif); $("#cid").innerHTML = sif.map(c => `<option value="${esc(c.cid)}">${esc(c.cid)} — ${esc(c.repo)} (image ready)</option>`).join(""); S.cid = S.cid && sif.some(c => c.cid === S.cid) ? S.cid : (sif[0]?.cid || null); }
-  $("#cid").value = S.cid;
-}
-
-const nTasks = () => (S.meta.chains || []).find(c => c.cid === S.cid)?.n_tasks;
-const pinSess = (side, sess) => setTaskPin($(`#pin${side}`), sess ? { order: sess.order, n: nTasks(), instance: sess.instance, repo: sess.repo, text: sess.problem_statement } : null);
-async function loadSide(side) {
-  if (S.feeds[side]) { S.feeds[side].stop(); S.feeds[side].detach(); delete S.feeds[side]; }
-  const c = cfgOf(side); const color = c ? (colColor(side) || COLOR[c.kind]) : "var(--none)";
-  $(`#dot${side}`).style.background = color; $(`#col${side}`).style.setProperty("--arm", color);
-  const p = new SessionPlayer($(`#tr${side}`), { kind: c?.kind, price: priceRow(), priceFn: m => priceFor(m), speed: +$("#speed").value,
-    onLoad: sess => pinSess(side, sess),
-    onStats: st => { S.stats[side] = st; renderCounters(side); renderSummary(); },
-    nextOrder: pl => { if (!S.auto) return null; const nx = sessionsFor(side).find(s => s.order === pl.sess.order + 1); return nx ? { run: runIdOf(c), arm: armOf(c), cid: S.cid, order: nx.order } : null; } });
-  S.players[side] = p; S.stats[side] = null;
-  const ss = sessionsFor(side);
-  S.chain[side] = [];
-  if (c && ss.length) {
-    const runId = runIdOf(c), arm = armOf(c);
-    const all = await Promise.all(ss.map(x => api(`api/session?run=${encodeURIComponent(runId)}&arm=${encodeURIComponent(arm)}&cid=${encodeURIComponent(S.cid)}&order=${x.order}`).catch(() => null)));
-    S.chain[side] = all.map((sess, i) => {
-      const steps = sess ? sess.turns.map(t => { const o = t.observation; const fmt = !t.command || (o && /^\s*Format error/i.test(o.output || "")); const ok = !!(o && o.returncode === 0);
-        return { cmd: t.command || "", loop: false, kind: t.exit === "Submitted" ? "submit" : (fmt || (o && o.returncode !== 0) || (t.exit && t.exit !== "Submitted")) ? "fail" : ok ? "ok" : "ok", title: `step ${t.step}${o ? ` · rc ${o.returncode ?? "?"}` : ""}${t.exit ? ` · ${t.exit}` : ""}${fmt ? " · format error" : ""}\n$ ${(t.command || "").slice(0, 100)}` }; }) : [];
-      // a run of identical consecutive commands (≥ 5) = the agent stuck in a loop; mark it so the viewer does not read it as a memory effect
-      let longest = 0, j = 0;
-      while (j < steps.length) { let k = j; while (k + 1 < steps.length && steps[k + 1].cmd && steps[k + 1].cmd === steps[j].cmd) k++; const len = k - j + 1; if (len >= 5) { for (let q = j; q <= k; q++) { steps[q].loop = true; steps[q].title += `\n↻ same command repeated ${len}× (steps ${j + 1}–${k + 1})`; } longest = Math.max(longest, len); } j = k + 1; }
-      return { order: ss[i].order, resolved: ss[i].resolved, n_steps: ss[i].n_steps, steps, loop: longest, memory: sess ? (sess.memory || "").length : 0, exit: sess ? sess.exit_status : null };
-    });
+const runTip = k => { const src = colSrc(k), n = nTasks(); return `Run ${kname(k)} with ${src.model} (${provLabel(src.api)}) on the ${n} task${n === 1 ? "" : "s"} of this chain. The model really works in a sandbox — about $1–5 of router credit.`; };
+function showEmpty(k) {
+  const tr = $(`#tr-${k}`); if (!tr) return;
+  if (rcFailed(k)) {               // the server didn't answer for this run: not "no run yet" (and no ▶ Run live over a run that may exist)
+    tr.innerHTML = `<div class="empty colempty"><div class="msg1">Couldn't load this run — try again.</div><button class="btn" type="button" data-retry="${k}">Try again</button></div>`;
+    tr.querySelector("[data-retry]").onclick = retryRuns;
+    $(`#task-${k}`).textContent = "couldn't load"; $(`#res-${k}`).textContent = ""; pinSess(k, null);
+    $(`#ctr-${k}`).innerHTML = ""; $(`#bar-${k}`).style.width = "0%"; return;
   }
-  if (!c || !ss.length) { $(`#tr${side}`).innerHTML = `<div class="empty">${c ? `No ${esc(c.label)} run for this chain yet. Use "Run all columns live".` : "Pick a configuration."}</div>`; $(`#task${side}`).textContent = "not run"; $(`#res${side}`).textContent = ""; $(`#models${side}txt`).textContent = c ? `${esc(c.provider)} · ${esc(c.model)}` : ""; pinSess(side, null); renderCounters(side); return; }
-  await p.load({ run: runIdOf(c), arm: armOf(c), cid: S.cid, order: ss[0].order });
+  const src = colSrc(k), c = liveCheck(k);
+  const what = k === "none" ? "run without memory" : `${kname(k)} run`;
+  const msg = project() ? `No ${what} in this project yet.` : src.api === REC ? `The recorded paper run has no ${k === "none" ? "session without memory" : `${kname(k)} session`} for this chain.`
+    : `No ${what} ${src.model ? `with ${src.model}` : "of this model"} on this chain yet.`;
+  tr.innerHTML = `<div class="empty colempty"><div class="msg1">${esc(msg)}</div>${c.ok ? `<button class="btn primary" data-runcol="${k}" title="${esc(runTip(k))}">▶ Run live</button>` : `<div class="why">${esc(project() ? "Run its tasks with this memory on the Agent page (Your sandbox)." : c.why)}${c.raw ? `<span class="dt"> (${esc(c.raw)})</span>` : ""}</div>`}</div>`;
+  const b = tr.querySelector("[data-runcol]"); if (b) b.onclick = () => runLive([k]);
+  $(`#task-${k}`).textContent = "no run yet"; $(`#res-${k}`).textContent = ""; pinSess(k, null);
+  $(`#ctr-${k}`).innerHTML = ""; $(`#bar-${k}`).style.width = "0%";
 }
-async function loadAll() { await loadRuns(); fillChains(); for (const side of SIDES.slice(0, S.n)) await loadSide(side); renderSummary(); }
+/** Re-render the empty columns (their reasons depend on the endpoint status, which arrives after the page). A column that still says
+ *  "no run yet" but has sessions now (a live run just saved them) loads them. Resolves when those columns are loaded. */
+function refreshEmpty() {
+  const loads = [];
+  for (const k of visibleCols()) {
+    if (jobOfCol(k) || S.feeds[k]) continue;
+    if (!sessionsFor(k).length) showEmpty(k); else if ($(`#tr-${k} .colempty`)) loads.push(loadCol(k));
+  }
+  return Promise.all(loads);
+}
+/** "Try again" in a column whose run couldn't be loaded: ask the server again; the columns still without their run reload. */
+async function retryRuns() {
+  status(""); const g = S.gen;
+  await loadRuns(); if (g !== S.gen) return;
+  await Promise.all(visibleCols().filter(k => $(`#tr-${k} .colempty`) && !jobOfCol(k) && !S.feeds[k]).map(loadCol)); if (g !== S.gen) return;
+  renderNote(); renderSummary(); setRunBtn(); if (S.view === "memory") renderMem();
+}
 
-function renderCounters(side) {
-  const st = S.stats[side], c = cfgOf(side), ss = sessionsFor(side), n = ss.length, box = $(`#ctr${side}`);
-  if (!st || !c) { box.innerHTML = ""; return; }
-  $(`#task${side}`).textContent = st.task ? `Task ${st.task} of ${n} · step ${st.step}/${st.nSteps}` : "–";
-  $(`#res${side}`).innerHTML = st.done && st.task ? (st.resolvedTask === true ? `<span class="ok">✓ resolved</span>` : st.resolvedTask === false ? `<span class="no">✗ not resolved</span>` : `<span class="na">not graded</span>`) : "";
-  const models = Object.entries(st.models || {}).sort((a, b) => b[1] - a[1]).map(([m, k]) => `${m}×${k}`).join(", ");
-  $(`#models${side}txt`).textContent = `${c.provider} · ${c.model}${models ? ` → served by ${models}` : ""}`;
-  // one line of numbers
-  let h = `<div class="stat"><span class="big">${usd(st.usd)}</span><span><b>${st.steps}</b> steps</span><span><b>${tok(st.actor + st.writer)}</b> tokens <span class="muted">(${tok(st.writer)} writer)</span></span><span><b>${st.resolved}</b>/${st.tasks} resolved</span><span class="muted">${fmtClock(st.elapsed)} emulated</span></div>`;
-  // the step chain: one dot per agent step, per task; filled as the replay reveals them
-  const playing = S.players[side]?.on, curTask = st.task, curStep = st.step, doneTask = st.done;
-  for (const t of S.chain[side] || []) {
+// ---------------------------------------------------------------- memory view: what each column's memory method wrote and kept, task by task
+const memCache = new Map();
+function setView(v) {
+  S.view = v; document.querySelectorAll("#viewseg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
+  const mem = v === "memory"; $("#cols").hidden = mem; $("#memview").hidden = !mem;
+  for (const id of ["#play", "#step", "#restart", "#end", "#playsec"]) $(id).hidden = mem; setSameVis();
+  if (mem) { each(p => p.pause()); renderMem(); }
+  syncUrl();
+}
+/** The chain's (or project's) task names {order: summary, else the issue's first line} for the memory view's rows (api/chain without a run: cheap). */
+const titleCache = new Map();
+function taskTitles(cid) {
+  const clean = t => String(t || "").replace(/^#+\s*/, "").replace(/\*\*|__|`/g, "").trim();
+  if (!titleCache.has(cid)) titleCache.set(cid, api(`api/chain/${enc(cid)}?run=__live__`).then(c => Object.fromEntries((c.chain.tasks || []).map(t => [t.order, taskName(t.summary, clean(t.title))]))).catch(() => ({})));
+  return titleCache.get(cid);
+}
+async function renderMem() {
+  const box = $("#memview"); if (!S.cid) { box.innerHTML = `<div class="empty">Pick a chain.</div>`; return; }
+  const my = (renderMem.t = (renderMem.t || 0) + 1);
+  if (!box.innerHTML) box.innerHTML = `<div class="empty">Loading memory…</div>`;
+  await loadRuns();
+  const titlesP = taskTitles(S.cid);
+  const cols = await Promise.all(visibleCols().map(async k => {
+    const src = colSrc(k), label = `${kname(k)} · ${src.api === REC ? "recorded" : src.api === "sandbox" ? "your sandbox" : src.model || "live run"}`, color = COLOR[k], tip = ktip(k);
+    if (k === "none") return { label, color, kind: k, tip, data: null, note: "Every task starts from scratch — nothing is written or kept." };
+    if (!sessionsFor(k).length) return { label, color, kind: k, tip, data: null, note: rcFailed(k) ? "Couldn't load this run — try again." : `No ${kname(k)} run ${src.api === REC || src.api === "sandbox" || !src.model ? "" : `with ${src.model} `}on this ${project() ? "project" : "chain"} yet.` };
+    const u = `api/memory?run=${enc(src.run)}&arm=${enc(armOf(k))}&cid=${enc(S.cid)}&price=${enc(S.price)}`;
+    if (!memCache.has(u)) memCache.set(u, api(u).catch(e => ({ error: e.message })));
+    const r = await memCache.get(u), data = r && !r.error ? r : null;
+    return { label, color, kind: k, tip, data, note: data ? "" : r?.error === "Not Found" ? "The server is older than this page: restart it to enable the memory view." : "No sessions for this chain yet." };
+  }));
+  const titles = await titlesP;
+  if (my !== renderMem.t || S.view !== "memory") return;
+  const how = visibleCols().filter(k => WRITES[k]).map(k => WRITES[k]).join("; "), ch = scChain(S.cid), p = project();
+  const name = (p ? `Your project ${p.name}` : ch ? `${ch.title} — ${ch.repo}` : metaChain(S.cid)?.repo || S.cid) + (S.src === "saved" ? ` · live runs with ${S.savedModel || "an unrecorded model"}` : "");
+  const what = S.memMode === "store" ? "Each row is a task: the store each method kept after it — what the next task was shown." : "Each row is a task: what each method retrieved before it started and what it wrote after it.";
+  box.innerHTML = `<div class="mc-wrap"><div class="mc-bar">${memorySegHtml(S.memMode)}<span class="muted"><b class="mc-name">${esc(name)}</b>. ${esc(what)}${how ? ` ${esc(how)}.` : ""}</span></div>${memoryCompareHtml(cols, S.memMode, null, { titles, unit: p ? "project" : "chain" })}</div>`;
+  box.querySelectorAll("[data-mcmode]").forEach(el => el.onclick = () => { S.memMode = el.dataset.mcmode; renderMem(); });
+  box.querySelectorAll(".mc-row[data-order]").forEach(el => el.onclick = () => { const o = +el.dataset.order; setView("play"); for (const k of visibleCols()) if (sessionsFor(k).some(x => x.order === o)) jumpTo(k, o); });
+}
+
+// ---------------------------------------------------------------- per-column numbers + step dots
+/** The strip's whole-chain line (before playback, and once a live run has ended: the same totals as the footer). */
+function wholeStat(k) {
+  const ss = sessionsFor(k), n = ss.length, T = colTotals(k); if (!T) return "";
+  const unit = project() ? "project" : "chain";
+  return `<span class="stat" title="whole ${unit}, as recorded: ${T.tokens.toLocaleString("en-US")} tokens over ${n} task${n === 1 ? "" : "s"}"><span class="muted s-wc">whole ${unit}</span><span class="big">${mtok(T.tokens)}</span><span class="muted u">tokens</span><b class="s-usd">${usd(T.usd)}</b>${T.graded ? `<span><b>${T.resolved}</b>/${n} resolved</span>` : project() ? "" : `<span>not graded</span>`}</span>`;
+}
+/** The lines under the numbers: "only 1 of 3 tasks ran · run again" (a partial run: stopped, or it failed; "run again" replaces it),
+ *  "2 of 3 tasks failed — the model endpoint returned an error" (red). Each on its own line, so nothing is cut off. */
+function notesHtml(k) {
+  const T = colTotals(k), all = nTasks(); if (!T) return "";
+  const again = all && T.n < all && !project() && liveCheck(k).ok ? ` · <button class="linkbtn" type="button" data-again="${k}" title="${esc(runTip(k))} It replaces the ${T.n} task${T.n === 1 ? "" : "s"} that ran.">run again</button>` : "";
+  return (all && T.n < all ? `<div class="spart">only ${T.n} of ${all} tasks ran${again}</div>` : "")
+    + (T.failed ? `<div class="sfail">${T.failed} of ${T.n} task${T.n === 1 ? "" : "s"} failed — the model endpoint returned an error</div>` : "");
+}
+const wireAgain = box => box.querySelectorAll("[data-again]").forEach(el => el.onclick = () => runLive([el.dataset.again]));
+/** After a column's live run: its strip shows the run's saved totals (the footer's numbers). false: nothing of it is saved (yet). */
+function doneStrip(k) {
+  const box = $(`#ctr-${k}`); if (!box || !colTotals(k)) return false;
+  box.innerHTML = `<div class="sline">${wholeStat(k)}</div>${notesHtml(k)}`; wireAgain(box); return true;
+}
+function renderCounters(k) {
+  const st = S.stats[k], box = $(`#ctr-${k}`); if (!box) return;
+  if (!st) { box.innerHTML = ""; return; }
+  const all = nTasks(), n = sessionsFor(k).length;
+  // a task shown whole (before ▶, after ⇥): "Task 1/3 · 27 steps"; while replaying "Task 1/3 · step 4/27"
+  $(`#task-${k}`).textContent = !st.task ? "–" : st.prepared && !st.done ? taskLead(st.task, Math.max(n, all), st.step, st.nSteps) : `${taskLead(st.task, Math.max(n, all))} · ${st.nSteps} step${st.nSteps === 1 ? "" : "s"}`;
+  $(`#res-${k}`).innerHTML = st.task && (st.done || !st.prepared) ? (st.resolvedTask === true ? `<span class="ok">✓ resolved</span>` : st.resolvedTask === false ? `<span class="no">✗ not resolved</span>` : project() ? "" : `<span class="na">not graded</span>`) : "";
+  const models = Object.entries(st.models || {}).sort((a, b) => b[1] - a[1]).map(([m, c]) => `${m}×${c}`).join(", ");
+  const sv = models && colSrc(k).model === "auto" ? models : "";      // router auto: which models served it (the row's tooltip; a sandbox project names its models in the header)
+  if (sv !== S.served[k]) { S.served[k] = sv; pinTip(k); }
+  const fresh = !st.steps && !st.tasks && !S.players[k]?.on, T = colTotals(k) || { n: 0, tokens: 0, usd: 0, resolved: 0, graded: false };
+  // one line: before playback the whole chain's numbers, while playing the running totals ("x/y resolved" once a task is graded)
+  const stat = fresh ? wholeStat(k)
+    : `<span class="stat" title="so far in this replay${st.writer ? ` · ${tok(st.writer)} of the tokens by the memory writer` : ""} · ${fmtClock(st.elapsed)} emulated"><span class="muted s-wc">so far</span><span class="big">${mtok(st.actor + st.writer)}</span><span class="muted u">tokens</span><b class="s-usd">${usd(st.usd)}</b><span class="s-steps"><b>${st.steps}</b> step${st.steps === 1 ? "" : "s"}</span>${st.tasks && !project() ? `<span><b>${st.resolved}</b>/${st.tasks} resolved</span>` : ""}</span>`;      // sandbox tasks have no tests: no "resolved"
+  // the step chain: one dot per agent step, per task; filled as the replay reveals them (faint until then: click one to jump there)
+  const playing = S.players[k]?.on, curTask = st.task, curStep = st.prepared ? st.step : 0, doneTask = st.done;
+  let rows = "", inline = "";
+  for (const t of S.chain[k] || []) {
     const before = curTask != null && t.order < curTask, isCur = t.order === curTask;
     const dots = t.steps.map((x, i) => { const shown = before || (isCur && (i < curStep || doneTask)); const cur = isCur && !doneTask && i === curStep && playing;
-      return `<span class="d2 ${shown ? x.kind : "future"} ${shown && x.loop ? "loop" : ""} ${cur ? "current" : ""}" data-jump="${side}:${t.order}:${i}" title="${esc(x.title)}${shown ? "" : " (not reached — click to jump here)"}"></span>`; }).join("");
+      return `<span class="d2 ${shown ? x.kind : "future"} ${shown && x.loop ? "loop" : ""} ${cur ? "current" : ""}" data-jump="${k}:${t.order}:${i + 1}" title="${esc(x.title)}\nclick to jump to this step"></span>`; }).join("");
+    if (isCur) inline = dots;
     const resShown = before || (isCur && doneTask);
     const res = resShown ? (t.resolved === true ? `<span class="tres ok">✓</span>` : t.resolved === false ? `<span class="tres no">✗</span>` : `<span class="tres pend">–</span>`) : `<span class="tres pend">·</span>`;
     const reached = before || isCur;
-    const tags = (resShown && t.loop ? `<span class="tag loop" title="the agent repeated one command ${t.loop} times — a decoding loop of the actor, not a memory effect">↻ loop ×${t.loop}</span>` : "") + (reached && t.order > 1 ? `<span class="tag ${t.memory ? "" : "none"}" title="characters of memory injected before this task">${t.memory ? `${(t.memory / 1000).toFixed(1)}K mem` : "no mem"}</span>` : "");
-    h += `<div class="trow"><span class="tl" data-jump="${side}:${t.order}:0" title="jump to the start of task ${t.order}">T${t.order}</span><span class="dots">${dots}</span>${tags}${res}</div>`;
+    const tags = (resShown && t.loop ? `<span class="tag loop" title="the agent repeated one command ${t.loop} times — the model got stuck in a loop, not a memory effect">↻ loop ×${t.loop}</span>` : "") + (reached && t.order > 1 ? `<span class="tag ${t.memory ? "" : "none"}" title="characters of memory given to the agent before this task">${t.memory ? `${(t.memory / 1000).toFixed(1)}K mem` : "no mem"}</span>` : "");
+    rows += `<div class="trow" data-o="${t.order}"><span class="tl" data-jump="${k}:${t.order}:0" title="${esc(`Task ${t.order}${t.name ? ` — ${t.name}` : ""}: click to jump to its start`)}">T${t.order}</span><span class="dots">${dots}</span>${tags}${res}</div>`;
   }
-  h += `<div class="legend"><span><i style="background:var(--status-good)"></i>command ok</span><span><i style="background:var(--status-bad)"></i>failed / format error</span><span><i style="border:2px solid var(--status-bad);background:transparent"></i>same command repeated (loop)</span><span><i style="background:var(--accent)"></i>submit</span></div>`;
-  box.innerHTML = h;
-  box.querySelectorAll("[data-jump]").forEach(el => el.onclick = () => { const [sd, o, i] = el.dataset.jump.split(":"); jumpTo(sd, +o, +i); });
-  const chainTotal = ss.reduce((a, s) => a + cost(s), 0);
-  $(`#bar${side}`).style.width = chainTotal ? `${Math.min(100, 100 * st.usd / chainTotal)}%` : "0%";
+  const tog = rows ? `<button class="linkbtn ptog" type="button" data-ptog aria-expanded="${S.progOpen}" title="${S.progOpen ? "Hide" : "Show"} every task's steps (all columns). Dots: green = command ok, red = failed, red ring = loop, blue = submit">${S.progOpen ? "steps ▾" : "steps ▸"}</button>` : "";
+  box.innerHTML = `<div class="sline">${stat}<span class="idots">${inline}</span>${tog}</div>${notesHtml(k)}${rows ? `<div class="rows">${rows}</div>` : ""}`;
+  box.querySelectorAll("[data-jump]").forEach(el => el.onclick = () => { const [kk, o, i] = el.dataset.jump.split(":"); jumpTo(kk, +o, +i); });
+  wireAgain(box);
+  box.querySelectorAll("[data-ptog]").forEach(el => el.onclick = () => setProg(!S.progOpen));
+  $(`#bar-${k}`).style.width = T && T.tokens ? `${Math.min(100, 100 * (st.actor + st.writer) / T.tokens)}%` : "0%";
+  alignRows();
 }
+/** Expanded step rows: one toggle for every column (remembered), so the columns stay aligned. */
+function setProg(o) {
+  S.progOpen = o; store.set("kv-cmp-prog", o ? "1" : "0"); document.querySelector(".app").classList.toggle("prog-open", o);
+  for (const k of visibleCols()) if (S.stats[k] && !S.feeds[k]) renderCounters(k);
+  alignRows();
+}
+/** Task k's step row has the same height in every column (rows wrap differently with the number of steps). */
+function alignRows() {
+  cancelAnimationFrame(alignRows.f);
+  alignRows.f = requestAnimationFrame(() => {
+    const rows = [...document.querySelectorAll("#cols .strip .trow[data-o]")]; rows.forEach(r => r.style.minHeight = "");
+    if (!S.progOpen || window.innerWidth <= 1000) return;          // stacked columns (phone) need no alignment
+    const hi = {}; for (const r of rows) hi[r.dataset.o] = Math.max(hi[r.dataset.o] || 0, r.offsetHeight);
+    for (const r of rows) r.style.minHeight = hi[r.dataset.o] + "px";
+  });
+}
+window.addEventListener("resize", () => alignRows());
+/** Whole-chain totals of a column (its sessions in the run it shows). */
+function colTotals(k) {
+  const ss = sessionsFor(k); if (!ss.length) return null;
+  return { n: ss.length, tokens: ss.reduce((a, s) => a + (s.tokens || 0), 0), steps: ss.reduce((a, s) => a + (s.n_steps || 0), 0), usd: ss.reduce((a, s) => a + cost(s), 0),
+           resolved: ss.filter(s => s.resolved).length, graded: !ss.every(s => s.resolved == null), complete: !!armData(k)?.complete, failed: ss.filter(failed).length };
+}
+/** A session whose run ended with "error…" (e.g. error:BadRequestError: the endpoint refused the model's requests) failed: it says nothing
+ *  about memory. Outgrowing the context window (error:ContextWindowExceededError) is not a failure of the endpoint: a memory method
+ *  that pastes too much in causes it, so it counts like any other unresolved task. */
+const failed = s => { const x = String(s.exit || ""); return /^error/i.test(x) && !/ContextWindowExceeded/i.test(x); };
 
+// ---------------------------------------------------------------- footer: one sentence about tokens + the whole-chain table
+/** The model(s) behind column k over the tasks `os`: the column's model; a sandbox project: what served those sessions. */
+const modelOf = (k, os) => project() ? [...new Set(sessionsFor(k).filter(s => os.has(s.order)).flatMap(s => Object.keys(s.models || {}).filter(m => m !== "model not recorded")))].sort().join(",") : colSrc(k).model || "";
+/** Column k against Knowledge Vault over the tasks both ran, failed sessions left out: the footer sentence and the table's "tokens vs KV"
+ *  both use it, so they never disagree. null: no task in common (or no tokens there). {both (orders), kvS, ss (their sessions), kv, o
+ *  (tokens over those tasks), other (k ran another model there: that model — no comparison), over (" over the N tasks both ran" or "")} */
+function vsKv(k) {
+  const kvS = sessionsFor("kv").filter(s => !failed(s)), ss = sessionsFor(k).filter(s => !failed(s)), kvO = new Set(kvS.map(s => s.order));
+  const both = new Set(ss.map(s => s.order).filter(o => kvO.has(o))); if (!both.size) return null;
+  const sum = xs => xs.filter(s => both.has(s.order)).reduce((a, s) => a + (s.tokens || 0), 0), kv = sum(kvS), o = sum(ss); if (!o) return null;
+  const mk = modelOf("kv", both), mo = modelOf(k, both), n = nTasks();
+  const over = both.size < kvO.size || both.size < ss.length || (n && both.size < n) ? ` over the ${both.size} task${both.size === 1 ? "" : "s"} both ran` : "";
+  return { both, kvS, ss, kv, o, other: mk && mo && mk !== mo ? mo : "", over };
+}
+/** "Knowledge Vault used 0.59M tokens — 69% fewer than Mem0, 76% fewer than No memory." Only real savings: failed sessions
+ *  (the endpoint returned an error) are left out, a column that ran other tasks than KV (a partial run) is compared over the
+ *  tasks both ran, and columns that ran other models than KV say so. */
+function heroHtml() {
+  const ks = visibleCols(), kvAll = sessionsFor("kv"), kvS = kvAll.filter(s => !failed(s)), n = nTasks(), where = project() ? "project" : "chain";
+  if (!kvAll.length && rcFailed("kv")) return `<span class="muted">Couldn't load Knowledge Vault's run — try again.</span>`;
+  if (!kvAll.length) { const src = colSrc("kv"); return ks.some(k => sessionsFor(k).length) ? `<span class="muted">Knowledge Vault has no run ${src.api === REC || src.api === "sandbox" ? "" : `with ${esc(src.model)} `}on this ${where} yet, so there is nothing to compare it with.</span>` : `<span class="muted">No runs to compare here yet.</span>`; }
+  if (!kvS.length) return `<span class="muted">Knowledge Vault's run failed on this ${where} (the model endpoint returned an error) — nothing to compare.</span>`;
+  // a column on another model gets no percentage (its tokens say nothing about memory); one that resolved more of the compared tasks is named after the saving
+  const diff = [], behind = [];
+  const cmp = ks.filter(k => k !== "kv").map(k => {
+    const v = vsKv(k); if (!v) return null;
+    const name = esc(kname(k));
+    if (v.other) { diff.push([name, v.other]); return null; }
+    const res = xs => xs.filter(s => v.both.has(s.order) && s.resolved).length, rk = res(v.kvS), ro = res(v.ss);
+    if (rk < ro) behind.push({ name, rk, ro, n: v.both.size });
+    const q = v.over, r = v.kv / v.o;
+    if (Math.abs(1 - r) < 0.005) return `about the same as ${name}${q}`;
+    if (r < 1) return `<span class="good">${fewer(1 - r)} fewer</span> than ${name}${q}`;
+    return r >= 2 ? `<span class="more">${r.toFixed(r >= 10 ? 0 : 1)}× as many</span> as ${name}${q}` : `<span class="more">${pct(r - 1)} more</span> than ${name}${q}`;
+  }).filter(Boolean);
+  const part = n && kvS.length < n ? ` on ${kvS.length} of ${n} tasks` : "";
+  // "But it resolved 1 of 3 tasks, Mem0 and No memory 2 of 3." (grouped by the tasks compared and the counts)
+  const bg = new Map(); for (const x of behind) { const g = bg.get(`${x.rk}/${x.n}`) || { ...x, by: new Map() }; g.by.set(x.ro, [...(g.by.get(x.ro) || []), x.name]); bg.set(`${x.rk}/${x.n}`, g); }
+  const but = [...bg.values()].map(g => `it resolved ${g.rk} of ${g.n} task${g.n === 1 ? "" : "s"}, ${[...g.by].map(([ro, ns]) => `${andList(ns)} ${ro} of ${g.n}`).join(", ")}`).join("; ");
+  const dg = new Map(); for (const [nm, mo] of diff) dg.set(mo, [...(dg.get(mo) || []), nm]);
+  const other = [...dg].map(([mo, ns]) => `${andList(ns)} ran with another model (${esc(mo)})`).join("; ");
+  return `<b>Knowledge Vault used ${mtok(kvS.reduce((x, s) => x + (s.tokens || 0), 0))} tokens</b>${part}${cmp.length ? ` — ${cmp.join(", ")}` : part ? "" : ` on this ${where}`}.`
+    + (but ? ` But ${but}.` : "") + (other ? ` ${other}.` : "");
+}
 function renderSummary() {
-  const sides = SIDES.slice(0, S.n); const a = S.stats.A, b = S.stats.B, cA = cfgOf("A"), cB = cfgOf("B");
-  let h = "";
-  if (a && b && cA && cB && (a.usd || b.usd)) {
-    const d = b.usd ? (b.usd - a.usd) / b.usd : 0;
-    h += `<span class="hero ${Math.abs(d) < 0.005 ? "" : d > 0 ? "good" : "bad"}">${esc(cA.short || cA.label)} ${Math.abs(d) < 0.005 ? "±0" : (d > 0 ? "−" : "+") + (Math.abs(d) * 100).toFixed(0)}%</span><span>vs ${esc(cB.short || cB.label)} so far: <b>${usd(a.usd)}</b> vs <b>${usd(b.usd)}</b> · ${tok(a.actor + a.writer)} vs ${tok(b.actor + b.writer)} tokens · ${a.steps} vs ${b.steps} steps · ${a.resolved}/${a.tasks} vs ${b.resolved}/${b.tasks} resolved</span>`;
-  } else h += `<span class="muted">Press ▶ Play all — counters tick per step at emulated real-time speed; cost is priced by the model that actually served each call.</span>`;
-  const rows = sides.map(side => { const c = cfgOf(side), ss = sessionsFor(side); if (!c || !ss.length) return ""; const models = {}; ss.forEach(s => Object.entries(s.models || {}).forEach(([m, k]) => models[m] = (models[m] || 0) + k));
-    return `<tr><td><span class="dot" style="background:${colColor(side) || COLOR[c.kind]};margin-right:6px"></span>${esc(c.short || c.label)}</td><td>${ss.filter(s => s.resolved).length}/${ss.length}</td><td>${ss.reduce((x, s) => x + (s.n_steps || 0), 0)}</td><td>${tok(ss.reduce((x, s) => x + (s.tokens || 0), 0))}</td><td><b>${usd(ss.reduce((x, s) => x + cost(s), 0))}</b></td><td class="muted" style="text-align:left">${esc(Object.entries(models).sort((p, q) => q[1] - p[1]).map(([m, k]) => m === "model not recorded" ? `${c.model} (${c.provider})` : `${m}×${k}`).join(", "))}</td></tr>`; }).join("");
-  if (rows) h += `<div class="tabwrap"><table class="tot"><thead><tr><th>whole chain (recorded)</th><th>resolved</th><th>steps</th><th>tokens</th><th>cost</th><th style="text-align:left">served by</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  const unverified = Object.entries(S.cfgs.prices || {}).filter(([k, v]) => !v.verified).map(([k]) => k);
-  if (S.pricing === "model") h += `<span class="muted">list prices per model (demo/model_prices.json); unverified rows: ${esc(unverified.join(", "))} — the router's usage page is the bill.</span>`;
-  if (S.jobs.length) h += `<span class="jobs">live: ${S.jobs.map(j => `${esc(j.config || j.arm)} ${esc(j.status)}${j.results ? ` (${j.results.length} graded)` : ""}`).join(" · ")}</span>`;
-  $("#sum").innerHTML = h;
+  const ks = visibleCols(), kvT = colTotals("kv");
+  const legend = `<span class="legend" title="step dots above each transcript"><span><i style="background:var(--status-good)"></i>command ok</span><span><i style="background:var(--status-bad)"></i>failed</span><span><i style="border:2px solid var(--status-bad);background:transparent"></i>loop</span><span><i style="background:var(--accent)"></i>submit</span></span>`;
+  // collapsed (default): the hero sentence + "details ▸"; expanded: the whole-chain table, the step-dot legend, the notes
+  let h = `<div class="fleft"><div class="fline"><span class="hero" id="hero">${heroHtml()}</span><button class="linkbtn ftog" id="ftog" type="button" aria-expanded="${S.footOpen}" aria-controls="sum">${S.footOpen ? "details ▾" : "details ▸"}</button></div><div class="fmore">${legend}</div></div>`;
+  const rows = ks.map(k => {
+    const T = colTotals(k), dot = `<span class="dot" style="background:${COLOR[k]}"></span>`;
+    if (!T) return `<tr data-kind="${k}"><td>${dot}${esc(kname(k))}</td><td class="mdl">${esc(modelText(k))}</td><td colspan="5" class="muted" style="text-align:left">${rcFailed(k) ? "couldn't load — try again" : "no run yet"}</td></tr>`;
+    // tokens vs KV: over the tasks both ran (failed sessions left out), as the sentence above; a column on another model gets none
+    const v = kvT && k !== "kv" ? vsKv(k) : null, r = v && !v.other && v.kv ? v.o / v.kv : null;
+    const vs = r != null ? `<td class="${r > 1.005 ? "more" : r < 0.995 ? "less" : ""}" title="${esc(kname(k))} used ${r.toFixed(2)}× the tokens of Knowledge Vault${v.over}">${r.toFixed(r >= 10 ? 0 : r >= 1 ? 1 : 2)}×</td>`
+      : v && v.other ? `<td class="muted" title="${esc(kname(k))} ran with another model (${esc(v.other)}), so its tokens say nothing about memory">–</td>` : `<td class="muted">–</td>`;
+    return `<tr data-kind="${k}"><td>${dot}${esc(kname(k))}</td><td class="mdl" title="${esc(modelText(k, true))}">${esc(modelText(k))}</td><td>${T.graded ? `${T.resolved}/${T.n}` : `<span class="muted" title="sandbox tasks have no tests to grade">–</span>`}</td><td>${T.steps}</td><td class="tk" data-tokens="${T.tokens}" title="${T.tokens.toLocaleString("en-US")} tokens over ${T.n} task${T.n === 1 ? "" : "s"}"><b>${mtok(T.tokens)}</b></td>${vs}<td>${usd(T.usd)}</td></tr>`;
+  }).join("");
+  h += `<div class="tabwrap fmore"><table class="tot"><thead><tr><th>whole ${project() ? "project" : "chain"}</th><th class="mdl">model</th><th>resolved</th><th>steps</th><th>tokens</th><th title="tokens of each column divided by Knowledge Vault's, over the tasks both ran">tokens vs KV</th><th>cost</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const unverified = Object.entries(S.cfgs.prices || {}).filter(([, v]) => !v.verified).map(([k]) => k);
+  if (S.pricing === "model") h += `<span class="muted footnote fmore">cost: list prices per model (demo/model_prices.json; unverified rows: ${esc(unverified.join(", "))}); recorded sessions use the price row ${esc(S.price)} — the router's usage page is the bill.</span>`;
+  if (S.jobs.length) h += `<span class="jobs fmore">Live runs: ${S.jobs.map(j => `${esc(kname(j.kind))}${j.model ? ` (${esc(j.model)})` : ""} ${esc(jobWord(j.status).toLowerCase())}${j.results && !j.custom ? `, ${j.results.length} task${j.results.length === 1 ? "" : "s"} graded` : ""}`).join(" · ")}</span>`;
+  const f = $("#sum"); f.innerHTML = h; f.classList.toggle("open", S.footOpen);
+  $("#ftog").onclick = () => { S.footOpen = !S.footOpen; store.set("kv-cmp-foot", S.footOpen ? "1" : "0"); renderSummary(); };
 }
 
 // ---------------------------------------------------------------- jump to a step (click on a dot / task label)
-async function jumpTo(side, order, idx) {
-  const p = S.players[side], c = cfgOf(side); if (!p || !c) return;
-  if (p.sess && p.sess.order === order) { p.seek(idx); return; }
+/** idx = steps to reveal (a dot: up to and including it; a task label: 0); null = the task shown whole and counted, as ⇥ does (memory-view rows). */
+async function jumpTo(k, order, idx = null) {
+  const p = S.players[k]; if (!p || jobOfCol(k) || S.feeds[k]?.on) return;
+  if (status.hint) status("");
+  const src = colSrc(k);
+  // the task on screen: a memory-view row shows it whole and counts it, also before any playback (as ⇥ does)
+  if (p.sess && p.sess.order === order) { if (idx != null) p.seek(idx); else if (!p.done) p.showAll(); return; }
   // another task: counters for the tasks before it = their recorded totals (steps, tokens, cost, resolved)
   p.pause(); p.resetCum();
-  for (const s of sessionsFor(side)) if (s.order < order) { p.cum.steps += s.n_steps || 0; p.cum.actor += s.tokens || 0; p.cum.usd += cost(s); p.cum.tasks += 1; if (s.resolved) p.cum.resolved += 1; }
-  const ok = await p.load({ run: runIdOf(c), arm: armOf(c), cid: S.cid, order });
-  if (ok) p.seek(idx);
+  for (const s of sessionsFor(k)) if (s.order < order) { p.cum.steps += s.n_steps || 0; p.cum.actor += s.tokens || 0; p.cum.usd += cost(s); p.cum.tasks += 1; if (s.resolved) p.cum.resolved += 1; }
+  const ok = await p.load({ run: src.run, arm: armOf(k), cid: S.cid, order });
+  if (ok) { if (idx != null) p.seek(idx); else p.showAll(); }
 }
 
-// ---------------------------------------------------------------- controls
-function each(fn) { for (const s of SIDES.slice(0, S.n)) if (S.players[s]?.sess) fn(S.players[s]); }
-function anyOn() { return SIDES.some(s => S.players[s]?.on); }
-function setPlayBtn() { $("#play").textContent = anyOn() ? "Pause all" : "▶ Play all"; $("#play").classList.toggle("on", anyOn()); }
-$("#play").onclick = () => { if (anyOn()) each(p => p.pause()); else each(p => p.play()); setTimeout(setPlayBtn, 300); };
-$("#step").onclick = () => { each(p => p.step()); setPlayBtn(); };
-$("#restart").onclick = async () => { for (const s of SIDES.slice(0, S.n)) await loadSide(s); renderSummary(); setPlayBtn(); };
-$("#end").onclick = () => { each(p => p.showAll()); setPlayBtn(); };
+// ---------------------------------------------------------------- playback controls
+function each(fn) { for (const k of visibleCols()) if (S.players[k]?.sess) fn(S.players[k]); }
+function anyOn() { return visibleCols().some(k => S.players[k]?.on); }
+const PB = ["#play", "#step", "#restart", "#end"], LIVE_TIP = "Watching live runs — ▶ replays them when they end";
+/** ▶ Play all ↔ Pause all. While the columns that have something to show all stream live runs, playback has nothing to act on:
+ *  the four buttons are disabled and say why (also while the page loads, and while a live run that just ended is saved and its
+ *  columns reload: S.ending / pollJobs.busy — ↺ then would find no sessions and offer ▶ Run live over the run just saved). */
+function setPlayBtn() {
+  const on = anyOn(), live = visibleCols().some(k => S.feeds[k]?.on);
+  const off = !!S.booting || S.ending > 0 || !!pollJobs.busy || (live && !S.replayPending && !visibleCols().some(k => S.players[k]?.sess));
+  for (const id of PB) { const b = $(id); if (b.dataset.tip == null) b.dataset.tip = b.title || ""; b.disabled = off; b.title = off && !S.booting ? LIVE_TIP : b.dataset.tip; }
+  $("#play").textContent = on ? "Pause all" : "▶ Play all"; $("#play").classList.toggle("on", on);
+}
+// after a live run the columns still show the finished live view; the first playback action swaps in the replay
+async function ensureReplay() { if (status.hint) status(""); if (!S.replayPending) return; S.replayPending = false; await loadAll(); }
+/** ↺: every column rewinds to the very start of its first task — no step shown yet, the tallies at zero — so ▶ Play all replays the
+ *  chain from the beginning. (Loading alone shows the first task whole, the page's resting state, which looks like nothing happened.) */
+async function restartAll() { if (status.hint) status(""); S.replayPending = false; await Promise.all(visibleCols().map(loadCol)); each(p => p.restart()); renderSummary(); setPlayBtn(); }
+const nextOf = p => p.opts.nextOrder ? p.opts.nextOrder(p) : null;          // null without "Play the whole chain"
+const loaded = () => visibleCols().map(k => S.players[k]).filter(p => p?.sess);
+$("#play").onclick = async () => {
+  await ensureReplay();
+  if (anyOn()) each(p => p.pause());
+  else {
+    const ps = loaded();
+    if (ps.length && ps.every(p => p.done && !nextOf(p))) {        // the end (of the chain, or of the task without "Play the whole chain"): from the start
+      if (S.auto) await restartAll(); else each(p => p.seek(0));
+      each(p => p.play());
+    } else for (const p of ps) { if (!p.done) p.play(); else { const nx = nextOf(p); if (nx && await p.load(nx)) p.play(); } }   // a finished task (⇥) moves on
+  }
+  setTimeout(setPlayBtn, 300);
+};
+$("#step").onclick = async () => {
+  await ensureReplay();
+  for (const p of loaded()) { if (!p.done) p.step(); else { const nx = nextOf(p); if (nx && await p.load(nx)) p.step(); } }
+  setPlayBtn();
+};
+$("#restart").onclick = async () => { await restartAll(); if (loaded().length) status("Back to the start of task 1 — ▶ Play all replays it.", false, true); };
+$("#end").onclick = async () => {          // completes each column's task; a column already done moves on to its next task, shown in full
+  await ensureReplay();
+  for (const k of visibleCols()) {
+    const p = S.players[k]; if (!p?.sess) continue;
+    if (!p.done) { p.showAll(); continue; }
+    const nx = nextSess(k, p.sess.order), src = colSrc(k);
+    if (nx && await p.load({ run: src.run, arm: armOf(k), cid: S.cid, order: nx.order })) p.showAll();
+  }
+  setPlayBtn();
+};
 $("#speed").onchange = () => each(p => p.speed = +$("#speed").value);
 $("#auto").onchange = () => S.auto = $("#auto").checked;
 setInterval(setPlayBtn, 1000);
-
-// ---------------------------------------------------------------- live runs of every column
-$("#runlive").onclick = async () => {
-  if (!S.cid) return;
-  const cfgs = SIDES.slice(0, S.n).map(cfgOf).filter(Boolean).map(c => c.id === "__custom" ? { kind: c.kind, provider: c.provider, model: c.model, short: c.short } : c.id);
-  $("#livest").className = "st"; $("#livest").textContent = "starting…";
-  try { const r = await api("api/configs/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cid: S.cid, configs: cfgs, step_limit: +$("#steps").value || 100 }) });
-    S.jobs = r.jobs; $("#livest").textContent = `${r.jobs.length} run${r.jobs.length === 1 ? "" : "s"} started${r.errors.length ? " · " + r.errors.join("; ") : ""}`; if (r.errors.length) $("#livest").className = "st err"; renderSummary();
-    for (const side of SIDES.slice(0, S.n)) { const c = cfgOf(side); if (!c) continue; const job = r.jobs.find(j => j.config === (c.id === "__custom" ? c.short : c.id) && !S.feedsClaimed?.has(j.id)); if (job) { (S.feedsClaimed ||= new Set()).add(job.id); watchLive(side, job); } }
-    if (r.jobs.length) pollJobs(); }
-  catch (e) { $("#livest").className = "st err"; $("#livest").textContent = e.message; }
-};
-// a column follows its harness job: the transcript grows step by step, the strip shows the live counters
-function watchLive(side, job) {
-  const p = S.players[side]; if (p) { p.pause(); p.sess = null; }
-  const c = cfgOf(side), color = colColor(side) || COLOR[job.kind]; $(`#dot${side}`).style.background = color; $(`#col${side}`).style.setProperty("--arm", color);
-  const priceOf = (prompt, completion, model) => { const pr = (model && priceFor(model)) || priceRow(); return ((prompt || 0) * pr.input + (completion || 0) * pr.output) / 1e6; };
-  const feed = new LiveFeed($(`#tr${side}`), job, {
-    onTask: t => setTaskPin($(`#pin${side}`), t),
-    onState: i => {
-      const s = i.sess, model = s && s.turns.length ? s.turns[s.turns.length - 1].model : null; let usdNow = 0; if (s) for (const t of s.turns) if (t.usage) usdNow += priceOf(t.usage.prompt, t.usage.completion, t.model);
-      const res = i.results.map(r => `<span class="${r.resolved === true ? "ok" : r.resolved === false ? "no" : "na"}" title="task ${r.order} · ${esc(r.exit || "")} · ${r.n_steps ?? "?"} steps">${r.resolved === true ? "✓" : r.resolved === false ? "✗" : "·"}</span>`).join(" ");
-      $(`#task${side}`).innerHTML = `<span class="live-dot ${i.status === "running" ? "on" : ""}" style="margin-right:6px"></span>${i.status === "running" ? "live" : esc(i.status)} · task ${i.order ?? "–"}${i.n ? ` of ${i.n}` : ""} · step ${i.step}`;
-      $(`#res${side}`).innerHTML = `<b>${esc(i.phase)}</b>`;
-      $(`#models${side}txt`).textContent = `${c ? c.provider : job.provider} · ${c ? c.model : job.model}${model ? ` → served by ${model}` : ""}`;
-      $(`#ctr${side}`).innerHTML = `<div class="stat"><span class="big">${usd(usdNow)}</span><span><b>${i.step}</b> steps</span><span><b>${tok(i.prompt + i.completion)}</b> tokens <span class="muted">(this task, actor)</span></span><span><b>${i.results.filter(r => r.resolved).length}</b>/${i.done.length} resolved <span class="lres">${res}</span></span><span class="muted">${fmtClock(i.elapsed)} wall · ${i.n_calls} ledger calls</span></div>`;
-      $(`#bar${side}`).style.width = i.n ? `${Math.min(100, 100 * (i.done.length + (i.order != null ? 0.5 : 0)) / i.n)}%` : "0%";
-    },
-    onDone: async () => { if (Object.values(S.feeds).every(f => !f.on)) { await pollJobs(); } },
-  });
-  S.feeds[side] = feed.start();
+/** "Same model everywhere" only matters once a column runs on a model endpoint (on the recorded run there is nothing to keep in step). */
+function setSameVis() {
+  const lv = visibleCols().filter(k => LIVE_KINDS.includes(k)), only = KINDS.filter(k => !LIVE_KINDS.includes(k)).map(kname);
+  $("#samewrap").hidden = S.src !== "example" || S.view === "memory" || lv.length < 2 || !lv.some(k => colSrc(k).api !== REC);
+  $("#samewrap").title = `Same model in all columns: changing the API or model in one column changes every column that can run it${only.length ? ` (${only.join(" and ")} only exist${only.length === 1 ? "s" : ""} in the recorded paper run)` : ""}`;
 }
+
+// ---------------------------------------------------------------- live runs (Knowledge Vault / Mem0 / No memory columns with an endpoint)
+/** A job's status in words: "Running", "Finished", "Stopped", "Ended with an error" (the server says done / stopped / exit N) */
+const jobWord = st => st === "running" ? "Running" : st === "done" ? "Finished" : st === "stopped" ? "Stopped" : "Ended with an error";
+/** A running job a column streams: its run of this chain (saved live runs: also the run a new live run of the model lands in). */
+const colRuns = k => { const s = colSrc(k); return [s.run, s.next].filter(Boolean); };
+const jobOfCol = k => S.jobs.find(j => j.status === "running" && j.kind === k && j.cid === S.cid && colRuns(k).includes(j.run_id));
+/** Columns the bar's ▶ Run live runs: an endpoint chosen, no session of this chain yet, not running (a partial run is kept:
+ *  its strip offers "run again"). */
+const lacking = () => project() ? [] : visibleCols().filter(k => LIVE_KINDS.includes(k) && colSrc(k).api !== REC && !jobOfCol(k) && !sessionsFor(k).length && !rcFailed(k));
+/** ▶ Run live shows only when it can start something now (a column on a model endpoint lacks a run of this chain), never next to ■ Stop. */
+function setRunBtn() {
+  const b = $("#runlive"), can = project() || !S.meta || S.meta.live_enabled === false ? [] : lacking().filter(k => liveCheck(k).ok);
+  b.hidden = !can.length || S.jobs.some(j => j.status === "running"); b.disabled = !!runLive.busy;
+  b.title = can.length ? `Run ${can.map(kname).join(", ")} live on this chain, each with its column's API and model. The model really works in a sandbox — about $1–5 of router credit per column.` : "";
+}
+async function runLive(ks) {
+  ks = ks.filter(k => liveCheck(k).ok); if (!ks.length || !S.cid || runLive.busy) return;
+  runLive.busy = true; setRunBtn(); status("Starting…");
+  try {
+    const r = await api("api/configs/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cid: S.cid,
+      configs: ks.map(k => { const s = colSrc(k); return { kind: k, provider: s.api, model: s.model, short: `${k} · ${s.model}` }; }), step_limit: +$("#steps").value || 100, memory_system: kvVersion() || null }) });
+    S.jobs = [...S.jobs.filter(j => !r.jobs.some(x => x.id === j.id)), ...r.jobs];
+    for (const j of r.jobs) if (visibleCols().includes(j.kind) && jobOfCol(j.kind)?.id === j.id) watchLive(j.kind, j);
+    // a column that is running already (another tab or the Agent page started it, so the server refused a second run): stream that run
+    let adopted = [];
+    if (r.errors.length) { await adoptJobs(); adopted = ks.filter(k => !r.jobs.some(j => j.kind === k) && jobOfCol(k) && !S.feeds[k]?.on); for (const k of adopted) watchLive(k, jobOfCol(k)); }
+    const errs = adopted.length >= r.errors.length ? [] : r.errors;
+    const head = [r.jobs.length ? `${r.jobs.length} live run${r.jobs.length === 1 ? "" : "s"} started` : adopted.length ? "" : "No live run started",
+      adopted.length ? `${andList(adopted.map(kname))} ${adopted.length === 1 ? "was" : "were"} already running — showing ${adopted.length === 1 ? "it" : "them"} live` : ""].filter(Boolean).join(" · ");
+    status(`${head}${errs.length ? " · " + errs.join("\n") : ""}`, errs.length > 0);
+    renderSummary(); if (r.jobs.length) pollJobs();
+  } catch (e) { status(e.message, true); }
+  finally { runLive.busy = false; setStopBtn(); }
+}
+$("#runlive").onclick = () => runLive(lacking());
+/** Running jobs of this page's columns (started here earlier, or before a reload) join S.jobs so their column streams them. */
+async function adoptJobs() {
+  const js = await api("api/live").catch(() => []); let n = 0;
+  for (const j of js) if (j.status === "running" && !S.jobs.some(x => x.id === j.id) && visibleCols().some(k => k === j.kind && j.cid === S.cid && colRuns(k).includes(j.run_id))) { S.jobs.push(j); n++; }
+  if (n) pollJobs();
+}
+/** ■ Stop (all) in the top bar and each running column's own ■ Stop; ▶ Run live and playback follow. */
+function setStopBtn() {
+  const run = S.jobs.filter(j => j.status === "running"); $("#stoplive").hidden = !run.length;
+  $("#stoplive").title = run.length ? `Stop ${run.length} live run${run.length === 1 ? "" : "s"} (click twice). Tasks already graded are kept.` : "";
+  for (const k of visibleCols()) {
+    const b = $(`#stop-${k}`); if (!b) continue; const j = jobOfCol(k);
+    if (j) { if (b.hidden || b.dataset.job !== j.id) { b.hidden = false; b.dataset.job = j.id; b.title = `Stop this column's live run (click twice). Tasks already graded are kept.`;
+        armStop(b, async () => { await stopJobs([j.id]); status(`Stopping ${kname(k)}…`); S.stopped = true; await pollJobs(); }); } }
+    else { clearTimeout(b._t); b.hidden = true; b.dataset.job = ""; b.classList.remove("armed"); }
+  }
+  setRunBtn(); setPlayBtn();
+}
+function watchLive(k, job) {
+  const p = S.players[k]; if (p) { p.pause(); p.sess = null; }
+  if (S.feeds[k]) { S.feeds[k].stop(); S.feeds[k].detach(); delete S.feeds[k]; }
+  const tr = $(`#tr-${k}`); if (!tr) return;
+  const src = colSrc(k);
+  const priceOf = (prompt, completion, model) => { const pr = (model && priceFor(model)) || priceRow(); return ((prompt || 0) * pr.input + (completion || 0) * pr.output) / 1e6; };
+  // the footer follows the run: a graded task is in the saved run (runchains) now
+  const refresh = async () => { for (const r of new Set([src.run, job.run_id])) delete S.rc[rcKey(r)]; await loadRuns(); renderSummary(); };
+  let taskRefresh = null;
+  $(`#res-${k}`).innerHTML = "";
+  if (S.src === "saved") { fillColSelects(k); renderNote(); }          // "<model> · running live", and no longer "No run yet"
+  const feed = new LiveFeed(tr, job, {
+    onTask: t => setPin(k, t),
+    onState: i => {
+      if (S.feeds[k] !== feed) return;
+      const s = i.sess, model = s && s.turns.length ? s.turns[s.turns.length - 1].model : null; let usdNow = 0; if (s) for (const t of s.turns) if (t.usage) usdNow += priceOf(t.usage.prompt, t.usage.completion, t.model);
+      const res = i.results.map(r => `<span class="${r.resolved === true ? "ok" : r.resolved === false ? "no" : "na"}" title="task ${r.order}: ${r.resolved === true ? "resolved" : r.resolved === false ? "not resolved" : "not graded"} · ${r.n_steps ?? "?"} steps">${r.resolved === true ? "✓" : r.resolved === false ? "✗" : "·"}</span>`).join(" ");
+      // whole-run totals = graded tasks (their saved sessions) + the task in progress
+      const fin = i.finished || [], ft = f => (f.sess && f.sess.tok) || {};
+      const runUsd = fin.reduce((a, f) => a + ((S.pricing === "model" ? costOf(ft(f)) : ft(f).usd) || 0), 0) + usdNow;
+      const runSteps = fin.reduce((a, f) => a + ((f.sess && f.sess.turns.length) || 0), 0) + (i.order != null ? i.step : 0);
+      const runTok = fin.reduce((a, f) => { const t = ft(f); return a + (t.actor_prompt || 0) + (t.actor_completion || 0) + (t.writer_prompt || 0) + (t.writer_completion || 0); }, 0) + (i.order != null ? i.prompt + i.completion : 0);
+      const live = i.status === "running", n = i.n, graded = i.done.length;
+      // the task row says where the run is (the status card in the transcript says what it is doing): "● live · task 1/3 · step 7"; afterwards "Stopped · 2 of 3 tasks graded"
+      $(`#task-${k}`).innerHTML = live ? `<span class="live-dot on"></span>live${i.order != null ? ` · task ${i.order}${n ? `/${n}` : ""} · step ${i.step}` : ""}`
+        : `${jobWord(i.status)}${job.custom ? "" : ` · ${graded}${n ? ` of ${n}` : ""} task${(n || graded) === 1 ? "" : "s"} graded`}`;
+      const sv = model && model !== src.model ? model : ""; if (sv !== S.served[k]) { S.served[k] = sv; pinTip(k); }
+      $(`#ctr-${k}`).innerHTML = `<div class="sline"><span class="stat" title="whole run so far: graded tasks + the task in progress${i.order != null && live ? ` (task ${i.order}: ${usd(usdNow)})` : ""} · ${fmtClock(i.elapsed)} since it started"><span class="muted s-wc">so far</span><span class="big">${mtok(runTok)}</span><span class="muted u">tokens</span><b class="s-usd">${usd(runUsd)}</b><span class="s-steps"><b>${runSteps}</b> step${runSteps === 1 ? "" : "s"}</span>${graded && !job.custom ? `<span><b>${i.results.filter(r => r.resolved).length}</b>/${graded} resolved <span class="lres">${res}</span></span>` : ""}<span class="muted s-clock">${fmtClock(i.elapsed)}</span></span></div>`;
+      $(`#bar-${k}`).style.width = n ? `${Math.min(100, 100 * (graded + (i.order != null ? 0.5 : 0)) / n)}%` : "0%";
+    },
+    onTaskDone: async () => { if (S.feeds[k] === feed) { taskRefresh = refresh(); await taskRefresh; } },
+    onDone: async () => {
+      if (S.feeds[k] !== feed) return;
+      // until the run's sessions are read again (here and in pollJobs) playback stays off: ↺ meanwhile would find none
+      S.ending++; setPlayBtn();
+      try {
+        const i = feed.info();
+        // this column's job has ended: S.jobs says so now (its strip can offer "run again"); the last graded task's refresh lands first
+        const fresh = await api(`api/live/${job.id}?tail=3`).catch(() => null);
+        S.jobs = S.jobs.map(j => j.id !== job.id ? j : fresh && fresh.status !== "running" ? fresh : { ...j, status: i.status });
+        await taskRefresh; await refresh();
+        if (S.feeds[k] !== feed) return;
+        // the run ended before the next task started: the task row names the last graded task, not one that never ran
+        const pinned = S.pinT[k]?.order, last = i.finished[i.finished.length - 1];
+        if (last && pinned != null && !i.done.includes(pinned) && !(i.sess && i.sess.order === pinned && i.sess.turns.length)) {
+          pinSess(k, last.sess); const cur = $(`#tr-${k} [data-lf="cur"]`); if (cur) cur.innerHTML = "";
+        }
+        // the strip shows the run's saved totals, the same numbers as the footer; graded tasks are always saved, so read the runs again
+        // if they don't show yet; "nothing was saved" only when no task was graded
+        if (!doneStrip(k) && i.done.length) { loadRuns.metaAt = 0; await refresh(); if (S.feeds[k] === feed) doneStrip(k); }
+        else if (!i.done.length) { const box = $(`#ctr-${k}`); if (box) box.innerHTML = `<div class="sline"><span class="muted">${jobWord(i.status)} before its first task was graded — nothing was saved</span></div>`; }
+        if (S.src === "saved") fillColSelects(k);
+        setStopBtn(); if (Object.values(S.feeds).every(f => !f.on)) await pollJobs();
+      } finally { S.ending--; setPlayBtn(); }
+    },
+  });
+  S.feeds[k] = feed.start();
+  setStopBtn();
+}
+armStop($("#stoplive"), async () => {
+  const ids = S.jobs.filter(j => j.status === "running").map(j => j.id); if (!ids.length) return;
+  try { const r = await stopJobs(ids); status(`Stopping ${r.stopped.length} live run${r.stopped.length === 1 ? "" : "s"}…`); S.stopped = true; }
+  catch (e) { status(e.message, true); }
+  await pollJobs();
+});
 async function pollJobs() {
-  const js = await Promise.all(S.jobs.map(j => api(`api/live/${j.id}?tail=3`).then(x => ({ ...x, config: j.config })).catch(() => j)));
-  S.jobs = js; renderSummary();
-  if (js.some(j => j.status === "running")) { setTimeout(pollJobs, 6000); return; }
-  if (Object.values(S.feeds).some(f => f.on)) return;                      // a column is still rendering its last task
-  S.rc = {}; S.cfgs = await api("api/configs"); await loadAll(); $("#livest").textContent = "live runs finished — loaded";
+  clearTimeout(pollJobs._t);
+  const js = await Promise.all(S.jobs.map(j => j.status !== "running" ? j : api(`api/live/${j.id}?tail=3`).catch(() => j)));
+  S.jobs = js; renderSummary(); setStopBtn();
+  if (js.some(j => j.status === "running")) { pollJobs._t = setTimeout(pollJobs, S.stopped ? 2000 : 6000); return; }
+  if (Object.values(S.feeds).some(f => f.on) || pollJobs.busy) return;     // a column is still rendering its last task
+  pollJobs.busy = true; setPlayBtn();                                      // playback off while the runs are read again (setPlayBtn)
+  try {
+    S.rc = {}; S.rcErr = {}; sessionCache.clear(); memCache.clear(); titleCache.clear();
+    const m = await api("api/meta").catch(() => null); if (m) S.meta.runs = m.runs;   // the model lists put models with saved runs first
+    await loadSaved(); fillWhat();                                                   // ⚙ What to compare › Saved live runs has the new runs
+    for (const k of visibleCols()) fillColSelects(k);
+    await loadRuns(); S.replayPending = true; renderNote(); renderSummary(); setRunBtn(); await refreshEmpty();
+    for (const k of visibleCols()) if (S.feeds[k] && !S.feeds[k].on) doneStrip(k);
+    const how = js.some(j => j.status === "stopped") ? "stopped — finished tasks are kept" : js.every(j => j.status === "done") ? "finished" : "ended — one of them with an error";
+    status(`Live runs ${how}. ▶ Play all replays them.`, false, true); S.stopped = false;
+  } finally { pollJobs.busy = false; setPlayBtn(); }
+}
+
+// status line: clipped messages expand on click (the new message after a click collapses again: className is reset)
+{ const st = $("#livest");
+  const measure = () => { if (!st.classList.contains("open")) st.classList.toggle("clip", st.scrollWidth > st.clientWidth + 1); st.title = st.textContent; };
+  new MutationObserver(measure).observe(st, { childList: true, characterData: true, subtree: true }); window.addEventListener("resize", measure);
+  const toggle = () => { if (!st.classList.contains("clip") && !st.classList.contains("open")) return; const o = !st.classList.contains("open"); st.classList.toggle("open", o); if (o) st.classList.remove("clip"); else measure(); };
+  st.addEventListener("click", toggle); $("#stx").onclick = () => status(""); st.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } }); }
+
+// ---------------------------------------------------------------- gear panel + details switch + columns
+{ const btn = $("#gearbtn"), panel = $("#gearpanel"); const setOpen = o => { panel.hidden = !o; btn.setAttribute("aria-expanded", o); };
+  btn.onclick = e => { e.stopPropagation(); setOpen(panel.hidden); };
+  document.addEventListener("click", e => { if (!panel.hidden && !e.target.closest("#gear")) setOpen(false); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !panel.hidden) { setOpen(false); btn.focus(); } });
+  let det = false; try { det = localStorage.getItem("kv-details") === "1"; } catch {}
+  const setDet = d => { document.body.classList.toggle("details", d); $("#details").checked = d; try { localStorage.setItem("kv-details", d ? "1" : "0"); } catch {} for (const k in S.pinT) pinTip(k); };
+  $("#details").onchange = () => setDet($("#details").checked); setDet(det); }
+function setGearDot() {          // green: a model endpoint answers, so live runs can start
+  const dot = $("#epdot"); if (!S.provs) { dot.className = "gdot"; return; }
+  const ok = S.provs.filter(p => p.ok);
+  dot.className = "gdot " + (!ok.length || S.meta.live_enabled === false ? "err" : ok.some(p => p.message) ? "warn" : "ok");
+  S.epNote = ok.length ? `live runs: ${ok.map(p => p.label).join(", ")} ready` : "no model endpoint answers: live runs are not possible"; setGearTitle();
+  // the columns' API lists leave out the endpoints that don't answer: name them here
+  const down = S.provs.filter(p => !p.ok), list = ps => ps.map(p => esc(p.label)).join(", ");
+  $("#epnote").innerHTML = S.meta.live_enabled === false ? "Live runs are turned off on this server." : `${ok.length ? `Ready: ${list(ok)}.` : "No model endpoint answers right now."}${down.length ? ` Not answering right now: ${list(down)}.` : ""}`;
+}
+const parseCols = s => { const ks = String(s || "").split(",").map(x => x.trim()).filter(x => KINDS.includes(x) && x !== "kv"); return ks.length ? KINDS.filter(k => k === "kv" || ks.includes(k)) : null; };   // KV + at least one other
+function renderColChecks() {
+  const p = !!project();
+  $("#colchecks").innerHTML = OPTIONAL.map(k => `<label class="check colck"><input type="checkbox" data-col="${k}"${(p ? visibleCols() : S.cols).includes(k) ? " checked" : ""}${p ? " disabled" : ""}><span class="dot" style="background:${COLOR[k]}"></span><span class="ck-t"><span><b>${esc(kname(k))}</b>${LIVE_KINDS.includes(k) ? "" : `<span class="tag" title="only in the recorded paper run: it can't run live in the demo">recorded only</span>`}</span><span class="gnote">${esc(knote(k))}</span></span></label>`).join("");
+  $("#colnote").textContent = p ? "Your sandbox project shows the memory systems it ran with." : "Knowledge Vault (ours) is always the left column.";
+  document.querySelectorAll("#colchecks input").forEach(i => i.onchange = onColsChange);
+  syncColLock();
+}
+/** The last ticked method can't be unticked: a comparison needs a second column. */
+function syncColLock() {
+  const ins = [...document.querySelectorAll("#colchecks input")], on = ins.filter(i => i.checked), p = !!project();
+  for (const i of ins) { const lock = !p && on.length === 1 && i.checked; i.disabled = p || lock; i.closest("label").title = lock ? "Keep at least one method to compare with" : ""; }
+}
+/** ⚙ Columns changed. The chain list follows the columns: if the open chain no longer qualifies, move to the top one and say why. */
+async function onColsChange() {
+  S.cols = KINDS.filter(k => k === "kv" || document.querySelector(`#colchecks input[data-col="${k}"]`)?.checked);
+  store.set("kv-cmp-cols", S.cols.join(",")); syncColLock();
+  let msg = "";
+  const ch = scChain(S.cid), list = chainList();
+  if (S.src === "example" && ch && !list.some(x => x.ch.cid === S.cid)) {
+    const why = verdict(ch), top = list[0]?.ch;
+    if (top) { msg = `${repoName(S.cid)}: ${why.text} — switched to ${repoName(top.cid)} (${top.title})`; S.cid = top.cid; }
+    else msg = `No showcase chain where Knowledge Vault saves tokens against all of these columns — staying on ${repoName(S.cid)}`;
+  }
+  buildColumns(); for (const k of visibleCols()) fillColSelects(k);
+  await loadAll(); status(msg);
+}
+$("#same").onchange = async () => { S.same = $("#same").checked; store.set("kv-cmp-same", S.same ? "1" : "0"); if (S.same) await setApi("kv", S.api.kv.api, S.api.kv.model); };
+/** The URL keeps the view (what is compared: chain / saved live runs of a model / project, columns, shared API/model, memory
+ *  view), so a reload or a shared link opens the same comparison. ?saved=<model> = ⚙ What to compare › Saved live runs. */
+function syncUrl() {
+  const q = new URLSearchParams(location.search), ex = S.src === "example";
+  for (const x of ["a", "b", "c"]) q.delete(x);          // old preset links are translated once (boot)
+  if (S.cid) q.set("cid", S.cid); else q.delete("cid");
+  if (!project()) q.set("cols", S.cols.join(","));
+  if (S.src === "saved") q.set("saved", S.savedModel || ""); else q.delete("saved");
+  const lv = LIVE_KINDS.filter(k => visibleCols().includes(k)).map(k => S.api[k]);
+  if (ex && lv.length && lv[0].api !== REC && lv.every(c => c.api === lv[0].api && c.model === lv[0].model)) { q.set("api", lv[0].api); q.set("model", lv[0].model); } else { q.delete("api"); q.delete("model"); }
+  if (S.view === "memory") q.set("view", "memory"); else q.delete("view");
+  // ?run=: a recorded run other than the paper run (old v2 links); saved live runs: the run the columns come from, when it was picked
+  if (ex && S.recRun) q.set("run", S.recRun); else if (S.src === "saved" && S.savedRun && colSrc("kv").base === S.savedRun) q.set("run", S.savedRun); else q.delete("run");
+  history.replaceState(null, "", `${location.pathname}?${q.toString().replace(/%2C/g, ",")}`);
+  // the Agent page opens this chain (ChainSWE chains) or project (Your sandbox); saved live runs: the left-most column's live run
+  const lr = S.src === "saved" && visibleCols().map(k => [k, colSrc(k).saved]).find(([, e]) => e && !e.run.startsWith("cfg__"));
+  $("#nav-agent").href = lr ? `./?src=chains&cid=${enc(S.cid)}&kind=${lr[0]}&run=${enc(lr[1].run)}` : S.cid ? `./?cid=${enc(S.cid)}` : "./";
 }
 
 // ---------------------------------------------------------------- boot
-(async () => {
-  [S.meta, S.cfgs] = await Promise.all([api("api/meta"), api("api/configs")]); S.price = S.meta.default_price_row;
-  S.provs = await api("api/providers").catch(() => []);
-  $("#price").innerHTML = Object.entries(S.meta.price_rows).map(([k, v]) => `<option value="${esc(k)}">${esc(k)} · $${v.input}/$${v.output} per M</option>`).join(""); $("#price").value = S.price;
+/** The server did not answer the first call: say so plainly, keep the controls off, offer a reload. */
+function bootFailed() {
+  S.booting = true; $("#memview").hidden = true; $("#cols").hidden = false; $("#cols").style.setProperty("--ncols", 1); $("#gearpanel").hidden = true;
+  $("#cols").innerHTML = `<div class="bootfail" role="alert"><h2>Couldn't reach the demo server</h2><p>It may be restarting — try again in a moment.</p><button class="btn primary" id="retry" type="button">Try again</button></div>`;
+  document.querySelectorAll("header.top button, header.top select, header.top input").forEach(e => { if (!e.closest(".pnav")) e.disabled = true; });
+  $("#retry").onclick = () => location.reload(); $("#retry").focus();
+}
+(async () => { try {
   const q = new URLSearchParams(location.search);
-  const pair = S.cfgs.default_pair || [], sc = S.cfgs.showcase || {};          // open on the showcase (configs.json) unless the URL says otherwise
-  S.sel = { A: q.get("a") || sc.a || pair[0], B: q.get("b") || sc.b || pair[1], C: q.get("c") || sc.c || (S.cfgs.configs[2] || {}).id };
-  if (q.get("c") || (!q.get("a") && sc.c)) S.n = 3; $("#ncols").value = S.n; S.cid = q.get("cid") || sc.cid || S.meta.default_cid || null;
-  buildColumns(); await loadAll();
-  $("#cid").onchange = async () => { S.cid = $("#cid").value; for (const s of SIDES.slice(0, S.n)) await loadSide(s); renderSummary(); };
-  $("#ncols").onchange = async () => { S.n = +$("#ncols").value; buildColumns(); await loadAll(); };
-  $("#pricing").onchange = async () => { S.pricing = $("#pricing").value; await loadAll(); };
-  $("#price").onchange = async () => { S.price = $("#price").value; S.rc = {}; await loadAll(); };
-  if (S.meta.live_enabled === false) $(".live").style.display = "none";
-  const ok = (S.provs || []).some(p => p.ok); $("#runlive").disabled = !ok; const warn = (S.provs || []).filter(p => p.ok && p.message).map(p => `${p.label}: ${p.message}`).join(" · ");
-  $("#livest").textContent = ok ? (warn ? "⚠ " + warn.slice(0, 200) : "") : "no model endpoint available for live runs";
-})();
+  [S.meta, S.cfgs, S.sc] = await Promise.all([api("api/meta"), api("api/configs").catch(() => ({ configs: [], prices: {} })), api("api/showcase").catch(() => null)]);
+  if (!S.sc) S.sc = { run: S.meta.default_run, margin: 0.2, default_cid: S.meta.default_cid, chains: [], kind_notes: NOTES, arms: { ...S.meta.arms, memop: "mem_memop", rawcat: "mem_rawcat" } };
+  S.price = S.meta.default_price_row;
+  if (Array.isArray(S.meta.live_kinds) && S.meta.live_kinds.length) LIVE_KINDS = KINDS.filter(k => S.meta.live_kinds.includes(k));
+  wireKvSetting($("#kvsys"), $("#kvsys-note"), S.meta);
+  setModelPrices(S.cfgs.prices);
+  const provsP = api("api/providers").catch(() => []);
+  $("#price").innerHTML = Object.entries(S.meta.price_rows).map(([k, v]) => `<option value="${esc(k)}">${esc(k)} · $${v.input}/$${v.output} per M</option>`).join(""); $("#price").value = S.price;
+  // columns: ?cols= > the saved choice > KV | Mem0 | No memory
+  S.cols = parseCols(q.get("cols")) || parseCols(store.get("kv-cmp-cols", "")) || DEFAULT_COLS.slice();
+  S.same = store.get("kv-cmp-same", "1") !== "0";
+  S.progOpen = store.get("kv-cmp-prog", "0") === "1"; S.footOpen = store.get("kv-cmp-foot", "0") === "1";
+  document.querySelector(".app").classList.toggle("prog-open", S.progOpen);
+  // old links (?a=kv_v3&b=mem0_v3&c=none_v3&cid=…): configs.json preset ids -> columns and their API / model
+  const legacy = ["a", "b", "c"].map(x => q.get(x)).filter(Boolean).map(id => (S.cfgs.configs || []).find(c => c.id === id)).filter(Boolean);
+  if (legacy.length) {
+    S.cols = KINDS.filter(k => k === "kv" || legacy.some(c => c.kind === k)); S.same = false;
+    for (const c of legacy) { if (c.recorded) { if (c.run_id && c.run_id !== S.sc.run) S.recRun = c.run_id; } else S.api[c.kind] = { api: c.provider, model: c.model }; }
+  }
+  const runQ = q.get("run");
+  if (runQ && !isLiveRun(runQ)) S.recRun = runQ;                       // another recorded run (old v2 links)
+  if (q.get("api") && q.get("model") && q.get("api") !== REC) for (const k of LIVE_KINDS) S.api[k] = { api: q.get("api"), model: q.get("model") };
+  $("#same").checked = S.same;
+  // what to compare: ?cid=<chain>&saved=<model> (its saved live runs with that model), ?cid=<chain>&run=<a live run> (that run's chain × model),
+  // ?cid=<sandbox project> (from the Agent page), ?cid=<chain> (a showcase chain, or any chain of the run), else the default showcase chain
+  const want = q.get("cid");
+  [S.projects] = await Promise.all([api("api/custom/projects").catch(() => []), loadSaved()]);
+  const viaRun = want && runQ && isLiveRun(runQ) ? S.saved.find(g => g.cid === want && Object.values(g.runs).flat().some(e => e.run === runQ)) : null;
+  if (want && (q.has("saved") || viaRun)) { S.src = "saved"; S.cid = want; S.savedModel = viaRun ? viaRun.model : q.get("saved"); S.savedRun = viaRun ? runQ : null; }
+  else if (want && !scChain(want) && (!metaChain(want) || metaChain(want).custom) && S.projects.some(p => p.name === want)) { S.src = "project"; S.cid = want; }
+  else { S.src = "example"; S.cid = want || pickDefault(); }
+  document.querySelectorAll("#viewseg button").forEach(b => b.onclick = () => setView(b.dataset.view));
+  document.querySelectorAll("#srcseg button").forEach(b => b.onclick = () => setSrc(b.dataset.src));
+  renderColChecks(); buildColumns();
+  await adoptJobs();
+  await loadAll();
+  S.booting = false; setPlayBtn();
+  if (q.get("view") === "memory") setView("memory");
+  $("#cid").onchange = async () => { const v = $("#cid").value; status("");
+    if (S.src === "saved") { const i = v.indexOf("|"); S.cid = v.slice(0, i); S.savedModel = v.slice(i + 1); S.savedRun = null; } else S.cid = v;
+    await openWhat(); };
+  $("#pricing").onchange = async () => { S.pricing = $("#pricing").value; setModelPrices(S.pricing === "model" ? S.cfgs.prices : {}); await loadAll(); };
+  $("#price").onchange = async () => { S.price = $("#price").value; await loadAll(); };
+  S.provs = await provsP;
+  for (const k of visibleCols()) { fillColSelects(k); if (S.stats[k] && !S.feeds[k]) renderCounters(k); }     // "run again" needs the endpoint status
+  refreshEmpty(); renderNote(); setRunBtn(); setSameVis(); setGearDot();
+} catch (e) { if (S.meta) throw e; bootFailed(); } })();          // only the first call failing means the server is away; anything else is a bug to see
 </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
-"""Canned OpenAI-compatible endpoint for UI smoke tests: a scripted 3-step agent (ls, write a file, submit) and a
-one-line memory note for the writer prompts. No model, no network."""
-import json, time
+"""Canned OpenAI-compatible endpoint for UI smoke tests: a scripted 3-step agent (ls, write a file, submit), a
+one-line memory note for the writer prompts and a short <snippet> guidance for MemOp's writer. No model, no network.
+Port 8858 (CANNED_PORT overrides it, e.g. for a private copy next to the shared one)."""
+import json, os, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ACTOR = [
@@ -8,6 +9,10 @@ ACTOR = [
     "THOUGHT: The workspace is empty apart from git. I will add the file the task asks for and show it.\n\n```mswea_bash_command\nprintf '# UI smoke\\n\\nCreated by the canned agent.\\n' > NOTES.md && cat NOTES.md && sleep 2\n```",
     "THOUGHT: The file is in place. Submitting the change.\n\n```mswea_bash_command\necho COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && git add -A && git diff --cached\n```",
 ]
+
+# MemOp's writer (memory/baselines/memop_prompt.py) wants its guidance wrapped in <snippet>…</snippet>
+MEMOP = ("<snippet>\n### Working in this repository\n- You look at the layout first (ls, git log) before changing anything.\n"
+         "- You keep each change small and show the result (cat the file) before you submit.\n</snippet>")
 
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -19,7 +24,12 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0); req = json.loads(self.rfile.read(n) or b"{}")
         msgs = req.get("messages", []); system = (msgs[0].get("content") if msgs and msgs[0].get("role") == "system" else "") or ""
-        if "mswea_bash_command" in str(system):          # only the actor's system prompt names the command fence; the writer prompt does not
+        last = str((msgs[-1] or {}).get("content") or "") if msgs else ""
+        if "task guidance snippet" in str(system):          # MemOp's writer prompt (and its INVALID OUTPUT retry, same system prompt)
+            text = MEMOP; time.sleep(0.5)
+        elif "MEMORY NOTE" in last or "INVALID OUTPUT" in last:   # v5inline: the actor's own note turn at the end of the session
+            text = "FILES: NOTES.md\nSTATUS: done, submitted\nDID: wrote NOTES.md (inline note by the actor)\nVERIFY: cat NOTES.md [exit 0]"; time.sleep(0.5)
+        elif "mswea_bash_command" in str(system):          # only the actor's system prompt names the command fence; the writer prompt does not
             k = sum(1 for m in msgs if m.get("role") == "assistant"); text = ACTOR[min(k, len(ACTOR) - 1)]; time.sleep(1.2)
         else:
             text = "DID: added NOTES.md with a short description | WHERE: NOTES.md | VERIFY: cat NOTES.md"; time.sleep(0.5)
@@ -28,4 +38,4 @@ class H(BaseHTTPRequestHandler):
                          "choices": [{"index": 0, "message": {"role": "assistant", "content": text}, "finish_reason": "stop"}],
                          "usage": {"prompt_tokens": ptoks, "completion_tokens": len(text) // 4, "total_tokens": ptoks + len(text) // 4}})
 
-ThreadingHTTPServer(("127.0.0.1", 8858), H).serve_forever()
+ThreadingHTTPServer(("127.0.0.1", int(os.environ.get("CANNED_PORT", "8858"))), H).serve_forever()

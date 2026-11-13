@@ -12,7 +12,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))   # chainswe/ 为�
 from harness import config as C, constants as K, grading as G          # noqa: E402
 from harness.env import RepoEnv                                         # noqa: E402
 from harness.live_agent import LiveSaveAgent as DefaultAgent            # noqa: E402  (== DefaultAgent unless RSM_LIVE_SAVE=1)
+from harness import mem_snapshot as MS                                  # noqa: E402  (no-op unless RSM_MEM_SAVE=1)
 from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel  # noqa: E402
+from harness.gateway_model import GatewayTextModel                       # noqa: E402  (== LitellmTextbasedModel unless RSM_OPENAI_STRICT=1)
 import memory                                                           # noqa: E402 (import 即注册全部插件)
 from memory import base as mem_base                                     # noqa: E402
 
@@ -248,7 +250,7 @@ class ChainRunner:
                 mk = dict(self.model_kwargs)
                 if ep_file:
                     mk["api_base"] = G.wait_endpoint(ep_file)
-                model = LitellmTextbasedModel(model_name=self.model_name, model_kwargs=mk,
+                model = GatewayTextModel(model_name=self.model_name, model_kwargs=mk,
                                               **C.model_template_kwargs())
                 agent = DefaultAgent(
                     model, self.env,
@@ -319,6 +321,7 @@ class ChainRunner:
                         rec["mem_nodes"] = self.mem.write(spec, self._material(agent, delta),
                                                           delta, self.env)
                         rec["mem_write_secs"] = round(time.time() - t_add0, 1)
+                        MS.save(self.out, idx, self.mem, rec["mem_nodes"])      # RSM_MEM_SAVE=1 only (demo)
                         # 2026-09-17:插件回填结果字段(rbankj 的 rb_judge/rb_judge_agree)。
                         # 旧臂没有 rec_extra 属性 -> getattr 取 None -> 空 dict,行为逐字不变。
                         rec.update(getattr(self.mem, "rec_extra", None) or {})

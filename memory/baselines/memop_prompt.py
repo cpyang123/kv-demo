@@ -35,6 +35,16 @@ def distill_memop_guidance(prev, raw_text):
             "max_tokens": int(os.environ.get("RSM_WRITER_MAXTOK", "800")),
             "chat_template_kwargs": {"enable_thinking": False},
             "messages": [{"role": "system", "content": sysp}, {"role": "user", "content": m}]}
+    if os.environ.get("RSM_OPENAI_STRICT") == "1":
+        # 2026-11-12(env 门控,默认关;同 memory/ours/fusednote.py):OpenAI 协议网关(GoodVision SmartRouter、
+        # Azure OpenAI)不认 vLLM 专有的 chat_template_kwargs,上游新模型只认 max_completion_tokens / 默认
+        # temperature(见 demo/goodvision.md)。本地路径的请求体逐字不变(录制的论文 run 可复现)。
+        body.pop("chat_template_kwargs"); body.pop("temperature")
+        body["max_completion_tokens"] = body.pop("max_tokens")
+    _hdr = {"Content-Type": "application/json"}
+    _key = os.environ.get("RSM_WRITER_API_KEY") or os.environ.get("RSM_API_KEY")
+    if _key and _key != "EMPTY":
+        _hdr["Authorization"] = f"Bearer {_key}"   # 网关鉴权;本地 vLLM 不设 key 时头部不变
 
     def _valid(t):
         return bool(SNIP_RE.search(t)) and "mswea_bash_command" not in t
@@ -42,7 +52,7 @@ def distill_memop_guidance(prev, raw_text):
     try:
         cap = int(os.environ.get("RSM_NOTE_CAP_MEMOP", "4000"))  # 防御帽;官方 512-token 限在 prompt 内
         for attempt in range(2):
-            req = urllib.request.Request(api, json.dumps(body).encode(), {"Content-Type": "application/json"})
+            req = urllib.request.Request(api, json.dumps(body).encode(), dict(_hdr))
             r = json.load(urllib.request.urlopen(req, timeout=300))
             txt = r["choices"][0]["message"]["content"].split("</think>")[-1].strip()
             if _valid(txt):
@@ -71,6 +81,17 @@ class MemOpPrompt(MemoryLayer):
     def __init__(self):
         super().__init__()
         self.guidance = ""
+
+    # 2026-11-12:guidance 存进基类 store 的唯一一项 ("guidance", text),使 harness/mem_snapshot.py(RSM_MEM_SAVE=1,
+    # demo 的 live run)与 demo/custom_runner.py 的 store.json 能存/恢复它。论文 run 从不读 store(wrap/stats 是
+    # MemOp 自己的),请求与注入逐字不变。
+    @property
+    def guidance(self):
+        return self.store.items[-1][1] if self.store.items else ""
+
+    @guidance.setter
+    def guidance(self, g):
+        self.store.items = [("guidance", g)] if g else []
 
     def wrap(self, question, env):
         if not self.guidance:

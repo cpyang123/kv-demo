@@ -96,6 +96,15 @@ for cheap tests, `gpt-5.5` for the baseline configuration). Requests declaring t
 which rules out Codex/function-calling harnesses on this key. Peter has these points open with GoodVision.
 The demo's endpoint status shows the current state; the daily `goodvision-check` workflow tracks it.
 
+Update 2026-11-01: Anthropic answers again (`claude-haiku-4-5`, `claude-sonnet-5`, and `auto` → `claude-opus-5` for
+coding prompts all work). Live and sandbox runs nevertheless failed at **step 2** with "No model offer satisfies the
+effective policy" (retried ~4 min, then `error:BadRequestError`): mini-swe-agent resends each stored reply with
+`tool_calls: null` / `function_call: null` / `provider_specific_fields`, and the router treats that as a tool request,
+which this key may not make (see tool calling above). `harness/gateway_model.py` now sends only role/content when
+`RSM_OPENAI_STRICT=1`; verified with a sandbox task through `auto` (5 steps, Submitted, $0.002). The server also probes
+the default model and each run's model before launching (`_model_usable` in `demo/server.py`). The production key is
+rejected ("Invalid token"); the key on this VM is for the test router only.
+
 ## Repository map (what matters for deployment)
 
 | path | role |

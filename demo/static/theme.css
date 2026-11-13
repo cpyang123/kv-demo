@@ -1,0 +1,271 @@
+/* Polish layer shared by the agent (index.html), compare and report pages.
+   Loaded after each page's own <style>, so it only refines: depth, motion, type, and the accent that follows
+   the selected memory system. Colour tokens (--kv, --mem0, --surface, ...) are defined by the pages; three are set here for
+   every page instead (pages should not override them): --accent in light mode (#2368bf, darker than --kv, so link text
+   reads at 4.5:1 or more; the pages' dark blocks have higher specificity and keep their #3987e5), --status-bad in dark mode
+   (the pages only set the light red, 3.6:1 on the dark surface) and --ring, the keyboard focus ring (>= 3:1). */
+
+:root {
+  --accent: #2368bf;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --shadow-1: 0 1px 2px rgba(28, 26, 18, 0.05), 0 1px 3px rgba(28, 26, 18, 0.04);
+  --shadow-2: 0 2px 6px rgba(28, 26, 18, 0.06), 0 10px 28px rgba(28, 26, 18, 0.08);
+  --ring: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--accent) 85%, transparent);   /* >= 3:1 on the page */
+  --arm: var(--kv);
+  --glow: color-mix(in srgb, var(--arm) 7%, transparent);
+  --diff-add: rgba(12, 163, 12, 0.12); --diff-del: rgba(208, 59, 59, 0.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+    --glow: color-mix(in srgb, var(--arm) 9%, transparent);
+    --diff-add: rgba(12, 163, 12, 0.13); --diff-del: rgba(230, 103, 103, 0.13);
+    --status-bad: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.35);
+  --glow: color-mix(in srgb, var(--arm) 9%, transparent);
+  --diff-add: rgba(12, 163, 12, 0.13); --diff-del: rgba(230, 103, 103, 0.13);
+  --status-bad: #e66767;
+}
+:root[data-kind="mem0"] { --arm: var(--mem0); }
+:root[data-kind="memop"] { --arm: var(--memop, #7b5cd6); }
+:root[data-kind="none"] { --arm: var(--none); }
+
+/* the hidden attribute always wins (several components set display: grid/flex, which used to override it) */
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------- base */
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 18%, transparent) transparent; }
+::selection { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+code, pre, .mono, .cmd, .obs, .diff, pre.view, details.sub pre, .lf-log pre, .live-banner pre, .bubble.md pre.mdcode { font-family: var(--mono); }
+.cmd, .obs, .diff, pre.view { font-size: 12px; line-height: 1.5; }
+:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 8px; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 55%, var(--border)) !important; box-shadow: var(--ring); }
+
+/* ---------------------------------------------------------------- header + brand */
+header.top { position: relative; z-index: 3; box-shadow: var(--shadow-1); }
+header.top::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--arm) 18%, color-mix(in srgb, var(--arm) 55%, #6250d6) 60%, transparent);
+  opacity: .55; transition: background .3s; }
+.brand .mark { background: none; border-radius: 5.5px; box-shadow: 0 2px 6px color-mix(in srgb, #3987e5 35%, transparent); }
+.brand { letter-spacing: -0.01em; }
+/* the brand is the home link on every page: Your sandbox → New project (on the Agent page without a reload) */
+a.brand, a.brand:hover { color: inherit; text-decoration: none; }
+a.brand { border-radius: 7px; } a.brand:hover .mark { filter: brightness(1.08); }
+/* one brand on every page's top bar (the pages differ in their header font size and colour) */
+header.top .brand { font-size: 13px; color: var(--ink); }
+
+/* ---------------------------------------------------------------- controls */
+.btn { transition: background-color .15s, border-color .15s, box-shadow .15s, transform .06s, filter .15s; box-shadow: var(--shadow-1); }
+.btn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--ink) 22%, transparent); background-color: color-mix(in srgb, var(--ink) 3%, var(--surface)); }
+.btn:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+.btn.primary, .btn.on, .btn.sm.on { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 86%, #fff), var(--accent)); color: #fff; border-color: color-mix(in srgb, var(--accent) 80%, #000); box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 35%, transparent), inset 0 1px 0 rgba(255, 255, 255, .18); }
+.btn.primary:hover:not(:disabled), .btn.on:hover:not(:disabled) { filter: brightness(1.07); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 86%, #fff), var(--accent)); }
+.seg button, .pnav a, .tabs button { transition: background-color .15s, color .15s, box-shadow .15s; }
+.seg button:hover, .pnav a:hover { color: var(--ink); }
+.seg button[aria-pressed="true"], .pnav a[aria-current="page"] { box-shadow: var(--shadow-1), inset 0 0 0 1px var(--border); }
+select.ctl { cursor: pointer; transition: border-color .15s; }
+select.ctl:hover { border-color: color-mix(in srgb, var(--ink) 22%, transparent); }
+input[type="checkbox"] { accent-color: var(--accent); }
+.tabs button:hover { color: var(--ink); }
+.chip { background: var(--surface); }
+
+/* ---------------------------------------------------------------- left list */
+.chain, .sess, .file { transition: background-color .12s, box-shadow .12s; }
+.chain.open { background: color-mix(in srgb, var(--arm) 8%, var(--surface)); box-shadow: inset 3px 0 0 var(--arm); }
+.sess.sel { background: color-mix(in srgb, var(--arm) 13%, transparent); box-shadow: inset 2px 0 0 var(--arm); }
+.sessions { border-left-color: color-mix(in srgb, var(--arm) 35%, var(--grid)); }
+.rdots { display: inline-flex; gap: 2px; margin-right: 5px; vertical-align: 1px; }
+.rdots i { width: 6px; height: 6px; border-radius: 50%; background: var(--grid); display: inline-block; }
+.rdots i.y { background: var(--status-good); } .rdots i.n { background: color-mix(in srgb, var(--status-bad) 75%, var(--surface)); }
+.lmore { display: block; width: calc(100% - 12px); margin: 2px 6px 4px; padding: 5px 9px; border: 1px dashed var(--border); border-radius: 8px; background: none; color: var(--ink2); font-size: 12px; cursor: pointer; text-align: left; }
+.lmore:hover { color: var(--ink); background: var(--hover); }
+.lsec { font-weight: 600; }
+
+/* ---------------------------------------------------------------- transcript */
+main.chat { background: radial-gradient(1100px 380px at 50% -120px, var(--glow), transparent 70%), var(--plane); }
+.cols .col { background: radial-gradient(700px 260px at 50% -80px, color-mix(in srgb, var(--arm, var(--accent)) 6%, transparent), transparent 70%), var(--plane); }
+.card, .msg.user .bubble, .msg.model .bubble { box-shadow: var(--shadow-1); }
+.card.memory { background: linear-gradient(180deg, color-mix(in srgb, var(--arm, var(--accent)) 6%, var(--surface)), var(--surface) 60%); }
+.msg.user .who, .msg .who { letter-spacing: .01em; }
+.bubble.md.issue b { font-weight: 650; }
+.bubble.md.issue pre.mdcode { white-space: pre-wrap; }
+
+/* agent steps as a timeline: a numbered node per step, joined by a rail */
+.transcript .msg.assistant.turn { position: relative; padding-left: 34px; }
+.transcript .msg.assistant.turn::before { content: attr(data-k); position: absolute; left: 0; top: -1px; width: 23px; height: 23px; border-radius: 50%;
+  display: grid; place-items: center; font: 650 10.5px/1 system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
+  color: var(--ink2); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-1); }
+.transcript .msg.assistant.turn::after { content: ""; position: absolute; left: 11px; top: 26px; bottom: -13px; width: 1.5px; border-radius: 2px;
+  background: linear-gradient(var(--grid), color-mix(in srgb, var(--grid) 40%, transparent)); }
+.transcript .msg.assistant.turn:has(.running)::before, .transcript .msg.assistant.turn:has(.typing)::before { color: #fff; background: var(--accent); border-color: transparent; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.transcript .msg.assistant.turn:has(.rc.err)::before { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--border)); }
+
+.cmd { border: 1px solid rgba(255, 255, 255, .06); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), var(--shadow-1); }
+.obs { background: color-mix(in srgb, var(--code) 70%, var(--surface)); }
+.rc { font-family: var(--mono); font-size: 10.5px; }
+.rc:not(.err) { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, var(--border)); }
+
+/* ---------------------------------------------------------------- right pane */
+.diff { background: var(--surface); }
+.diff div.a { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--status-good) 70%, transparent); }
+.diff div.d { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--status-bad) 70%, transparent); }
+.diff .h { color: color-mix(in srgb, var(--accent) 85%, var(--ink)); }
+
+/* ---------------------------------------------------------------- composer, menus, toast */
+.composer { box-shadow: 0 -1px 0 var(--border), 0 -8px 24px rgba(28, 26, 18, .03); }
+.composer textarea { transition: border-color .15s, box-shadow .15s; }
+.menu { box-shadow: var(--shadow-2); }
+.toast { box-shadow: var(--shadow-2); }
+.taskpin { box-shadow: var(--shadow-1); position: relative; z-index: 1; }
+
+/* ---------------------------------------------------------------- motion */
+@media (prefers-reduced-motion: no-preference) {
+  .transcript > .card, .transcript > .msg:not([hidden]) { animation: rise .22s ease-out both; }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.btn:focus-visible, .seg button:focus-visible, .pnav a:focus-visible, .tabs button:focus-visible { box-shadow: var(--ring); }
+
+/* ---------------------------------------------------------------- memory comparison (player.js memoryCompareHtml) */
+.mc-wrap { display: flex; flex-direction: column; gap: 12px; }
+.mc-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); }
+.mc-bar .muted, .mc .muted { color: var(--muted); }
+.mc-grid { display: grid; grid-template-columns: repeat(var(--mcn, 2), minmax(0, 1fr)); gap: 8px 12px; align-items: start; }
+.mc-head { position: sticky; top: -18px; z-index: 2; background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--arm); border-radius: 12px; padding: 9px 12px; box-shadow: var(--shadow-1); }
+.mc-title { display: flex; gap: 7px; align-items: center; font-weight: 650; font-size: 13.5px; }
+.mc-stats { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.mc-stats b { color: var(--ink); font-weight: 650; }
+.mc-warn, .mc-stats .mc-warn, .mc-stats .mc-warn b { color: var(--bad); }
+.mc-row { grid-column: 1 / -1; display: block; text-align: left; border: 0; background: none; cursor: pointer; padding: 10px 2px 0; font-size: 12.5px; color: var(--ink2); border-top: 1px solid var(--grid); margin-top: 4px; }
+.mc-row .mono { font-size: 11.5px; color: var(--muted); }
+.mc-row:hover b { color: var(--accent); }
+.mc-row.cur b { color: var(--accent); }
+.mc-cell { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--arm); border-radius: 10px; padding: 8px 11px; display: flex; flex-direction: column; gap: 6px; box-shadow: var(--shadow-1); }
+.mc-cell.cur { box-shadow: var(--shadow-1), 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.mc-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mc-meta b { color: var(--ink); }
+.mc-new { color: var(--good); font-weight: 650; }
+.mc-item { font-size: 12.5px; padding: 6px 8px; border-radius: 7px; background: color-mix(in srgb, var(--arm) 5%, var(--surface)); border: 1px solid color-mix(in srgb, var(--arm) 16%, var(--border)); }
+.mc-item .note { font-size: 12.5px; }
+.mc-item.old { background: none; border-color: var(--grid); opacity: .72; }
+.mc-item.new { box-shadow: inset 2px 0 0 var(--good); }
+.mc-empty { font-size: 12.5px; color: var(--muted); font-style: italic; }
+.mc-empty.mc-warn { color: var(--bad); font-style: normal; }
+.cols-mem { overflow: auto; padding: 14px 16px 18px; min-height: 0; }
+@media (max-width: 760px) { .mc-grid { grid-template-columns: minmax(0, 1fr); } .mc-head { position: static; } }
+.btn.memcmp { margin-left: auto; }
+.cols-mem .mc-head { top: -14px; }
+/* segmented control for pages that do not define one (compare) */
+.seg { display: inline-flex; flex: none; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--plane); }
+.seg button { border: 0; background: transparent; color: var(--ink2); padding: 4px 12px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 12.5px; display: inline-flex; gap: 7px; align-items: center; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); }
+/* memory comparison: retrieved-before / written-after sections inside a task cell */
+.mc-sec { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 2px; padding-top: 6px; border-top: 1px dashed var(--grid); }
+.mc-meta + .mc-sec { border-top: 0; padding-top: 0; }
+.mc-sec b { color: var(--ink); }
+.mc-sec-t { font-weight: 700; color: var(--ink2); text-transform: uppercase; letter-spacing: .04em; font-size: 10.5px; }
+.mc-items { display: flex; flex-direction: column; gap: 6px; }
+.mc-retrieved { max-height: 340px; overflow: auto; padding-right: 2px; }
+.mc-from { display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--ink2); background: var(--hover); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; margin-bottom: 3px; }
+.mc-row { scroll-margin-top: 110px; }
+/* markdown in issue text: transcript bubble, pinned task, Issue tab */
+.md .md-h { font-weight: 650; color: var(--ink); font-size: 1.04em; }
+.md code { font-family: var(--mono); font-size: .9em; background: var(--code); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+.md pre.mdcode { font-family: var(--mono); font-size: 12px; background: var(--code); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 4px 0; white-space: pre-wrap; overflow-x: auto; color: var(--ink); }
+.tp-text.md { color: var(--ink); }
+.tp-text.md pre.mdcode { background: var(--surface); }
+
+/* ---------------------------------------------------------------- memory notes: colour-coded rows (noteHtml) */
+.note .tag-did, .note .nl-did { --tc: #2a78d6; }        /* what was done */
+.note .tag-context, .note .nl-context { --tc: #7c5cd6; }/* how the code is laid out */
+.note .tag-lesson, .note .nl-lesson { --tc: #c98a00; }  /* pitfalls to avoid next time */
+.note .tag-state, .note .nl-state { --tc: #0f8fb0; }
+.note .tag-todo, .note .nl-todo { --tc: #e0702a; }
+.note .tag-warn, .note .nl-warn { --tc: #d03b3b; }
+.note .tag-note, .note .nl-note, .note .tag-fact, .note .nl-fact { --tc: #7d7b74; }
+.note .tag-where { --tc: #0e9c8f; }               /* file:line anchors */
+.note .tag-verify { --tc: #2f9e44; }              /* the command that proves it */
+.note { white-space: normal; --tc: var(--muted); }
+.note .nl { display: block; position: relative; padding: 4px 0 4px 10px; line-height: 1.6; }
+.note .nl::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2.5px; border-radius: 2px; background: color-mix(in srgb, var(--tc) 60%, transparent); }
+.note .nl + .nl { border-top: 1px dashed color-mix(in srgb, var(--grid) 80%, transparent); }
+.note .nl-gap { height: 4px; }
+.note .nl-inst { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--muted); margin: 6px 0 2px; display: flex; align-items: center; gap: 6px; }
+.note .nl-inst::before { content: ""; width: 6px; height: 6px; border-radius: 2px; background: var(--arm, var(--accent)); opacity: .7; }
+.note .nl-inst:first-child { margin-top: 0; }
+.note b.tag { display: inline-block; font: 700 10px/1.7 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .05em; padding: 0 7px; margin-right: 7px; border-radius: 999px; vertical-align: 1px;
+  color: color-mix(in srgb, var(--tc) 88%, var(--ink)); background: color-mix(in srgb, var(--tc) 13%, transparent); border: 1px solid color-mix(in srgb, var(--tc) 32%, transparent); }
+.note .nl-sub { display: inline; margin-left: 8px; }
+.note .nl-sub b.tag { margin-right: 5px; }
+.note .nl-sub code { font-family: var(--mono); font-size: 11.5px; color: var(--ink2); background: none; border: 0; padding: 0; word-break: break-all; }
+.note .nl-lesson .nl-body { font-style: italic; }
+.note.md { white-space: pre-wrap; }
+/* served model in a turn's who-line (router runs; auto picks per call) */
+.who .tm { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--ink2); background: var(--hover); border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .note b.tag { color: color-mix(in srgb, var(--tc) 55%, var(--ink)); } }
+:root[data-theme="dark"] .note b.tag { color: color-mix(in srgb, var(--tc) 55%, var(--ink)); }
+
+/* ================================================================ v2: streamlined layout (repo-v2, port 8766)
+   Settings live in one gear panel per page; developer detail shows only with body.details ("Show details"). */
+.gear { position: relative; flex: none; }
+.gear > .btn.icon { display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; font-size: 14px; line-height: 1; }
+.gear .gdot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.gear .gdot.ok { background: var(--status-good); } .gear .gdot.warn { background: #e0a100; } .gear .gdot.err { background: var(--status-bad); }
+.gearpanel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 340px; max-width: calc(100vw - 24px);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-2); padding: 6px 0; }
+.gearpanel section { padding: 8px 14px; border-top: 1px solid var(--border); display: grid; gap: 7px; }
+.gearpanel section:first-child { border-top: 0; }
+.gearpanel h4 { margin: 0; font-size: 11px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.gearpanel label.row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink2); white-space: normal; }
+.gearpanel label.row > select, .gearpanel label.row > input { width: 100%; max-width: none; min-width: 0; }
+.gearpanel label.check { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink2); }
+.gearpanel .gnote { font-size: 11.5px; color: var(--muted); line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.gearpanel #epstatus { max-width: none; white-space: normal; overflow: visible; font-size: 11.5px; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+.gearpanel #epstatus.err { color: var(--bad); }
+
+/* detail that only "Show details" reveals */
+body:not(.details) .dt, body:not(.details) .tp-inst, body:not(.details) details.sub,
+body:not(.details) .left .foot, body:not(.details) .chat-head .inst, body:not(.details) .nomem,
+body:not(.details) .lf-log, body:not(.details) .footnote, body:not(.details) .tp-meta, body:not(.details) .note .nl-inst { display: none !important; }
+/* without its (hidden) instance heading, a note or fact from another task still starts below a line */
+body:not(.details) .note .nl-gap + .nl-inst + .nl { border-top: 1px solid var(--grid); }
+/* the pinned prompt replaces the issue card in the transcript (shown again with details on) */
+body:not(.details) .transcript .msg.user:not(.you) { display: none; }
+.tp-text.md { font-family: inherit; white-space: pre-wrap; }
+.tp-text.md p { margin: 0 0 .6em; } .tp-text.md pre { white-space: pre-wrap; }
+
+.icbtn { width: 30px; padding: 4px 0 !important; text-align: center; font-size: 14px !important; line-height: 1.2; }
+/* chain list: the repo line repeats the chain id (shown with details) */
+body:not(.details) .list .chain[data-cid] .repo { display: none; }
+body:not(.details) .list .chain[data-cid] { padding-block: 6px; }
+/* compare header on one row */
+body:not(.details) header.top .brand .sub { display: none; }
+header.top #cid { max-width: min(400px, 100%); }
+/* an empty transcript (issue card hidden, nothing played yet) says what to do instead of looking broken */
+.col .transcript:not(:has(.turn:not([hidden]), .live-status, .memview))::before {
+  content: "Press ▶ Play all to replay these sessions side by side, or click a dot above to jump to a step.";
+  color: var(--muted); font-size: 13px; text-align: center; padding: 28px 12px; }
+main.chat .transcript:not(:has(.turn:not([hidden]), .live-status, .empty, .msg.you, .msg.model))::before {
+  content: "Press ▶ Play to replay this session step by step."; color: var(--muted); font-size: 13px; text-align: center; padding: 28px 12px; }
+
+/* v2: session header on one row - title and chips left, the figures right (wraps under the title when narrow) */
+.chat-head { flex-wrap: wrap; align-items: center; }
+.chat-head .hrow { width: auto; flex: 1 1 auto; min-width: 0; }
+.chat-head .hstats { width: auto; flex: 0 1 auto; margin-left: auto; justify-content: flex-end; gap: 4px 14px; }
+.chat-head .hrow { flex: 0 1 auto; }
+/* left list tabs leave room for the collapse button */
+aside.left #srcseg { max-width: calc(100% - 56px); }
+aside.left #srcseg button { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1100px) { aside.left #srcseg button { padding: 4px 8px; font-size: 12px; } }
+
+/* stop buttons for live runs: quiet red, solid once armed (second click confirms) */
+.btn.stop { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.btn.stop:hover:not(:disabled) { background-color: color-mix(in srgb, var(--bad) 8%, var(--surface)); border-color: var(--bad); }
+.btn.stop.armed { background: var(--bad); color: #fff; border-color: var(--bad); }
+.linkbtn.stop { color: var(--bad); }
