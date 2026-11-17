@@ -86,9 +86,9 @@ KV_SYSTEMS = ["fusednote", "v5knote", "v5inline", "v4knote"]
 # Knowledge Vault versions the settings panel offers; the first is the default (every recorded paper run uses it).
 # note: one plain sentence, capitalised, no trailing period: the pages append ". Used for new live, compare and sandbox runs; …"
 KV_VERSIONS = [
-    {"id": "fusednote", "label": "v3 fused note (paper runs)", "note": "After each task, a separate writer call distils the session into a short structured note for the next task — the version in the paper"},
+    {"id": "fusednote", "label": "v3 fused note (paper runs)", "note": "After each turn, a separate writer call distils the session into a short structured note for the next turn — the version in the paper"},
     {"id": "v5knote", "label": "v5 note", "note": "A newer note template, still written by a separate writer call"},
-    {"id": "v5inline", "label": "v5 inline", "note": "The agent writes the note itself as the last step of the task, so there is no separate writer call (the writer is used if that step fails)"},
+    {"id": "v5inline", "label": "v5 inline", "note": "The agent writes the note itself as the last step of the turn, so there is no separate writer call (the writer is used if that step fails)"},
     {"id": "v4knote", "label": "v4 note", "note": "An older note template, written by a separate writer call"},
 ]
 
@@ -927,7 +927,7 @@ def runchains(run: str, price: str | None = None, kv: str | None = None, kinds: 
 @_price_locked
 def chain(cid: str, run: str = DEFAULT_RUN, price: str | None = None, kv: str | None = None):
     if cid not in CHAINS:
-        raise HTTPException(404, "unknown chain")
+        raise HTTPException(404, "unknown task")
     _set_price(price)
     _refresh_summaries()
     out = {"chain": CHAINS[cid], "run": run, "sif": _sif_ok(cid), "sif_path": str(_sif_path(cid)), "arms": {}}
@@ -1014,7 +1014,7 @@ def _live_duplicate(req):
     for j in list(JOBS.values()):
         if (model and j.get("status") == "running" and not j.get("stopping") and not j.get("custom") and j.get("cid") == req.cid
                 and j.get("kind") == req.kind and model in (j.get("model_asked"), j.get("model"))):
-            return f"A live run of this chain with {SHOWCASE_KINDS.get(req.kind, req.kind)} ({model}) is already running — watch it or stop it first"
+            return f"A live run of this task with {SHOWCASE_KINDS.get(req.kind, req.kind)} ({model}) is already running — watch it or stop it first"
     return None
 
 
@@ -1058,7 +1058,7 @@ def _start_live(req):
     if os.environ.get("DEMO_DISABLE_LIVE") == "1":
         raise HTTPException(403, "live runs are disabled on this deployment (DEMO_DISABLE_LIVE=1)")
     if req.cid not in CHAINS:
-        raise HTTPException(400, "unknown chain")
+        raise HTTPException(400, "unknown task")
     if req.kind not in LIVE_SYSTEMS:
         raise HTTPException(400, _live_kind_error(req.kind))
     if not _sif_ok(req.cid):
@@ -1500,12 +1500,12 @@ def memory(run: str, arm: str, cid: str, price: str | None = None):
 @app.get("/api/session")
 def session(run: str, arm: str, cid: str, order: int):
     if cid not in CHAINS:
-        raise HTTPException(404, "unknown chain")
+        raise HTTPException(404, "unknown task")
     _refresh_summaries()
     d = RUNS / run / f"{cid}__s0__{arm}"
     traj = _load_traj(d, order)
     if not traj:
-        raise HTTPException(404, f"no trajectory for task {order} of {cid} in {run}/{arm}")
+        raise HTTPException(404, f"no trajectory for turn {order} of {cid} in {run}/{arm}")
     kind = _kind_of_arm(arm)
     x = load_chain_arm(run, arm, cid, kind) or {"sessions": []}
     srow = next((s for s in x["sessions"] if s["order"] == order), None)
@@ -1870,7 +1870,7 @@ def _image_tree(cid):
         names = sorted(p for p in r.stdout.decode(errors="replace").split("\0") if p)
         return how, names[:TREE_MAX], len(names)
     how, files, n = _tree_cached(("img", str(_sif_path(cid))), make)
-    return {"cid": cid, "source": "task image (chain base commit)" + ("" if how == "git" else ", every file"), "at": "base",
+    return {"cid": cid, "source": "task image (task base commit)" + ("" if how == "git" else ", every file"), "at": "base",
             "root": root, "files": files, "n": n, "truncated": n > len(files)}
 
 
@@ -1883,23 +1883,23 @@ def tree(cid: str, run: str | None = None, arm: str | None = None, order: int | 
       a project started from an example repo whose workspace is gone: the repo's image (before any task), at "base".
     404 when none is available (the page then builds the tree from the paths the agent mentioned)."""
     if cid not in CHAINS:
-        raise HTTPException(404, "unknown chain")
+        raise HTTPException(404, "unknown task")
     if CHAINS[cid].get("custom"):
         ws = _custom_ws(cid, arm)
         if ws is None:
             gone = _no_workspace(cid, arm)
-            return {**_image_tree(cid), "arm": arm, "gone": gone, "source": f"the example repository before any task (its image) — {gone}"}
+            return {**_image_tree(cid), "arm": arm, "gone": gone, "source": f"the example repository before any turn (its image) — {gone}"}
         with _ws_reader(ws) as g:
             commit = g.task_commit(order)
             if commit:
                 files, n = _tree_cached(("ws", str(ws), commit), lambda: _commit_listing(g, commit))
-                return {"cid": cid, "arm": arm, "source": f"the workspace right after task {int(order)} (its git commit 'rsm: task {int(order)}')",
+                return {"cid": cid, "arm": arm, "source": f"the workspace right after turn {int(order)} (its git commit 'rsm: task {int(order)}')",
                         "at": "task", "commit": commit, "root": "", "files": files, "n": n, "truncated": n > len(files)}
         files, n, complete = _work_listing(ws)
-        return {"cid": cid, "arm": arm, "source": "the workspace now (this task has no commit yet: it is still running, or it stopped before committing)",
+        return {"cid": cid, "arm": arm, "source": "the workspace now (this turn has no commit yet: it is still running, or it stopped before committing)",
                 "at": "work", "commit": None, "root": "", "files": files, "n": n, "n_partial": not complete, "truncated": not complete or n > len(files)}
     if not _sif_ok(cid):
-        raise HTTPException(404, "image not available for this chain")
+        raise HTTPException(404, "image not available for this task")
     return _image_tree(cid)
 
 
@@ -1932,7 +1932,7 @@ def _image_file(cid, rel, max_bytes):
                         '[ -f "$p" ] || { echo "not a regular file" >&2; exit 4; }; head -c "$3" -- "$p"', root, rel, str(max_bytes))
     if r.returncode != 0:
         raise HTTPException(400 if r.returncode == 3 else 404, (r.stderr.decode(errors="replace") or "not found").strip()[-200:])
-    return _file_out(r.stdout, max_bytes, cid=cid, path=rel, root=root, source="task image (chain base commit)", at="base")
+    return _file_out(r.stdout, max_bytes, cid=cid, path=rel, root=root, source="task image (task base commit)", at="base")
 
 
 @app.get("/api/file")
@@ -1942,25 +1942,25 @@ def file(cid: str, path: str, max_bytes: int = 200_000, arm: str | None = None, 
     file now, at "work" (also for a file of the workspace that is not in that commit); a project started from an example
     repo whose workspace is gone → the repo's image, at "base"."""
     if cid not in CHAINS:
-        raise HTTPException(404, "unknown chain")
+        raise HTTPException(404, "unknown task")
     rel = _rel_path(path)
     max_bytes = max(1, min(int(max_bytes), FILE_MAX))
     if CHAINS[cid].get("custom"):
         ws = _custom_ws(cid, arm)
         if ws is None:
             gone = _no_workspace(cid, arm)
-            return {**_image_file(cid, rel, max_bytes), "gone": gone, "source": f"the example repository before any task (its image) — {gone}"}
+            return {**_image_file(cid, rel, max_bytes), "gone": gone, "source": f"the example repository before any turn (its image) — {gone}"}
         with _ws_reader(ws) as g:
             commit = g.task_commit(order)
             hit = _blob_at(g, commit, rel, max_bytes) if commit else None
         if hit:
             return {**hit, "cid": cid, "path": rel, "root": "", "at": "task", "commit": commit,
-                    "source": f"the workspace right after task {int(order)} (its git commit 'rsm: task {int(order)}')"}
+                    "source": f"the workspace right after turn {int(order)} (its git commit 'rsm: task {int(order)}')"}
         data = _read_ws_file(ws, rel, max_bytes)
         return _file_out(data, max_bytes, cid=cid, path=rel, root="", at="work", commit=None, in_task=False if commit else None,
-                         source="the workspace now — this file is not in the commit of this task" if commit else "the workspace now (this task has no commit yet)")
+                         source="the workspace now — this file is not in the commit of this turn" if commit else "the workspace now (this turn has no commit yet)")
     if not _sif_ok(cid):
-        raise HTTPException(404, "image not available for this chain")
+        raise HTTPException(404, "image not available for this task")
     return _image_file(cid, rel, max_bytes)
 
 
@@ -1981,7 +1981,7 @@ def ask(req: AskReq):
     """Answer a question about a session with the selected model endpoint (the demo's chat box)."""
     api, key, strict, model = _resolve_endpoint(req.provider, req.model or (req.served_name if req.provider == "local" else None))
     s = session(req.run, req.arm, req.cid, req.order)
-    parts = [f"Repository: {s['repo']}  Task: {s['instance']}  Memory system: {ARMS_LABEL.get(s['kind'], s['arm'])}",
+    parts = [f"Repository: {s['repo']}  Turn: {s['instance']}  Memory system: {ARMS_LABEL.get(s['kind'], s['arm'])}",
              f"ISSUE:\n{s['problem_statement'][:4000]}"]
     if s["memory"]:
         parts.append(f"MEMORY INJECTED BEFORE THIS SESSION:\n{s['memory'][:4000]}")
@@ -1993,7 +1993,7 @@ def ask(req: AskReq):
     if s["note_written"]:
         parts.append(f"MEMORY WRITTEN AFTER THIS SESSION:\n{s['note_written'][:2000]}")
     ctx = "\n\n".join(parts)[:90000]
-    body = {"model": model, "messages": [{"role": "system", "content": "You are reviewing a recorded coding-agent session on a ChainSWE task. Answer the user's question concretely from the transcript below; cite step numbers and file paths; say so when the transcript does not contain the answer."},
+    body = {"model": model, "messages": [{"role": "system", "content": "You are reviewing a recorded coding-agent session: one turn of a ChainSWE task (a task is a series of turns on one repository; the user calls each session a turn). Answer the user's question concretely from the transcript below; cite step numbers and file paths; say so when the transcript does not contain the answer."},
                                          {"role": "user", "content": f"{ctx}\n\nQUESTION: {req.question}"}]}
     if strict:
         body["max_completion_tokens"] = 700          # OpenAI-protocol gateway: no vLLM-only params, no forced temperature
@@ -2046,11 +2046,11 @@ def configs(kv: str | None = None):
 # lowercase fragments without a colon (the pages show them after "Name: " and "Name — ").
 SHOWCASE_KINDS = {"kv": "Knowledge Vault", "mem0": "Mem0", "memop": "MemOp", "rawcat": "Full history", "none": "No memory"}
 KIND_NOTES = {
-    "kv": "ours — after each task a writer distils a short note for the next task",
-    "mem0": "extracts facts from each session and passes them to the next task",
-    "memop": "keeps one guidance document, rewritten after every task",
+    "kv": "ours — after each turn a writer distils a short note for the next turn",
+    "mem0": "extracts facts from each session and passes them to the next turn",
+    "memop": "keeps one guidance document, rewritten after every turn",
     "rawcat": "pastes the earlier sessions in verbatim (nothing summarised)",
-    "none": "every task starts from scratch",
+    "none": "every turn starts from scratch",
 }
 _SHOWCASE = {}                    # (price row, run, configs.json mtime) -> {cid: {kind: stats}}
 
@@ -2262,7 +2262,7 @@ def _sandboxes():
                 continue
             c = by_tag.get(tag)
             if c:
-                out.append({"id": tag, "kind": "repo", "label": f"{c['repo']} — the repository at the commit its ChainSWE tasks start from", "chain": c["cid"]})
+                out.append({"id": tag, "kind": "repo", "label": f"{c['repo']} — the repository at the commit its ChainSWE turns start from", "chain": c["cid"]})
             else:                                   # anything that is not a chain image: python:3.12 -> 3.12.sif, sandbox-*.sif, ...
                 out.append({"id": tag, "kind": "generic", "label": f"{_image_desc(tag)} — an empty folder with git"})
     return out
@@ -2594,9 +2594,9 @@ def custom_project(req: ProjectReq):
         raise HTTPException(400, f"source must be one of {', '.join(PROJECT_SOURCES)}")
     if src == "image":
         if not sb or sb["kind"] != "repo":
-            raise HTTPException(400, "an example-repo project needs sandbox = a chain image id (/api/sandboxes entries of kind repo)")
+            raise HTTPException(400, "an example-repo project needs sandbox = a task image id (/api/sandboxes entries of kind repo)")
     elif sb and sb["kind"] != "generic":
-        raise HTTPException(400, f"{req.sandbox} is a ChainSWE chain image: create it with source image")
+        raise HTTPException(400, f"{req.sandbox} is a ChainSWE task image: create it with source image")
     else:
         sb = sb or _default_generic(sbs)
         if not sb:
@@ -2610,7 +2610,7 @@ def custom_project(req: ProjectReq):
             if not name:
                 raise HTTPException(400, "the project name needs letters or digits")
             if name in CHAINS and not CHAINS[name].get("custom"):
-                raise HTTPException(400, "name collides with a ChainSWE chain")
+                raise HTTPException(400, "name collides with a ChainSWE task")
             if _name_taken(name, ps):
                 raise HTTPException(409, f"a project named {name} already exists")
         else:
@@ -2656,7 +2656,7 @@ def _existing_project(name):
     if name not in ps:
         raise HTTPException(404, "unknown project")
     if _project_busy(name):
-        raise HTTPException(409, "a task is running in this project — stop it first")
+        raise HTTPException(409, "a turn is running in this project — stop it first")
     return ps
 
 
@@ -2873,10 +2873,10 @@ def _place_upload(name, parts, tmp, size, unzip):
         if p is None:
             raise HTTPException(404, "unknown project")
         if _project_busy(name):
-            raise HTTPException(409, "a task is running in this project — wait for it or stop it")
+            raise HTTPException(409, "a turn is running in this project — wait for it or stop it")
         workspaces = _arm_workspaces(name)
         if workspaces and _has_git_dir(parts):
-            raise HTTPException(400, ".git files can only be uploaded before the project's first task")
+            raise HTTPException(400, ".git files can only be uploaded before the project's first turn")
         seed = CUSTOM_WORK / name / "seed"
         seed.mkdir(parents=True, exist_ok=True)
         if not _real_dir(seed):
@@ -2924,7 +2924,7 @@ async def custom_project_files(name: str, request: Request, path: str = "", unzi
     if _project_source(p)["kind"] not in ("empty", "upload", "git"):
         raise HTTPException(400, "uploads work for empty, upload and git projects")
     if _project_busy(name):
-        raise HTTPException(409, "a task is running in this project — wait for it or stop it")
+        raise HTTPException(409, "a turn is running in this project — wait for it or stop it")
     parts = _upload_parts(path)
     unzip = bool(unzip) and parts[-1].lower().endswith(".zip")
     per_file = _mb_env("DEMO_UPLOAD_MAX_MB", 50)
@@ -3067,7 +3067,7 @@ def _custom_start(req):
         if req.order is None:
             text = req.task.strip()
             if not text:
-                raise HTTPException(400, "task text required")
+                raise HTTPException(400, "turn text required")
             order = len(p["tasks"]) + 1
             inst = f"{req.project}-{order}-{re.sub(r'[^A-Za-z0-9]+', '-', text.splitlines()[0]).strip('-').lower()[:32] or 'task'}"
             p["tasks"].append({"order": order, "instance": inst, "problem_statement": text, "created": time.strftime("%Y-%m-%d %H:%M")})
@@ -3076,7 +3076,7 @@ def _custom_start(req):
         else:
             order = req.order
             if not any(t["order"] == order for t in p["tasks"]):
-                raise HTTPException(400, f"project has no task {order}")
+                raise HTTPException(400, f"project has no turn {order}")
     model = req.model or (os.environ.get("DEMO_SERVED_NAME", "coder-next") if req.provider == "local" else PV.PROVIDERS.get(req.provider, {}).get("default_model"))
     provider, model = PV.gpt_route(req.provider, model)
     penv, api_base = _provider_env(provider, model)

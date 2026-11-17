@@ -34,7 +34,7 @@ const until = async (fn, ms = 20000) => { const t = Date.now(); while (Date.now(
   };
   const mine = (js, ids) => js.filter(j => ids.includes(j.id));
   let free = prov ? await freeChains() : [];
-  if (!prov || free.length < 2) check('compare: an endpoint and two chains without runs of the model', false, `provider ${prov && prov.name}, ${free.length} free chains`);
+  if (!prov || free.length < 2) check('compare: an endpoint and two tasks without runs of the model', false, `provider ${prov && prov.name}, ${free.length} free tasks`);
   else {
     await openEmpty(free[0]);
     check('compare: columns lack data, ▶ Run live shows, ■ Stop hidden before any run', /No Knowledge Vault run with/.test(await T('#tr-kv')) && !(await pg.$eval('#runlive', e => e.hidden)) && await pg.$eval('#stoplive', e => e.hidden), await T('#tr-kv'));
@@ -50,7 +50,7 @@ const until = async (fn, ms = 20000) => { const t = Date.now(); while (Date.now(
     await pg.click('#stoplive'); await sleep(200); await pg.click('#stoplive');
     check('compare: runs end as stopped', await until(async () => mine(await jobs(), ids).every(j => j.status === 'stopped'), 15000), mine(await jobs(), ids).map(j => j.status).join(','));
     check('compare: status line says stopped, buttons hide', await until(async () => /stopped/.test(await T('#livest')) && await pg.$eval('#stoplive', e => e.hidden) && (await pg.$$eval('.colstop', e => e.every(x => x.hidden))), 15000), await T('#livest'));
-    check('compare: each column\'s task row says "Stopped · N of 3 tasks graded"', (await Promise.all(cols.map(k => T(`#task-${k}`)))).every(t => /^Stopped · \d of \d tasks? graded$/.test(t)), (await Promise.all(cols.map(k => T(`#task-${k}`)))).join(' | '));
+    check('compare: each column\'s turn row says "Stopped · N of 3 turns graded"', (await Promise.all(cols.map(k => T(`#task-${k}`)))).every(t => /^Stopped · \d of \d turns? graded$/.test(t)), (await Promise.all(cols.map(k => T(`#task-${k}`)))).join(' | '));
     await pg.screenshot({ path: shots + '/40_compare_stopped.png' });
 
     // ---- compare page: one column's empty-state ▶ Run live and its own ■ Stop
@@ -59,7 +59,7 @@ const until = async (fn, ms = 20000) => { const t = Date.now(); while (Date.now(
     await pg.click('#tr-kv [data-runcol="kv"]');
     check('column: only that column starts', await until(async () => (await jobs()).filter(j => !b2.has(j.id)).length === 1, 8000), `${(await jobs()).filter(j => !b2.has(j.id)).length} new`);
     const jid = (await jobs()).find(j => !b2.has(j.id))?.id;
-    check('column: its stop shows in its task row', await until(async () => !(await pg.$eval('#stop-kv', e => e.hidden)), 8000));
+    check('column: its stop shows in its turn row', await until(async () => !(await pg.$eval('#stop-kv', e => e.hidden)), 8000));
     check('column: the stop-all button shows too', !(await pg.$eval('#stoplive', e => e.hidden)));
     check('column: other columns still offer Run live', !!(await pg.$('#tr-mem0 [data-runcol="mem0"]')));
     await pg.click('#stop-kv'); await sleep(200); check('column: stop arms first', /click again/.test(await T('#stop-kv')), await T('#stop-kv'));
@@ -73,7 +73,7 @@ const until = async (fn, ms = 20000) => { const t = Date.now(); while (Date.now(
   if (prov) {
     // pyccel (no longer an example chain, its recorded runs still there) when free: its task lengths suit "stopped during task 1"
     const SLOW = `${MODEL}-slow`, fc = await freeChains(SLOW), cid = fc.includes('pyccel_pyccel_20240307') ? 'pyccel_pyccel_20240307' : fc[0];
-    if (!cid) check('slow server: a chain without runs of the model', false, SLOW);
+    if (!cid) check('slow server: a task without runs of the model', false, SLOW);
     else {
       const sp = await b.newPage({ viewport: { width: 1500, height: 950 } }); sp.on('pageerror', e => errs.push('PAGEERROR ' + e.message));
       await sp.route(/\/api\/meta/, async r => { if (r.request().method() === 'GET') await sleep(1500); r.continue(); });
@@ -87,9 +87,9 @@ const until = async (fn, ms = 20000) => { const t = Date.now(); while (Date.now(
       await until(async () => (await jobs()).find(j => j.id === sid)?.status !== 'running', 30000);
       const t1 = (await getJ(`api/chain/${cid}?run=__live__`)).chain.tasks.find(t => t.order === 1) || {};
       const name1 = String(t1.summary || '').trim() || String(t1.title || '').split('\n')[0].replace(/^#+\s*/, '').replace(/\*\*|__|`/g, '').trim();
-      const ok = await until(async () => /^Stopped · 1 of \d tasks? graded$/.test(await ST('#task-mem0')) && /[01]\/1 resolved/.test(await ST('#ctr-mem0')) && /only 1 of \d tasks ran · run again/.test(await ST('#ctr-mem0')), 20000);
-      check('slow server: a stopped Mem0 run shows its saved totals and "only 1 of N tasks ran · run again"', ok && !/nothing was saved/.test(await ST('#ctr-mem0')), `${await ST('#task-mem0')} | ${await ST('#ctr-mem0')}`);
-      check('slow server: … its task row names task 1 (the task that ran)', (await ST('#ttl-mem0')) === name1, `${await ST('#ttl-mem0')} vs ${name1}`);
+      const ok = await until(async () => /^Stopped · 1 of \d turns? graded$/.test(await ST('#task-mem0')) && /[01]\/1 resolved/.test(await ST('#ctr-mem0')) && /only 1 of \d turns ran · run again/.test(await ST('#ctr-mem0')), 20000);
+      check('slow server: a stopped Mem0 run shows its saved totals and "only 1 of N turns ran · run again"', ok && !/nothing was saved/.test(await ST('#ctr-mem0')), `${await ST('#task-mem0')} | ${await ST('#ctr-mem0')}`);
+      check('slow server: … its turn row names turn 1 (the turn that ran)', (await ST('#ttl-mem0')) === name1, `${await ST('#ttl-mem0')} vs ${name1}`);
       check('slow server: … and "run again" is wholly visible', await sp.$eval('#ctr-mem0 [data-again]', a => { const r = a.getBoundingClientRect(), c = a.closest('.col').getBoundingClientRect(); return r.width > 0 && r.left >= c.left && r.right <= c.right + 0.5 && !a.closest('.stat'); }).catch(() => false));
       await sp.screenshot({ path: shots + '/42_compare_slow_stopped.png' });
       await sp.close();
@@ -99,7 +99,7 @@ const until = async (fn, ms = 20000) => { const t = Date.now(); while (Date.now(
   // ---- agent page: banner stop for a run started elsewhere, then the playback-bar stop while watching. The banner names runs of the
   //      chain on screen: the run goes on the example chain the Agent page opens on (api/showcase default_cid, else api/meta's)
   const ACID = (await getJ('api/showcase').catch(() => ({}))).default_cid || meta.default_cid;
-  console.log(`INFO agent page chain ${ACID}`);
+  console.log(`INFO agent page task ${ACID}`);
   const start = async () => { const r = await pg.request.post(BASE + '/api/live/start', { data: { cid: ACID, kind: 'kv', provider: prov ? prov.name : 'local', model: MODEL } }); const j = await r.json(); if (!r.ok()) throw new Error(`live/start ${r.status()}: ${j.detail}`); return j; };
   let j = await start(); await pg.goto(BASE + `/?src=chains&cid=${encodeURIComponent(ACID)}`);
   check('agent: banner offers stop', await until(async () => !!(await pg.$('#bannerstop')), 15000));

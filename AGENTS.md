@@ -31,6 +31,8 @@ A research codebase plus its demo.
 | sandbox project | a visitor's own project: `seed/` (their files or clone) plus one workspace per method |
 | SIF | an Apptainer image; one per chain (`<docker tag>.sif`) plus generic ones (`3.12.sif`) for sandbox projects |
 
+**On screen the words differ (since 2026-11-17):** the pages call a chain a **Task** and a task a **Turn** ("Task explorer", "Turn 2 of 3", "ChainSWE tasks"). Code, API routes, JSON keys, URLs (`?src=chains`), element ids / classes, run files, git commit subjects (`rsm: task N`), logs and these docs keep `chain` / `task`; internally `turns` still means an agent's steps. When you write text a visitor reads, use Task / Turn; everywhere else keep the code's words.
+
 ## Where to change what
 
 | you want to change | file |

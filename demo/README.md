@@ -21,6 +21,8 @@ tokens from the per-call usage via `harness.ledger.summarize`, USD via `harness.
 All three share `static/theme.css` and are served by `demo/server.py`. Static files go live on a browser reload; `.py`
 edits need a server restart.
 
+**Words on screen.** The pages say **Task** for what this README and the code call a chain, and **Turn** for what they call a task (one issue / one sandbox request). Only visible text uses those words; routes, JSON keys, URLs, ids and files keep `chain` / `task`.
+
 ## Run it
 
 ```bash

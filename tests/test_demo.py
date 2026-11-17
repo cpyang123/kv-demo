@@ -190,7 +190,7 @@ def test_a_second_live_run_of_the_same_chain_method_and_model_is_refused(monkeyp
         body = {"cid": SHOWCASE, "kind": "kv", "provider": "local", "model": "m-dup"}
         assert client.post("/api/live/start", json=body).status_code == 200
         r = client.post("/api/live/start", json=body)
-        assert r.status_code == 409 and r.json()["detail"] == "A live run of this chain with Knowledge Vault (m-dup) is already running — watch it or stop it first"
+        assert r.status_code == 409 and r.json()["detail"] == "A live run of this task with Knowledge Vault (m-dup) is already running — watch it or stop it first"
         assert len(started) == 1
         assert client.post("/api/live/start", json={**body, "model": "m-other"}).status_code == 200     # another model
         assert client.post("/api/live/start", json={**body, "kind": "mem0"}).status_code == 200         # another method
@@ -199,7 +199,7 @@ def test_a_second_live_run_of_the_same_chain_method_and_model_is_refused(monkeyp
         assert r.status_code == 409 and "with No memory (coder-next)" in r.json()["detail"]            # no model = the endpoint's default
         r = client.post("/api/configs/run", json={"cid": SHOWCASE, "configs": [{"kind": "kv", "provider": "local", "model": "m-dup"},
                                                                               {"kind": "kv", "provider": "local", "model": "m-third"}]}).json()
-        assert r["errors"] == ["A live run of this chain with Knowledge Vault (m-dup) is already running — watch it or stop it first"]
+        assert r["errors"] == ["A live run of this task with Knowledge Vault (m-dup) is already running — watch it or stop it first"]
         assert [j["model"] for j in r["jobs"]] == ["m-third"] and len(started) == 5
         S.JOBS[started[0]]["stopping"] = True                                                         # Stop pressed: no longer blocks
         assert client.post("/api/live/start", json=body).status_code == 200
@@ -731,7 +731,7 @@ def test_project_create_names_sources_and_default_image(sandbox_env):
     sb = client.get("/api/sandboxes").json()
     assert [s["id"] for s in sb if s.get("default")] == ["3.12"] and {s["kind"] for s in sb} == {"generic", "repo"}
     assert {s["id"]: s["label"] for s in sb} == {"3.12": "Python 3.12 — an empty folder with git",
-                                                  S.CHAINS[SHOWCASE]["tag"]: "pyccel/pyccel — the repository at the commit its ChainSWE tasks start from"}
+                                                  S.CHAINS[SHOWCASE]["tag"]: "pyccel/pyccel — the repository at the commit its ChainSWE turns start from"}
     r = client.post("/api/custom/project", json={"source": "empty", "hint": "Write a tiny CLI that prints the date, please"})
     assert r.status_code == 200, r.text
     p = r.json()
@@ -1192,7 +1192,7 @@ def test_tree_and_file_of_a_sandbox_workspace(sandbox_env, monkeypatch):
     (ws / "scratch.txt").write_text("uncommitted\n"); os.symlink("/etc/passwd", ws / "out"); os.symlink(sandbox_env / "work", ws / "lnk")
     q = {"cid": "tp", "run": "custom", "arm": "mem_fusednote"}
     t1 = client.get("/api/tree", params={**q, "order": 1}).json()
-    assert t1["files"] == ["README.md", "src/app.py"] and t1["at"] == "task" and "after task 1" in t1["source"] and t1["commit"]
+    assert t1["files"] == ["README.md", "src/app.py"] and t1["at"] == "task" and "after turn 1" in t1["source"] and t1["commit"]
     t2 = client.get("/api/tree", params={**q, "order": 2}).json()
     assert t2["files"] == ["README.md", "back\\slash.txt", "new\nline.txt", "src/app.py", "src/link", "src/new.py"] and t2["at"] == "task"
     w = client.get("/api/tree", params={**q, "order": 3}).json()                                 # no commit for task 3 yet: now
@@ -1326,7 +1326,7 @@ def test_a_session_whose_workspace_is_gone(sandbox_env, monkeypatch):
     monkeypatch.setattr(S, "_TREE_CACHE", collections.OrderedDict())
     q = {"cid": "ex", "run": "custom", "arm": "mem_fusednote", "order": 1}
     t = client.get("/api/tree", params=q).json()
-    assert t["files"] == ["README.md", "src/a.py"] and t["at"] == "base" and "no longer on the server" in t["gone"] and "before any task" in t["source"]
+    assert t["files"] == ["README.md", "src/a.py"] and t["at"] == "base" and "no longer on the server" in t["gone"] and "before any turn" in t["source"]
     f = client.get("/api/file", params={**q, "path": "src/a.py"}).json()
     assert f["content"] == "A = 1\n" and f["at"] == "base" and "no longer on the server" in f["gone"] and f["root"] == "/repo"
     assert client.get("/api/file", params={**q, "path": "made_by_agent.py"}).status_code == 404
@@ -1425,7 +1425,7 @@ def test_memop_duplicate_guard_and_job_records(monkeypatch):
             ("memop", "mem_memop", S.config_run_id("local", "m-mo")), ("kv", "mem_fusednote", S.config_run_id("local", "m-mo"))]
         assert r["jobs"][0]["config"] == "memop+m-mo"
         r2 = client.post("/api/live/start", json={"cid": SHOWCASE, "kind": "memop", "provider": "local", "model": "m-mo"})
-        assert r2.status_code == 409 and r2.json()["detail"] == "A live run of this chain with MemOp (m-mo) is already running — watch it or stop it first"
+        assert r2.status_code == 409 and r2.json()["detail"] == "A live run of this task with MemOp (m-mo) is already running — watch it or stop it first"
         r3 = client.post("/api/configs/run", json={"cid": SHOWCASE, "configs": [{"kind": "memop", "provider": "local", "model": "m-mo"}]}).json()
         assert r3["jobs"] == [] and r3["errors"] == [r2.json()["detail"]] and len(started) == 2
         assert client.post("/api/live/start", json={"cid": SHOWCASE, "kind": "memop", "provider": "local", "model": "m-other"}).status_code == 200

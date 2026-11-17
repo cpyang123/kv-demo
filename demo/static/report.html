@@ -171,12 +171,12 @@
       <div class="gearpanel" id="gearpanel" hidden>
         <section><h4>Recorded run</h4>
           <select id="run" class="ctl" aria-label="Recorded run" disabled></select>
-          <div class="gnote">Every chain solved once with each memory method, recorded for the paper.</div></section>
+          <div class="gnote">Every task solved once with each memory method, recorded for the paper.</div></section>
         <section><h4>Cost</h4>
           <label class="row">Price row <select id="price" class="ctl" disabled></select></label>
           <div class="gnote">Tokens are turned into dollars at this price row, the same for every method.</div></section>
         <section><label class="check"><input type="checkbox" id="details"> Show details</label>
-          <div class="gnote">Each task's instance id and the first line of its issue as written.</div></section>
+          <div class="gnote">Each turn's instance id and the first line of its issue as written.</div></section>
       </div>
     </div>
   </div>
@@ -184,7 +184,7 @@
 <div class="wrap">
   <div class="pagehead">
     <h1>Knowledge Vault on ChainSWE — what memory costs</h1>
-    <p class="sub">Each chain is a few related GitHub issues solved one after another in one repository, so memory can carry what the agent learned to the next task. Every number below comes from the recorded runs of the paper.</p>
+    <p class="sub">Each task is a few related GitHub issues solved one after another in one repository, so memory can carry what the agent learned to the next turn. Every number below comes from the recorded runs of the paper.</p>
   </div>
 
   <div class="toggle-row">
@@ -205,7 +205,7 @@
 const $ = (s, el=document) => el.querySelector(s), enc = encodeURIComponent;
 const NAMES = { kv: "Knowledge Vault", mem0: "Mem0", none: "No memory" };
 const COLOR = { kv: "var(--kv)", mem0: "var(--mem0)", none: "var(--none)" };
-const RUN_LABEL = { v3main100: "Paper run (v3, 100 chains)", v2main100: "Paper run (v2)" };   // as in the Agent page's ⚙
+const RUN_LABEL = { v3main100: "Paper run (v3, 100 tasks)", v2main100: "Paper run (v2)" };   // as in the Agent page's ⚙
 const S = { meta: null, sc: null, P: null, run: null, price: null, sel: "kv", summary: null, cid: null, chain: null, chainKey: "", names: {} };
 
 const fmtK = v => !v ? "–" : (Math.abs(v) >= 1000 ? (v/1000).toFixed(2) + "M" : v.toFixed(v < 10 ? 1 : 0) + "K");
@@ -271,7 +271,7 @@ function renderMain() {
   if (!A || !B) {
     const cov = sm.coverage || {}, alt = recordedRuns().find(r => r !== S.run);
     $("#hint").textContent = "";
-    $("#main").innerHTML = `<div class="card"><b>Nothing to compare in ${esc(runLabel(S.run))} yet.</b><div class="sub" style="margin-top:6px">A comparison needs chains finished with both ${NAMES[sel]} and ${NAMES[oth]}; this run has ${plural(cov.kv ?? 0, "finished chain")} with Knowledge Vault, ${cov.mem0 ?? 0} with Mem0 and ${cov.none ?? 0} without memory.${alt ? ` <a href="#" id="pickrec">Show ${esc(runLabel(alt))}</a>.` : ""}</div></div>`;
+    $("#main").innerHTML = `<div class="card"><b>Nothing to compare in ${esc(runLabel(S.run))} yet.</b><div class="sub" style="margin-top:6px">A comparison needs tasks finished with both ${NAMES[sel]} and ${NAMES[oth]}; this run has ${plural(cov.kv ?? 0, "finished task")} with Knowledge Vault, ${cov.mem0 ?? 0} with Mem0 and ${cov.none ?? 0} without memory.${alt ? ` <a href="#" id="pickrec">Show ${esc(runLabel(alt))}</a>.` : ""}</div></div>`;
     const pr = $("#pickrec"); if (pr) pr.onclick = ev => { ev.preventDefault(); S.run = alt; $("#run").value = alt; loadSummary(); };
     return;
   }
@@ -279,25 +279,25 @@ function renderMain() {
   const n = sm.common_chains, P = sm.price || {};
   const saving = (B.usd_chain - A.usd_chain) / B.usd_chain;
   const heroGood = saving > 0;
-  $("#hint").textContent = `${plural(n, "chain")} · ${A.n_sessions} tasks per method`;
+  $("#hint").textContent = `${plural(n, "task")} · ${A.n_sessions} turns per method`;
   const hero = `
     <div class="card hero section">
       <div class="num ${heroGood ? "good" : "bad"}">${heroGood ? "−" : "+"}${(Math.abs(saving)*100).toFixed(1)}%</div>
-      <div class="txt"><b>${NAMES[sel]}</b> costs <b>${fmtUsd(A.usd_chain)}</b> per chain versus <b>${fmtUsd(B.usd_chain)}</b> for ${NAMES[oth]}
-        ${N ? `(no memory at all: ${fmtUsd(N.usd_chain)})` : ""} — and resolves <b>${pct(A.resolve_later)}</b> of the later tasks
+      <div class="txt"><b>${NAMES[sel]}</b> costs <b>${fmtUsd(A.usd_chain)}</b> per task versus <b>${fmtUsd(B.usd_chain)}</b> for ${NAMES[oth]}
+        ${N ? `(no memory at all: ${fmtUsd(N.usd_chain)})` : ""} — and resolves <b>${pct(A.resolve_later)}</b> of the later turns
         (${NAMES[oth]}: ${pct(B.resolve_later)}${N ? `, no memory: ${pct(N.resolve_later)}` : ""}).
         Priced at $${P.input} per million input tokens and $${P.output} per million output tokens.</div>
     </div>`;
   const tile = (label, value, d) => `<div class="card tile"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${d} vs ${NAMES[oth]}</div></div>`;
   const kpis = `<div class="kpis">
-    ${tile("Tokens per task (agent + memory writing)", fmtK(A.total_k), delta(A.total_k, B.total_k, true))}
-    ${tile("Agent steps per task", f1(A.steps), delta(A.steps, B.steps, true))}
+    ${tile("Tokens per turn (agent + memory writing)", fmtK(A.total_k), delta(A.total_k, B.total_k, true))}
+    ${tile("Agent steps per turn", f1(A.steps), delta(A.steps, B.steps, true))}
   </div>`;
   const charts = n < 2 ? "" : `<div class="charts">
-    <div class="card chart"><h3>Cumulative cost over the ${n} chains</h3><p class="sub">Dollars added up chain by chain. The gap between the lines is the saving.</p>
+    <div class="card chart"><h3>Cumulative cost over the ${n} tasks</h3><p class="sub">Dollars added up task by task. The gap between the lines is the saving.</p>
       <div class="legend">${["kv","mem0","none"].filter(k => a[k]).map(k => `<span><i style="background:${COLOR[k]}"></i>${NAMES[k]}</span>`).join("")}</div>
       <div id="c-cum"></div></div>
-    <div class="card chart"><h3>Per-chain cost: ${NAMES[sel]} minus ${NAMES[oth]}</h3><p class="sub" id="c-div-sub"></p>
+    <div class="card chart"><h3>Per-task cost: ${NAMES[sel]} minus ${NAMES[oth]}</h3><p class="sub" id="c-div-sub"></p>
       <div class="legend"><span><i class="sq" style="background:var(--kv)"></i>Knowledge Vault cheaper</span><span><i class="sq" style="background:var(--mem0)"></i>Mem0 cheaper</span></div>
       <div id="c-div"></div></div>
   </div>`;
@@ -308,10 +308,10 @@ function renderMain() {
     <td>${fmtK(x.actor_k)}</td><td${est(k) ? ` title="estimated: these recorded runs did not meter memory writing exactly"` : ""}>${est(k) ? "≈" : ""}${fmtK(x.writer_k)}</td><td>${fmtK(x.total_k)}</td>
     <td>${fmtUsd(x.usd_session)}</td><td>${fmtUsd(x.usd_chain)}</td><td>${x.injected_chars_later ? `${Math.round(x.injected_chars_later).toLocaleString("en-US")} chars` : "–"}</td></tr>`; }).join("");
   const anyEst = ["kv","mem0","none"].some(k => a[k] && est(k));
-  const table = `<div class="card section"><h3>All methods side by side</h3><p class="sub">Averages over the ${plural(n, "chain")} every method finished. Later tasks are tasks 2 and on of a chain, where memory can help.${anyEst ? " ≈ = estimated, see How the numbers are made at the bottom." : ""}</p>
-    <div class="tabwrap"><table><thead><tr><th>Method</th><th>Tasks resolved</th><th>First task resolved</th><th>Later tasks resolved</th><th>Steps per task</th><th>Agent tokens</th><th>Memory tokens</th><th>Tokens per task</th><th>Cost per task</th><th>Cost per chain</th><th>Memory given to later tasks</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
-  const explorer = `<div class="card section" id="explorer"><h3>Chain explorer</h3><p class="sub">Pick a chain to see, task by task, the memory each task was given and what was written to memory after it${S.run === agentRun() ? " — and watch every step in the Agent view" : ""}.</p>
-    <div class="explorer-head"><label class="ctl">Chain <select id="cid"></select></label><a class="go" id="cmp-link" href="compare">Compare side by side ▸</a></div>
+  const table = `<div class="card section"><h3>All methods side by side</h3><p class="sub">Averages over the ${plural(n, "task")} every method finished. Later turns are turns 2 and on of a task, where memory can help.${anyEst ? " ≈ = estimated, see How the numbers are made at the bottom." : ""}</p>
+    <div class="tabwrap"><table><thead><tr><th>Method</th><th>Turns resolved</th><th>First turn resolved</th><th>Later turns resolved</th><th>Steps per turn</th><th>Agent tokens</th><th>Memory tokens</th><th>Tokens per turn</th><th>Cost per turn</th><th>Cost per task</th><th>Memory given to later turns</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  const explorer = `<div class="card section" id="explorer"><h3>Task explorer</h3><p class="sub">Pick a task to see, turn by turn, the memory each turn was given and what was written to memory after it${S.run === agentRun() ? " — and watch every step in the Agent view" : ""}.</p>
+    <div class="explorer-head"><label class="ctl">Task <select id="cid"></select></label><a class="go" id="cmp-link" href="compare">Compare side by side ▸</a></div>
     <div class="cnote" id="cidnote"></div>
     <div id="chainview"></div></div>`;
   $("#main").innerHTML = hero + kpis + charts + table + explorer;
@@ -321,7 +321,7 @@ function renderMain() {
   const rest = sm.chains.filter(c => !scIds.has(c.cid)).sort((x, y) => chainName(x.cid).localeCompare(chainName(y.cid), "en", { sensitivity: "base", numeric: true }));
   const opts1 = sc.map(c => `<option value="${esc(c.cid)}" title="${esc(c.blurb)}">${esc(chainName(c.cid))}</option>`).join(""),
     opts2 = rest.map(c => `<option value="${esc(c.cid)}" title="${esc(c.cid)}">${esc(chainName(c.cid))}</option>`).join("");
-  sel_.innerHTML = sc.length && rest.length ? `<optgroup label="Example chains — where Knowledge Vault saves tokens">${opts1}</optgroup><optgroup label="The other ${rest.length} chains of the paper run">${opts2}</optgroup>` : opts1 + opts2;
+  sel_.innerHTML = sc.length && rest.length ? `<optgroup label="Example tasks — where Knowledge Vault saves tokens">${opts1}</optgroup><optgroup label="The other ${rest.length} tasks of the paper run">${opts2}</optgroup>` : opts1 + opts2;
   if (S.wantCid) { S.cid = S.wantCid; S.wantCid = null; }
   if (!inRun.has(S.cid)) S.cid = [S.sc && S.sc.default_cid, S.meta.default_cid].find(c => inRun.has(c)) || (sc[0] || sm.chains[0] || {}).cid || null;
   if (S.fixUrl) { S.fixUrl = false; syncUrl(); }         // a link with an unknown chain or method: the URL shows what opened
@@ -330,7 +330,7 @@ function renderMain() {
 }
 function renderCidNote() {
   const c = ((S.sc && S.sc.chains) || []).find(x => x.cid === S.cid), r = S.summary.chains.find(x => x.cid === S.cid);
-  $("#cidnote").textContent = c ? c.blurb : r ? `${plural(r.n_tasks, "task")} on ${r.repo}.` : "";
+  $("#cidnote").textContent = c ? c.blurb : r ? `${plural(r.n_tasks, "turn")} on ${r.repo}.` : "";
   $("#cid").title = c ? c.blurb : chainName(S.cid);
   $("#cmp-link").href = `compare?cid=${enc(S.cid || "")}${S.run !== agentRun() ? `&run=${enc(S.run)}` : ""}`;
 }
@@ -381,7 +381,7 @@ function drawCumulative() {
     const r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) / r.width * W;
     const i = Math.max(0, Math.min(n-1, Math.round((sx - m.l) / pw * (n-1))));
     xl.setAttribute("x1", x(i)); xl.setAttribute("x2", x(i)); xl.style.display = "";
-    tipShow(ev, `<div class="t">${esc(chainName(ch[i].cid))}</div><div class="muted tsub">chain ${i+1} of ${n} · running total (this chain)</div>` + keys.map(k => `<div class="row"><span><i style="background:${COLOR[k]}"></i>${NAMES[k]}</span><span>${fmtUsd(cum[k][i])} <span class="muted">(+${fmtUsd(ch[i][k].usd)})</span></span></div>`).join(""));
+    tipShow(ev, `<div class="t">${esc(chainName(ch[i].cid))}</div><div class="muted tsub">task ${i+1} of ${n} · running total (this task)</div>` + keys.map(k => `<div class="row"><span><i style="background:${COLOR[k]}"></i>${NAMES[k]}</span><span>${fmtUsd(cum[k][i])} <span class="muted">(+${fmtUsd(ch[i][k].usd)})</span></span></div>`).join(""));
   });
   hit.addEventListener("mouseleave", () => { xl.style.display = "none"; tipHide(); });
 }
@@ -390,7 +390,7 @@ function drawDiverging() {
   const sel = S.sel, oth = other(sel);
   const rows = S.summary.chains.map(c => ({cid: c.cid, d: c[sel].usd - c[oth].usd, a: c[sel].usd, b: c[oth].usd, kv: c.kv.usd, mem0: c.mem0.usd})).sort((p, q) => p.d - q.d);
   const n = rows.length, cheaper = rows.filter(r => r.d < 0).length;
-  $("#c-div-sub").textContent = `${NAMES[sel]} is cheaper on ${cheaper} of ${n} chains. Each bar is one chain, sorted by the difference — hover to see it, click to open it in the chain explorer.`;
+  $("#c-div-sub").textContent = `${NAMES[sel]} is cheaper on ${cheaper} of ${n} tasks. Each bar is one task, sorted by the difference — hover to see it, click to open it in the task explorer.`;
   const W = 560, H = 260, m = {l: 44, r: 10, t: 10, b: 28}, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const amax = Math.max(...rows.map(r => Math.abs(r.d))) * 1.05 || 1;
   const y = v => m.t + ph/2 - v / amax * (ph/2);
@@ -423,12 +423,12 @@ async function loadChain(force) {
   if (!S.cid) { v.innerHTML = ""; return; }
   const key = [S.cid, S.run, S.price].join("|");
   if (!force && S.chain && S.chainKey === key) { renderChain(); return; }       // the toggle re-renders the page: no refetch
-  v.innerHTML = `<div class="spin">Loading chain…</div>`;
+  v.innerHTML = `<div class="spin">Loading task…</div>`;
   let c;
   try { c = await api(`api/chain/${enc(S.cid)}?run=${enc(S.run)}&price=${enc(S.price || "")}`); }
   catch (e) {
     if (key !== [S.cid, S.run, S.price].join("|") || !$("#chainview")) return;
-    $("#chainview").innerHTML = `<div class="muted">${unreachable(e) ? "Couldn't reach the demo server — it may be restarting." : `Couldn't load this chain: ${esc(e.message)}.`} <button class="linkbtn" type="button" id="rechain">Try again</button></div>`;
+    $("#chainview").innerHTML = `<div class="muted">${unreachable(e) ? "Couldn't reach the demo server — it may be restarting." : `Couldn't load this task: ${esc(e.message)}.`} <button class="linkbtn" type="button" id="rechain">Try again</button></div>`;
     $("#rechain").onclick = () => loadChain(true); return;
   }
   if (key !== [S.cid, S.run, S.price].join("|")) return;          // another chain was picked meanwhile
@@ -439,12 +439,12 @@ function renderChain() {
   const v = $("#chainview"); if (!v) return;
   const c = S.chain, ch = c.chain, sel = S.sel, arms = c.arms;
   const strip = ["kv","mem0","none"].map(k => { const a = arms[k], dot = `<span class="sw" style="background:${COLOR[k]}"></span>`;
-    if (!a) return `<div class="s"><div class="n">${dot}${NAMES[k]}</div><div class="m">no run of this chain</div></div>`;
+    if (!a) return `<div class="s"><div class="n">${dot}${NAMES[k]}</div><div class="m">no run of this task</div></div>`;
     const ss = a.sessions, usd = ss.reduce((s, x) => s + x.tok.usd, 0), res = ss.filter(x => x.resolved).length, steps = ss.reduce((s, x) => s + (x.n_steps||0), 0), tok = ss.reduce((s, x) => s + x.tok.raw_total, 0);
-    return `<div class="s ${k===sel?"sel":""}" style="--sc:${COLOR[k]}"><div class="n">${dot}${NAMES[k]}</div><div class="v">${fmtUsd(usd)}</div><div class="m">${res}/${ss.length} resolved · ${steps} steps · ${fmtTok(tok)} tokens${a.complete ? "" : " · not every task ran"}</div></div>`; }).join("");
+    return `<div class="s ${k===sel?"sel":""}" style="--sc:${COLOR[k]}"><div class="n">${dot}${NAMES[k]}</div><div class="v">${fmtUsd(usd)}</div><div class="m">${res}/${ss.length} resolved · ${steps} steps · ${fmtTok(tok)} tokens${a.complete ? "" : " · not every turn ran"}</div></div>`; }).join("");
   const A = arms[sel];
   let tasks = "";
-  if (!A) tasks = `<div class="muted">No ${NAMES[sel]} run of this chain in ${esc(runLabel(c.run))}.</div>`;
+  if (!A) tasks = `<div class="muted">No ${NAMES[sel]} run of this task in ${esc(runLabel(c.run))}.</div>`;
   else {
     const maxTok = Math.max(...A.sessions.map(s => s.tok.raw_total), 1), watch = S.run === agentRun();   // the Agent page plays the paper run
     tasks = A.sessions.map(s => {
@@ -453,20 +453,20 @@ function renderChain() {
       const act = s.tok.actor_prompt + s.tok.actor_completion, wri = s.tok.writer_prompt + s.tok.writer_completion, est = s.tok.writer_src === "estimate";
       const mem = (s.memory_text || "").length, note = (s.note_written || "").length;
       return `<div class="task">
-        <div class="hd"><span class="ord">Task ${s.order}</span><span class="sum">${esc(t.summary || t.title || "")}</span>${res}
-          ${s.linked === true ? `<span class="badge">builds on an earlier task</span>` : s.linked === false ? `<span class="badge">stands alone</span>` : ""}
+        <div class="hd"><span class="ord">Turn ${s.order}</span><span class="sum">${esc(t.summary || t.title || "")}</span>${res}
+          ${s.linked === true ? `<span class="badge">builds on an earlier turn</span>` : s.linked === false ? `<span class="badge">stands alone</span>` : ""}
           ${s.exit && s.exit !== "Submitted" ? `<span class="badge no">${esc(exitWord(s.exit))}</span>` : ""}</div>
         <div class="raw dt">${esc(s.instance || "")}${t.title ? ` · “${esc(t.title)}”` : ""}</div>
         <div class="meter"><span>steps <b>${s.n_steps ?? "–"}</b></span><span>agent tokens <b>${fmtTok(act)}</b></span>${wri ? `<span>memory writing <b>${est ? "≈" : ""}${fmtTok(wri)}</b></span>` : ""}
           <span>cost <b>${fmtUsd(s.tok.usd)}</b></span><span>time <b>${s.secs != null ? fmtSecs(s.secs) : "–"}</b></span></div>
-        <div class="bar" style="--sc:${COLOR[sel]}" title="agent tokens, then memory-writing tokens (full width = this chain's largest task)"><div style="width:${(act/maxTok*100).toFixed(1)}%;background:${COLOR[sel]}"></div><div class="w" style="width:${(wri/maxTok*100).toFixed(1)}%"></div></div>
-        ${mem ? `<details><summary>Memory given before this task (${mem.toLocaleString("en-US")} chars)</summary>${noteBox(s.memory_text, sel)}</details>` : `<div class="muted" style="font-size:13px">No memory given before this task${s.order === 1 ? " (first task of the chain)" : ""}.</div>`}
-        ${note ? `<details><summary>Written to memory after this task (${note.toLocaleString("en-US")} chars)</summary>${noteBox(s.note_written, sel)}</details>` : ""}
+        <div class="bar" style="--sc:${COLOR[sel]}" title="agent tokens, then memory-writing tokens (full width = this task's largest turn)"><div style="width:${(act/maxTok*100).toFixed(1)}%;background:${COLOR[sel]}"></div><div class="w" style="width:${(wri/maxTok*100).toFixed(1)}%"></div></div>
+        ${mem ? `<details><summary>Memory given before this turn (${mem.toLocaleString("en-US")} chars)</summary>${noteBox(s.memory_text, sel)}</details>` : `<div class="muted" style="font-size:13px">No memory given before this turn${s.order === 1 ? " (first turn of the task)" : ""}.</div>`}
+        ${note ? `<details><summary>Written to memory after this turn (${note.toLocaleString("en-US")} chars)</summary>${noteBox(s.note_written, sel)}</details>` : ""}
         <details><summary>The issue</summary>${issueBox(t.problem_statement || "")}</details>
         ${watch ? `<a class="go" href="./?src=chains&amp;cid=${enc(S.cid)}&amp;kind=${sel}&amp;order=${s.order}">Watch in the Agent view ▸</a>` : ""}
       </div>`; }).join("");
   }
-  const key = A ? `<div class="barkey" aria-hidden="true">Bars: <span><i style="background:${COLOR[sel]}"></i>agent tokens</span><span><i style="background:color-mix(in srgb, ${COLOR[sel]} 55%, var(--surface))"></i>memory writing</span><span>· full width = this chain's largest task</span></div>` : "";
+  const key = A ? `<div class="barkey" aria-hidden="true">Bars: <span><i style="background:${COLOR[sel]}"></i>agent tokens</span><span><i style="background:color-mix(in srgb, ${COLOR[sel]} 55%, var(--surface))"></i>memory writing</span><span>· full width = this task's largest turn</span></div>` : "";
   v.innerHTML = `<div class="strip">${strip}</div>${key}<div class="tasks">${tasks}</div>`;
 }
 
@@ -477,8 +477,8 @@ function fillRuns() { const rs = recordedRuns(); $("#run").innerHTML = rs.map(r 
 function renderHow() {
   const arms = S.summary ? Object.values(S.summary.arms || {}).filter(Boolean) : [], est = arms.some(x => x.writer_src === "estimate"), exact = arms.some(x => x.tok_src === "ledger");
   $("#howbody").innerHTML = `<p><b>Resolved</b> means the issue's own tests pass after the agent's change: the tests written for the fix, and the tests that passed before it.</p>
-    <p><b>Tokens</b> are what the model server reported for every call of a task: the agent's own calls plus the calls that write memory. <b>Cost</b> turns tokens into dollars at one price row, the same for every method (⚙ › Cost changes it), so the differences come only from token counts — a conversion, not money spent.</p>
-    <p><b>Knowledge Vault</b> (ours) writes one short structured note after each task — what was done, where, how to check it, what to watch out for — and gives it to the next task. <b>Mem0</b> runs the official Mem0 fact-extraction prompts on each finished task and gives every fact it found to the next task. <b>No memory</b> starts every task from scratch. Both memory methods write with the same model as the agent.</p>
+    <p><b>Tokens</b> are what the model server reported for every call of a turn: the agent's own calls plus the calls that write memory. <b>Cost</b> turns tokens into dollars at one price row, the same for every method (⚙ › Cost changes it), so the differences come only from token counts — a conversion, not money spent.</p>
+    <p><b>Knowledge Vault</b> (ours) writes one short structured note after each turn — what was done, where, how to check it, what to watch out for — and gives it to the next turn. <b>Mem0</b> runs the official Mem0 fact-extraction prompts on each finished turn and gives every fact it found to the next turn. <b>No memory</b> starts every turn from scratch. Both memory methods write with the same model as the agent.</p>
     ${est ? `<p>Memory tokens marked ≈ are estimated from the text the memory step was given: these recorded runs predate exact metering. Their model server reported no prompt-cache hits, so no cache discount applies.</p>` : ""}${exact ? `<p>Runs without ≈ metered every model call exactly.</p>` : ""}`;
   $("#foot").hidden = false;
 }

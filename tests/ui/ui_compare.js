@@ -42,7 +42,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   { const l3 = sc.chains.filter(c => qualifies(c, ['kv', 'mem0', 'none'])).sort((a, b) => saving(b, ['kv', 'mem0', 'none']) - saving(a, ['kv', 'mem0', 'none']));
     DEF = l3.some(c => c.cid === sc.default_cid) ? sc.default_cid : l3[0]?.cid; }       // = compare.html pickDefault()
   const DCH = sc.chains.find(c => c.cid === DEF) || {}, DN = DCH.n_tasks || 3, repoOf = cid => String((sc.chains.find(c => c.cid === cid) || meta.chains.find(c => c.cid === cid) || {}).repo || cid).split(' ')[0].split('/').pop();
-  console.log(`INFO default chain ${DEF} (${DCH.title} — ${DCH.repo}, ${DN} tasks) · api/meta default_cid ${meta.default_cid} · ${sc.chains.length} example chains`);
+  console.log(`INFO default task ${DEF} (${DCH.title} — ${DCH.repo}, ${DN} turns) · api/meta default_cid ${meta.default_cid} · ${sc.chains.length} example tasks`);
   // the recorded run of the default chain: its numbers say what the strip and the footer must show
   const rc0 = await getJ(`api/runchains?run=${sc.run}&cid=${DEF}&kinds=kv,mem0,memop,rawcat,none`), arms0 = rc0.chains[0].arms;
   const tokOf = k => (arms0[k]?.sessions || []).filter(x => !/^error/i.test(String(x.exit || '')) || /ContextWindowExceeded/i.test(String(x.exit || ''))).reduce((a, x) => a + (x.tokens || 0), 0);
@@ -77,7 +77,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
       if (/more than|as many as|100% fewer/.test(await T('#hero'))) bad.push(`${cid}: hero ${await T('#hero')}`);
       const ht = await heroVsTable(); if (ht.length) bad.push(`${cid}: ${ht.join(', ')}`);
     }
-    check(`${label}: on all ${opts.length} chains the footer shows Knowledge Vault with fewer tokens than every column, its table agreeing with the sentence`, !bad.length, bad.join('; '));
+    check(`${label}: on all ${opts.length} tasks the footer shows Knowledge Vault with fewer tokens than every column, its table agreeing with the sentence`, !bad.length, bad.join('; '));
     await gear(false);
   };
   /** The footer table's "tokens vs KV" never contradicts the sentence above it: each ratio fits the percentage the sentence gives for
@@ -98,7 +98,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
         continue; }
       const d = parseFloat(cell), dec = (String(cell).match(/\.(\d+)/) || ['', ''])[1].length, h2 = 0.5 * 10 ** -dec;
       if (!/^[\d.]+×$/.test(cell) || d + h2 < lo - 1e-9 || d - h2 > hi + 1e-9) bad.push(`${k}: "${cell}" vs the sentence (${hero})`);
-      else if (new RegExp(`${nm} over the \\d+ tasks? both ran`).test(hero) && !/over the \d+ tasks? both ran/.test(tip)) bad.push(`${k}: ratio tooltip doesn't say it is over the tasks both ran`);
+      else if (new RegExp(`${nm} over the \\d+ turns? both ran`).test(hero) && !/over the \d+ turns? both ran/.test(tip)) bad.push(`${k}: ratio tooltip doesn't say it is over the turns both ran`);
     }
     return bad;
   };
@@ -106,7 +106,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   // ---------------------------------------------------------------- defaults
   await pg.goto(BASE + '/compare'); await ready();
   check('boot: columns KV | Mem0 | No memory', (await kinds()).join(',') === 'kv,mem0,none', (await kinds()).join(','));
-  check(`boot: opens on the server's default example chain (${DEF})`, (await cidNow()) === DEF && new URL(pg.url()).searchParams.get('cid') === DEF, await cidNow());
+  check(`boot: opens on the server's default example task (${DEF})`, (await cidNow()) === DEF && new URL(pg.url()).searchParams.get('cid') === DEF, await cidNow());
   check('boot: title and favicon', (await pg.title()) === 'Compare · Knowledge Vault' && !!(await pg.$('link[rel="icon"][href^="data:image/svg"]')));
   check('boot: KV header has the "ours" tag', /ours/.test(await T('#col-kv .hname')));
   for (const k of ['kv', 'mem0', 'none']) {
@@ -117,10 +117,10 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   await until(async () => (await pg.$$eval('#api-kv option', e => e.length)) > 1, 15000);
   check('boot: API lists the endpoints that answer, nothing marked unavailable', (await pg.$$eval('#api-kv option', e => e.length)) > 1 && !(await pg.$$eval('#cols select option', e => e.some(o => /unavailable|saved runs only/.test(o.textContent)))));
   check('boot: no option groups in any select', !(await pg.$('optgroup')));
-  check('boot: chain option text "title — repo", no token figure', (await pg.$eval('#cid', e => e.selectedOptions[0].textContent)) === `${DCH.title} — ${DCH.repo}` && (await pg.$$eval('#cid option', e => e.every(o => !/KV −|tokens/.test(o.textContent)))), await pg.$eval('#cid', e => e.selectedOptions[0].textContent));
+  check('boot: task option text "title — repo", no token figure', (await pg.$eval('#cid', e => e.selectedOptions[0].textContent)) === `${DCH.title} — ${DCH.repo}` && (await pg.$$eval('#cid option', e => e.every(o => !/KV −|tokens/.test(o.textContent)))), await pg.$eval('#cid', e => e.selectedOptions[0].textContent));
   check('boot: ⚙ first section "What to compare" holds the select, not the page', !(await pg.isVisible('#cid')) && (await pg.$eval('#gearpanel section', e => e.id)) === 'chainsec' && !!(await pg.$('#gearpanel #chainsec #cid')) && /^What to compare$/i.test(await T('#chainsec h4')), await T('#chainsec h4'));
-  check('boot: the source switch starts on Example chains', (await src()) === 'example' || await pg.$eval('#srcseg', e => e.hidden), String(await src()));
-  check('boot: the ⚙ line says what the columns show', (await T('#chainnote')).includes(String(DCH.blurb || '').replace(/\s+/g, ' ').slice(0, 40)) && new RegExp(`${DN} tasks`).test(await T('#chainnote')) && /Each column replays the paper's recorded run/.test(await T('#chainnote')), await T('#chainnote'));
+  check('boot: the source switch starts on Example tasks', (await src()) === 'example' || await pg.$eval('#srcseg', e => e.hidden), String(await src()));
+  check('boot: the ⚙ line says what the columns show', (await T('#chainnote')).includes(String(DCH.blurb || '').replace(/\s+/g, ' ').slice(0, 40)) && new RegExp(`${DN} turns`).test(await T('#chainnote')) && /Each column replays the paper's recorded run/.test(await T('#chainnote')), await T('#chainnote'));
   check('boot: one top bar with view, playback, same model, Run live, nav, ⚙', !(await pg.$('.controls')) && (await pg.$$eval('header.top #viewseg, header.top #play, header.top #step, header.top #restart, header.top #end, header.top #samewrap, header.top #runlive, header.top .pnav, header.top #gearbtn', e => e.length)) === 9);
   await sleep(2500);       // the endpoint status arrives after the page
   check('boot: no Run live and no "Same model everywhere" while every column shows the recorded run', await pg.$eval('#runlive', e => e.hidden) && await pg.$eval('#samewrap', e => e.hidden));
@@ -129,32 +129,32 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   check(`boot: footer hero (token-first) "${HERO0}"`, (await T('#hero')) === HERO0, await T('#hero'));
   { const ht = await heroVsTable(); check('boot: the footer table\'s "tokens vs KV" agrees with the sentence above it', !ht.length, ht.join('; ')); }
   const ths = (await pg.$$eval('#sum thead th', e => e.map(x => x.textContent.trim()))).join('|');
-  check('boot: footer table columns', ths === 'whole chain|model|resolved|steps|tokens|tokens vs KV|cost', ths);
+  check('boot: footer table columns', ths === 'whole task|model|resolved|steps|tokens|tokens vs KV|cost', ths);
   check('boot: no per-column run buttons beside the selects', !(await pg.$('.head button')));
-  check('boot: the Agent link opens this chain', (await pg.$eval('#nav-agent', e => e.getAttribute('href'))) === `./?cid=${DEF}`, await pg.$eval('#nav-agent', e => e.getAttribute('href')));
+  check('boot: the Agent link opens this task', (await pg.$eval('#nav-agent', e => e.getAttribute('href'))) === `./?cid=${DEF}`, await pg.$eval('#nav-agent', e => e.getAttribute('href')));
   const opts0 = await pg.$$eval('#cid option', e => e.map(o => o.value));
-  check(`chains: only showcase chains, all of them qualify (${opts0.length} of the server's ${sc.chains.length})`, opts0.every(c => scIds.has(c)) && opts0.slice().sort().join() === expect(['kv', 'mem0', 'none']).join(), `${opts0.length} options`);
-  if (!scIds.has(OLD)) check(`chains: ${OLD} (the old default) is no longer in the list`, !opts0.includes(OLD));
+  check(`tasks: only showcase tasks, all of them qualify (${opts0.length} of the server's ${sc.chains.length})`, opts0.every(c => scIds.has(c)) && opts0.slice().sort().join() === expect(['kv', 'mem0', 'none']).join(), `${opts0.length} options`);
+  if (!scIds.has(OLD)) check(`tasks: ${OLD} (the old default) is no longer in the list`, !opts0.includes(OLD));
   const order0 = sc.chains.filter(c => qualifies(c, ['kv', 'mem0', 'none'])).sort((a, b) => saving(b, ['kv', 'mem0', 'none']) - saving(a, ['kv', 'mem0', 'none'])).map(c => c.cid);
-  check('chains: sorted by Knowledge Vault\'s saving vs the closest column, descending', opts0.join() === order0.join(), opts0.join());
+  check('tasks: sorted by Knowledge Vault\'s saving vs the closest column, descending', opts0.join() === order0.join(), opts0.join());
   await pg.screenshot({ path: `${OUT}/cmp_default.png` });
 
   // ---------------------------------------------------------------- before ▶: each column shows its first task whole (C1), named by its summary
   const N1 = {}, TEXT1 = {};       // steps of task 1 per column, the issue text of task 1
   for (const k of ['kv', 'mem0', 'none']) {
     const s1 = arms0[k].sessions[0], full = await sess(sc.run, arms0[k].arm, DEF, s1.order), n = full.turns.length; N1[k] = n; TEXT1[k] = full.problem_statement;
-    check(`${k}: every step and the result cards of task 1 are on screen before ▶`, (await visTurns(k)) === n && (await pg.$$eval(`#tr-${k} .tail[data-tail="grade"]`, e => e.filter(x => !x.hidden).length)) === 1, `${await visTurns(k)} of ${n}`);
-    check(`${k}: task row "Task 1/${DN} · ${n} steps"`, (await T(`#task-${k}`)) === `Task 1/${DN} · ${n} steps`, await T(`#task-${k}`));
+    check(`${k}: every step and the result cards of turn 1 are on screen before ▶`, (await visTurns(k)) === n && (await pg.$$eval(`#tr-${k} .tail[data-tail="grade"]`, e => e.filter(x => !x.hidden).length)) === 1, `${await visTurns(k)} of ${n}`);
+    check(`${k}: turn row "Turn 1/${DN} · ${n} steps"`, (await T(`#task-${k}`)) === `Turn 1/${DN} · ${n} steps`, await T(`#task-${k}`));
     const want = taskName(full.summary || s1.summary, full.problem_statement);
-    check(`${k}: the task row names the task by its ${full.summary ? 'summary' : 'first line (no summary on this server)'}`, (await T(`#ttl-${k}`)) === want, `${await T(`#ttl-${k}`)} vs ${want}`);
-    const n1 = await pg.$eval(`#col-${k}`, c => ([...c.children].filter(x => !x.classList.contains('transcript')).map(x => x.innerText).join(' ').match(/Task \d/g) || []).length);
-    check(`${k}: "Task 1" shown once above the transcript`, n1 === 1, `${n1}×`);
+    check(`${k}: the turn row names the turn by its ${full.summary ? 'summary' : 'first line (no summary on this server)'}`, (await T(`#ttl-${k}`)) === want, `${await T(`#ttl-${k}`)} vs ${want}`);
+    const n1 = await pg.$eval(`#col-${k}`, c => ([...c.children].filter(x => !x.classList.contains('transcript')).map(x => x.innerText).join(' ').match(/Turn \d/g) || []).length);
+    check(`${k}: "Turn 1" shown once above the transcript`, n1 === 1, `${n1}×`);
   }
   check('before ▶: no "Press ▶ Play all" hint in any column', !/Press ▶ Play all/.test(await pg.evaluate(() => document.body.innerText)) && await pg.$$eval('#cols .transcript', ts => ts.every(t => getComputedStyle(t, '::before').content === 'none')));
-  check('before ▶: the whole issue text stays behind the task row', (await T('#tpb-kv')).includes(firstLine(TEXT1.kv).slice(0, 40)) && (await T('#tpb-kv')).length > 200, (await T('#tpb-kv')).slice(0, 80));
+  check('before ▶: the whole issue text stays behind the turn row', (await T('#tpb-kv')).includes(firstLine(TEXT1.kv).slice(0, 40)) && (await T('#tpb-kv')).length > 200, (await T('#tpb-kv')).slice(0, 80));
 
   // ---------------------------------------------------------------- compact chrome: one task row, collapsed numbers, collapsed footer
-  check('chain select: no group heading, no threshold jargon', !(await pg.$('#cid optgroup')) && !/≥/.test(await pg.evaluate(() => document.body.innerText + [...document.querySelectorAll('#cid option')].map(o => o.textContent).join(' '))));
+  check('task select: no group heading, no threshold jargon', !(await pg.$('#cid optgroup')) && !/≥/.test(await pg.evaluate(() => document.body.innerText + [...document.querySelectorAll('#cid option')].map(o => o.textContent).join(' '))));
   check('header: no inline method description, it is the name tooltip', !(await pg.$('#cols .hdesc')) && /^Knowledge Vault \(ours\) — .*writer distils/.test(await pg.$eval('#col-kv .hname', e => e.title)) && !/writer distils/.test(await T('#col-kv .head')), await pg.$eval('#col-kv .hname', e => e.title));
   const headTxt = await pg.$$eval('#cols .col .head', hs => hs.map(h => [h.querySelector('.hname').textContent.trim(), h.querySelectorAll('.hsel > :not(select)').length]));
   check('header: no "API" / "Model" text labels', headTxt.every(([t, n]) => !/\bAPI\b|\bModel\b/.test(t) && n === 0), JSON.stringify(headTxt));
@@ -163,23 +163,23 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   check('no separate chip/sub line', !(await pg.$('#cols .col > .sub')));
   const chrome = await pg.$$eval('#cols .col', cs => cs.map(c => Math.round(c.querySelector('.transcript').getBoundingClientRect().top - c.getBoundingClientRect().top)));
   check('collapsed chrome above the transcripts ≤ 110 px and equal in every column', chrome.every(h => h <= 110 && h === chrome[0]), chrome.join(','));
-  check('progress collapsed by default: one line, step rows hidden', !(await pg.isVisible('#ctr-kv .rows')) && (await pg.$eval('#ctr-kv .sline', e => e.getBoundingClientRect().height)) < 30 && new RegExp(`whole chain\\s*${mtok(tokOf('kv')).replace('.', '\\.')}\\s*tokens\\s*\\$[\\d.]+\\s*${KVRES} resolved`).test(await T('#ctr-kv .sline')), await T('#ctr-kv .sline'));
+  check('progress collapsed by default: one line, step rows hidden', !(await pg.isVisible('#ctr-kv .rows')) && (await pg.$eval('#ctr-kv .sline', e => e.getBoundingClientRect().height)) < 30 && new RegExp(`whole task\\s*${mtok(tokOf('kv')).replace('.', '\\.')}\\s*tokens\\s*\\$[\\d.]+\\s*${KVRES} resolved`).test(await T('#ctr-kv .sline')), await T('#ctr-kv .sline'));
   check('strip: never "0/0"', !/\b0\/0\b/.test(await pg.evaluate(() => document.querySelector('#cols').innerText)));
   check('footer collapsed by default: hero + details toggle, no table', await pg.isVisible('#hero') && !(await pg.isVisible('#sum table')) && /details ▸/.test(await T('#ftog')) && (await pg.$eval('#sum', e => e.getBoundingClientRect().height)) < 50);
   // the task row opens the whole task text
   await pg.click('#tph-mem0'); await sleep(200);
-  check('task row: click shows the whole task text', await pg.isVisible('#tpb-mem0') && (await T('#tpb-mem0')).length > 100 && (await pg.$eval('#tph-mem0', e => e.getAttribute('aria-expanded'))) === 'true');
-  await pg.click('#tph-mem0'); await sleep(200); check('task row: second click hides it', !(await pg.isVisible('#tpb-mem0')));
+  check('turn row: click shows the whole turn text', await pg.isVisible('#tpb-mem0') && (await T('#tpb-mem0')).length > 100 && (await pg.$eval('#tph-mem0', e => e.getAttribute('aria-expanded'))) === 'true');
+  await pg.click('#tph-mem0'); await sleep(200); check('turn row: second click hides it', !(await pg.isVisible('#tpb-mem0')));
   // one toggle expands the step rows of every column; the rows line up across the columns; steps not reached yet are faint
   await pg.click('#ctr-mem0 [data-ptog]'); await sleep(500);
   check('steps ▸: every column shows its step rows', (await pg.$$eval('#cols .strip .rows', e => e.map(x => getComputedStyle(x).display))).every(d => d === 'block'));
   const faint = await pg.$$eval('#cols .strip .trow[data-o="1"]', rs => rs.map(r => { const d = [...r.querySelectorAll('.d2')]; return [r.closest('.col').dataset.kind, d.length, d.filter(x => { const o = +getComputedStyle(x).opacity; return o > 0.2 && o < 0.6; }).length]; }));
   check('steps ▸ before ▶: every task-1 dot is shown, faintly', faint.every(([, n, f]) => n > 0 && n === f), JSON.stringify(faint));
   const rowH = await pg.$$eval('#cols .strip .trow[data-o]', rs => { const m = {}; for (const r of rs) (m[r.dataset.o] = m[r.dataset.o] || []).push(Math.round(r.getBoundingClientRect().height)); return m; });
-  check('steps ▸: task rows have the same height in every column', Object.values(rowH).every(hs => hs.length === 3 && new Set(hs).size === 1), JSON.stringify(rowH));
+  check('steps ▸: turn rows have the same height in every column', Object.values(rowH).every(hs => hs.length === 3 && new Set(hs).size === 1), JSON.stringify(rowH));
   const tops = await pg.$$eval('#cols .strip .trow[data-o="3"]', rs => rs.map(r => Math.round(r.getBoundingClientRect().top)));
   check('steps ▸: T3 sits at the same height in every column', new Set(tops).size === 1, tops.join(','));
-  check('steps ▸: a task label names the task', /^Task 2 — .+: click to jump/.test(await pg.$eval('#ctr-kv .trow[data-o="2"] .tl', e => e.title)), await pg.$eval('#ctr-kv .trow[data-o="2"] .tl', e => e.title));
+  check('steps ▸: a turn label names the turn', /^Turn 2 — .+: click to jump/.test(await pg.$eval('#ctr-kv .trow[data-o="2"] .tl', e => e.title)), await pg.$eval('#ctr-kv .trow[data-o="2"] .tl', e => e.title));
   await pg.click('#ftog'); await sleep(300);
   check('details ▸: footer shows the table and the step-dot legend', await pg.isVisible('#sum table') && await pg.isVisible('#sum .legend') && /command ok/.test(await T('#sum .legend')) && /details ▾/.test(await T('#ftog')));
   await pg.screenshot({ path: `${OUT}/cmp_expanded.png` });
@@ -193,21 +193,21 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   await pg.click('#play'); await sleep(300);
   check('pause: no "thinking" placeholder left blinking', !(await pg.$('#cols .thinking')));
   const s0 = await T('#task-mem0'); await pg.click('#step'); await sleep(400); check('step all advances', (await T('#task-mem0')) !== s0, `${s0} -> ${await T('#task-mem0')}`);
-  await pg.click('#end'); await sleep(800); check('show all: task result in the task row', /resolved/.test(await T('#res-kv')) && /resolved/.test(await T('#pin-kv .tp-head')), await T('#res-kv'));
+  await pg.click('#end'); await sleep(800); check('show all: turn result in the turn row', /resolved/.test(await T('#res-kv')) && /resolved/.test(await T('#pin-kv .tp-head')), await T('#res-kv'));
   await pg.click('#restart'); await sleep(1500);
-  check('↺: every column rewinds to the start of task 1 (step 0, no step shown)', (await T('#task-kv')) === `Task 1/${DN} · step 0/${N1.kv}` && (await visTurns('kv')) === 0 && new RegExp(`^Task 1/${DN} · step 0/`).test(await T('#task-mem0')), `${await T('#task-kv')} · ${await visTurns('kv')} | ${await T('#task-mem0')}`);
-  check('↺: one status line says so, ▶ replays it', /Back to the start of task 1/.test(await T('#livest')) && /Play all/.test(await T('#play')), await T('#livest'));
-  await pg.click('#play'); await sleep(2500); check('↺ then ▶: the replay starts again from step 1', new RegExp(`^Task 1/${DN} · step [1-9]\\d*/${N1.kv}$`).test(await T('#task-kv')) && (await visTurns('kv')) >= 1, `${await T('#task-kv')} · ${await visTurns('kv')}`);
+  check('↺: every column rewinds to the start of turn 1 (step 0, no step shown)', (await T('#task-kv')) === `Turn 1/${DN} · step 0/${N1.kv}` && (await visTurns('kv')) === 0 && new RegExp(`^Turn 1/${DN} · step 0/`).test(await T('#task-mem0')), `${await T('#task-kv')} · ${await visTurns('kv')} | ${await T('#task-mem0')}`);
+  check('↺: one status line says so, ▶ replays it', /Back to the start of turn 1/.test(await T('#livest')) && /Play all/.test(await T('#play')), await T('#livest'));
+  await pg.click('#play'); await sleep(2500); check('↺ then ▶: the replay starts again from step 1', new RegExp(`^Turn 1/${DN} · step [1-9]\\d*/${N1.kv}$`).test(await T('#task-kv')) && (await visTurns('kv')) >= 1, `${await T('#task-kv')} · ${await visTurns('kv')}`);
   await pg.click('#play'); await sleep(300);
   const dot = (await pg.$$('#ctr-kv .rows .trow[data-o="1"] .d2'))[4]; if (dot) { await dot.click(); await sleep(500); check('a dot jumps there: steps 1–5 shown, no "thinking"', new RegExp(`step 5/${N1.kv}$`).test(await T('#task-kv')) && (await visTurns('kv')) === 5 && !(await pg.$('#tr-kv .thinking')), `${await T('#task-kv')} · ${await visTurns('kv')}`); }
-  const tl = await pg.$('#ctr-kv .trow[data-o="2"] .tl'); if (tl) { await tl.click(); await sleep(1500); check('jump to task 2 via its label', /Task 2\/3/.test(await T('#task-kv')), await T('#task-kv')); }
+  const tl = await pg.$('#ctr-kv .trow[data-o="2"] .tl'); if (tl) { await tl.click(); await sleep(1500); check('jump to turn 2 via its label', /Turn 2\/3/.test(await T('#task-kv')), await T('#task-kv')); }
   for (let i = 0; i < 6; i++) { await pg.click('#end'); await sleep(700); }
-  check('⇥ to the end of the chain', new RegExp(`^Task ${DN}/${DN} `).test(await T('#task-kv')), await T('#task-kv'));
+  check('⇥ to the end of the task', new RegExp(`^Turn ${DN}/${DN} `).test(await T('#task-kv')), await T('#task-kv'));
   await pg.click('#play'); await sleep(1800);
-  check('▶ at the end of the chain replays task 1', new RegExp(`^Task 1/${DN} · step [0-3]/`).test(await T('#task-kv')) && /Pause/.test(await T('#play')), await T('#task-kv'));
+  check('▶ at the end of the task replays turn 1', new RegExp(`^Turn 1/${DN} · step [0-3]/`).test(await T('#task-kv')) && /Pause/.test(await T('#play')), await T('#task-kv'));
   await pg.click('#play'); await sleep(300);
   await pg.click('#ctr-kv [data-ptog]'); await pg.click('#ftog'); await sleep(400);
-  check('collapsing again: the current task\'s dots inline, table hidden', !(await pg.isVisible('#ctr-kv .rows')) && (await pg.$$('#ctr-kv .sline .idots .d2')).length > 0 && !(await pg.isVisible('#sum table')));
+  check('collapsing again: the current turn\'s dots inline, table hidden', !(await pg.isVisible('#ctr-kv .rows')) && (await pg.$$('#ctr-kv .sline .idots .d2')).length > 0 && !(await pg.isVisible('#sum table')));
 
   // ---------------------------------------------------------------- ⚙ Columns: the chain list follows the columns
   // A chain that no longer qualifies against the ticked columns is left for the top one, with one line saying why. Which column moves
@@ -219,13 +219,13 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     await gear(true); await pg.check(`#colchecks input[data-col="${k}"]`); await sleep(2500); await ready();
     check(`${label}: column order ${cols.join(' | ')}`, (await kinds()).join(',') === cols.join(','), (await kinds()).join(','));
     const order = sc.chains.filter(c => qualifies(c, cols)).sort((a, b) => saving(b, cols) - saving(a, cols)).map(c => c.cid), opts = await pg.$$eval('#cid option', e => e.map(o => o.value));
-    check(`${label}: the chain list = the ${order.length} chains that qualify against these columns, by the saving vs the closest column`, opts.join() === order.join() && opts.length <= opts0.length, opts.join());
+    check(`${label}: the task list = the ${order.length} tasks that qualify against these columns, by the saving vs the closest column`, opts.join() === order.join() && opts.length <= opts0.length, opts.join());
     if (stays) check(`${label}: stays on ${before} (Knowledge Vault still saves ≥ ${Math.round(margin * 100)}% there), no message`, (await cidNow()) === before && await pg.$eval('#stline', e => e.hidden), `${await cidNow()} | ${await T('#livest')}`);
     else {
-      check(`${label}: moved off ${before} to the top chain`, (await cidNow()) === order[0], await cidNow());
+      check(`${label}: moved off ${before} to the top task`, (await cidNow()) === order[0], await cidNow());
       check(`${label}: status line says why (visible on the page)`, new RegExp(`^${rx(repoOf(before))}: .*${NM[k]}.* — switched to ${rx(repoOf(order[0]))} `).test(await T('#livest')) && await pg.isVisible('#livest'), await T('#livest'));
       const now = sc.chains.find(c => c.cid === order[0]);
-      check(`${label}: ⚙ line follows the new chain`, !!now && (await T('#chainnote')).includes(now.blurb.slice(0, 30)), await T('#chainnote'));
+      check(`${label}: ⚙ line follows the new task`, !!now && (await T('#chainnote')).includes(now.blurb.slice(0, 30)), await T('#chainnote'));
       await pg.keyboard.press('Escape'); await pg.click('#stx'); await sleep(200);
       check('status line: × dismisses it', await pg.$eval('#stline', e => e.hidden));
     }
@@ -238,7 +238,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   await tick('memop', ['kv', 'mem0', 'memop', 'none'], 'MemOp on');
   check('MemOp on: URL has cols', /cols=kv,mem0,memop,none/.test(pg.url()), pg.url());
   const moved = !(await tick('rawcat', ['kv', 'mem0', 'memop', 'rawcat', 'none'], 'all columns'));
-  if (!moved) console.log('INFO no column moved the page off the default chain on this server (the data decide)');
+  if (!moved) console.log('INFO no column moved the page off the default task on this server (the data decide)');
   for (const k of ['memop', 'rawcat']) {
     const a = await pg.$$eval(`#api-${k} option`, e => e.map(o => [o.value, o.disabled]));
     if (k === 'memop' && memopLive) check('memop (runs live): its API select offers the endpoints', a[0][0] === 'rec' && a.length > 1 && a.slice(1).every(x => !x[1]), JSON.stringify(a));
@@ -291,28 +291,28 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   check('memory view: play controls hidden', await pg.$eval('#play', e => e.hidden));
   check('memory view: URL has view=memory', /view=memory/.test(pg.url()));
   { const ch = await getJ(`api/chain/${SQL}?run=__live__`), t1 = ch.chain.tasks.find(t => t.order === 1);
-    check(`memory view: rows "Task 1 — <the task's ${t1.summary ? 'summary' : 'first line'}>"`, (await T('#memview .mc-row[data-order="1"] b')) === `Task 1 — ${taskName(t1.summary, t1.title)}`, await T('#memview .mc-row[data-order="1"] b')); }
+    check(`memory view: rows "Turn 1 — <the turn's ${t1.summary ? 'summary' : 'first line'}>"`, (await T('#memview .mc-row[data-order="1"] b')) === `Turn 1 — ${taskName(t1.summary, t1.title)}`, await T('#memview .mc-row[data-order="1"] b')); }
   await pg.screenshot({ path: `${OUT}/cmp_memory_memop.png` });
   await pg.click('#memview [data-mcmode="store"]'); await sleep(400);
   check('memory view: saved store mode', (await pg.$$('#memview .mc-item')).length > 0);
   await pg.click('#memview .mc-row[data-order="2"]'); await sleep(2000);
-  check('memory view: a task row returns to the transcripts at that task, shown whole', !(await pg.$eval('#cols', e => e.hidden)) && /^Task 2\/3 · \d+ steps$/.test(await T('#task-kv')) && !(await pg.$('#cols .thinking')), await T('#task-kv'));
+  check('memory view: a turn row returns to the transcripts at that turn, shown whole', !(await pg.$eval('#cols', e => e.hidden)) && /^Turn 2\/3 · \d+ steps$/.test(await T('#task-kv')) && !(await pg.$('#cols .thinking')), await T('#task-kv'));
   await pg.goto(BASE + '/compare?cols=kv,rawcat&view=memory'); await pg.waitForSelector('#memview .mc-grid', { timeout: 30000 }); await sleep(800);
   check('?view=memory&cols=kv,rawcat: Full history column with raw text', (await pg.$$eval('#memview .mc-head', e => e.map(x => x.dataset.kind))).join() === 'kv,rawcat' && !!(await pg.$('#memview .mc-cell[data-kind="rawcat"] .note.rawtext')));
 
   // ---------------------------------------------------------------- deep links
   await pg.goto(BASE + '/compare?cols=kv,mem0,none&cid=HypothesisWorks_hypothesis_20221202'); await ready();
-  check('?cid= outside the showcase: extra option', /not a showcase chain/.test(await pg.$eval('#cid', e => e.selectedOptions[0].textContent)), await pg.$eval('#cid', e => e.selectedOptions[0].textContent));
+  check('?cid= outside the showcase: extra option', /not a showcase task/.test(await pg.$eval('#cid', e => e.selectedOptions[0].textContent)), await pg.$eval('#cid', e => e.selectedOptions[0].textContent));
   check('?cid= outside the showcase: the Agent link opens it', (await pg.$eval('#nav-agent', e => e.getAttribute('href'))) === './?cid=HypothesisWorks_hypothesis_20221202');
   // the old default left the example list: a link to it still opens it, with its recorded runs
-  if (scIds.has(OLD)) console.log(`SKIP ${OLD} is still an example chain on this server`);
+  if (scIds.has(OLD)) console.log(`SKIP ${OLD} is still an example task on this server`);
   else {
     await pg.goto(BASE + `/compare?cols=kv,mem0,none&cid=${OLD}`); await ready();
-    check(`?cid=${OLD} (left the example list): it opens, as "(not a showcase chain)", and the ⚙ line says so`, (await cidNow()) === OLD && /\(not a showcase chain\)$/.test(await pg.$eval('#cid', e => e.selectedOptions[0].textContent)) && /not one of the example chains/.test(await T('#chainnote')), `${await cidNow()} | ${await T('#chainnote')}`);
+    check(`?cid=${OLD} (left the example list): it opens, as "(not a showcase task)", and the ⚙ line says so`, (await cidNow()) === OLD && /\(not a showcase task\)$/.test(await pg.$eval('#cid', e => e.selectedOptions[0].textContent)) && /not one of the example tasks/.test(await T('#chainnote')), `${await cidNow()} | ${await T('#chainnote')}`);
     const rows = await pg.$$eval('#cols .tp-n', e => e.map(x => x.textContent.trim()));
-    check(`?cid=${OLD}: every column shows its recorded task 1, the footer compares them`, rows.length === 3 && rows.every(t => /^Task 1\/3 · \d+ steps$/.test(t)) && /^Knowledge Vault used [\d.]+[MK]? tokens — \d+% fewer than Mem0/.test(await T('#hero')), `${rows.join(' | ')} | ${await T('#hero')}`);
+    check(`?cid=${OLD}: every column shows its recorded turn 1, the footer compares them`, rows.length === 3 && rows.every(t => /^Turn 1\/3 · \d+ steps$/.test(t)) && /^Knowledge Vault used [\d.]+[MK]? tokens — \d+% fewer than Mem0/.test(await T('#hero')), `${rows.join(' | ')} | ${await T('#hero')}`);
     await gear(true); await pg.check('#colchecks input[data-col="memop"]'); await sleep(2500); await ready(); await gear(false);
-    check(`?cid=${OLD}: ticking a column stays on it (it is no example chain to switch away from)`, (await cidNow()) === OLD && (await kinds()).join() === 'kv,mem0,memop,none', `${await cidNow()} ${await kinds()}`);
+    check(`?cid=${OLD}: ticking a column stays on it (it is no example task to switch away from)`, (await cidNow()) === OLD && (await kinds()).join() === 'kv,mem0,memop,none', `${await cidNow()} ${await kinds()}`);
   }
 
   // ---------------------------------------------------------------- pre-prod fixes (read-only)
@@ -327,9 +327,9 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     const seen = await until(() => pg.evaluate(() => [...document.querySelectorAll('#tr-kv .tail.phase')].some(e => /writing memory/.test(e.textContent))), 15000, 50);
     await pg.click('#play'); await sleep(300);                                     // Pause all, while the memory is written
     if (then === 'end') { await pg.click('#end'); await sleep(700); }
-    else { await pg.click('#play'); await until(async () => /^Task 2\//.test(await T('#task-kv')), 20000, 200); await pg.click('#play'); await sleep(300); }
+    else { await pg.click('#play'); await until(async () => /^Turn 2\//.test(await T('#task-kv')), 20000, 200); await pg.click('#play'); await sleep(300); }
     const r1 = arms0.kv.sessions[0].resolved ? 1 : 0, st = await T('#ctr-kv .sline .stat');
-    check(`paused while "writing memory for the next task", then ${then === 'end' ? '⇥' : '▶'}: task 1 counts once (${r1}/1 resolved)`, seen && new RegExp(`(?<!\\d)${r1}/1 resolved`).test(st), `${seen ? '' : 'writing phase not seen · '}${st}`);
+    check(`paused while "writing memory for the next turn", then ${then === 'end' ? '⇥' : '▶'}: turn 1 counts once (${r1}/1 resolved)`, seen && new RegExp(`(?<!\\d)${r1}/1 resolved`).test(st), `${seen ? '' : 'writing phase not seen · '}${st}`);
   }
   // ↺ again and again: one click listener on a transcript, not one more per player
   { await pg.goto(BASE + `/compare?cols=kv,mem0,none&cid=${DEF}`); await ready();
@@ -354,7 +354,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     delay = u => /api\/session\?/.test(u) && has(u, A) ? 1500 : /api\/runchains/.test(u) && has(u, C) ? 4000 : 0;
     await pick2(); await sleep(7000); delay = null;
     const rows = await lp.$$eval('#cols .tp-n', e => e.map(x => x.textContent.trim()));
-    check('pick A (its sessions late), then C (its runs late): no column loads A\'s run under C, each shows C\'s task 1', !early.length && rows.every(t => /^Task 1\/\d+ · \d+ steps?$/.test(t)), `${early.join(' ')} | ${rows.join(' | ')}`);
+    check('pick A (its sessions late), then C (its runs late): no column loads A\'s run under C, each shows C\'s turn 1', !early.length && rows.every(t => /^Turn 1\/\d+ · \d+ steps?$/.test(t)), `${early.join(' ')} | ${rows.join(' | ')}`);
     await lp.close(); }
   // api/runchains failing is not "no run yet": the columns say they couldn't load, offer Try again (no ▶ Run live), and it works
   { const fp2 = await ctx.newPage(); watch(fp2, 'rcfail'); let fail = true;
@@ -364,7 +364,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     const rows = await fp2.$$eval('#cols .col', cs => cs.map(c => [c.querySelector('.tp-n').textContent.trim(), (c.querySelector('.colempty .msg1') || {}).textContent, !!c.querySelector('[data-retry]'), !!c.querySelector('[data-runcol]')]));
     check('api/runchains failing: each column says "Couldn\'t load this run — try again." with Try again — not "no run yet", no ▶ Run live', rows.length === 3 && rows.every(([t, m, r, rl]) => t === "couldn't load" && m === "Couldn't load this run — try again." && r && !rl) && await fp2.$eval('#runlive', e => e.hidden) && /^Couldn't load Knowledge Vault's run/.test(await FT('#hero')), `${JSON.stringify(rows)} | ${await FT('#hero')}`);
     fail = false; await fp2.click('#tr-kv [data-retry]'); await sleep(3500);
-    check('… Try again loads the columns once the server answers', (await fp2.$$eval('#cols .tp-n', e => e.map(x => x.textContent.trim()))).every(t => /^Task 1\/\d+ · \d+ steps?$/.test(t)) && /^Knowledge Vault used /.test(await FT('#hero')), `${await fp2.$$eval('#cols .tp-n', e => e.map(x => x.textContent.trim()).join(' | '))} | ${await FT('#hero')}`);
+    check('… Try again loads the columns once the server answers', (await fp2.$$eval('#cols .tp-n', e => e.map(x => x.textContent.trim()))).every(t => /^Turn 1\/\d+ · \d+ steps?$/.test(t)) && /^Knowledge Vault used /.test(await FT('#hero')), `${await fp2.$$eval('#cols .tp-n', e => e.map(x => x.textContent.trim()).join(' | '))} | ${await FT('#hero')}`);
     await fp2.close(); }
 
   // ---------------------------------------------------------------- ⚙ What to compare › Saved live runs
@@ -383,7 +383,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   else {
     await pg.click('#srcseg button[data-src="saved"]'); await sleep(3000); await ready();
     const so = await pg.$$eval('#cid option', e => e.map(o => [o.value, o.textContent]));
-    check('saved: one option per chain × model, "<chain> · <model> · <methods> · <date>"', so.length >= liveKeys.size && so.every(([, t]) => /^[^·]+ · [^·]+ · (Knowledge Vault|Mem0|MemOp|No memory)( \+ (Mem0|MemOp|No memory))*( · \w{3} \d{1,2}(, \d{4})?)?$/.test(t)), JSON.stringify(so.slice(0, 3)));
+    check('saved: one option per task × model, "<task> · <model> · <methods> · <date>"', so.length >= liveKeys.size && so.every(([, t]) => /^[^·]+ · [^·]+ · (Knowledge Vault|Mem0|MemOp|No memory)( \+ (Mem0|MemOp|No memory))*( · \w{3} \d{1,2}(, \d{4})?)?$/.test(t)), JSON.stringify(so.slice(0, 3)));
     check('saved: every saved live_* run of the Agent page is listed', [...liveKeys].every(k => so.some(([v]) => v === k)), [...liveKeys].filter(k => !so.some(([v]) => v === k)).join());
     check('saved: no option groups', !(await pg.$('#cid optgroup')));
     check('saved: the switch, the URL and the select agree', (await src()) === 'saved' && new URL(pg.url()).searchParams.has('saved') && (await pg.$eval('#cid', e => e.getAttribute('aria-label'))) === 'Saved live run', pg.url());
@@ -395,7 +395,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     const hs = await pg.$$eval('#cols .col', cs => cs.map(c => [c.dataset.kind, c.querySelector('.hsel').innerText.trim(), c.querySelectorAll('.hsel select').length, c.querySelector('.tp-n').textContent.trim()]));
     check('saved: headers name the model and the run instead of API / Model selects', hs.every(([, t, n]) => n === 0 && /· live run|· other run|· running live|· no run yet|^no live runs$/.test(t)), JSON.stringify(hs));
     const ran = lab.split(' · ')[2].split(' + ');
-    check('saved: each method that ran shows its saved run, the others say they have none', hs.every(([k, t, , task]) => ran.includes({ kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', none: 'No memory', rawcat: 'Full history' }[k]) ? /^Task \d+\/\d+ · \d+ steps?$/.test(task) && /live run|other run/.test(t) : /no run yet|no live runs/.test(t) && task === 'no run yet'), JSON.stringify(hs));
+    check('saved: each method that ran shows its saved run, the others say they have none', hs.every(([k, t, , task]) => ran.includes({ kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', none: 'No memory', rawcat: 'Full history' }[k]) ? /^Turn \d+\/\d+ · \d+ steps?$/.test(task) && /live run|other run/.test(t) : /no run yet|no live runs/.test(t) && task === 'no run yet'), JSON.stringify(hs));
     // the transcript says "agent · step N" as on the recorded columns; the model that served a step and its cost only with Show details
     { const who = async () => pg.$eval('#cols .col .transcript .turn .who', e => [e.innerText.trim(), e.querySelector('.tm')?.textContent || '']).catch(() => null);
       const w0 = await who();
@@ -415,7 +415,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     // ↺ then ⇥ through the whole run: each strip's cost = the footer's, with list prices per model and with one price row for all
     for (const pricing of ['model', 'global']) {
       if (pricing === 'global') { await gear(true); await pg.selectOption('#pricing', 'global'); await sleep(2500); await ready(); await gear(false); }
-      const n = Math.max(...(await pg.$$eval('#cols .tp-n', e => e.map(x => +((x.textContent.match(/^Task \d+\/(\d+)/) || [])[1] || 0)))));
+      const n = Math.max(...(await pg.$$eval('#cols .tp-n', e => e.map(x => +((x.textContent.match(/^Turn \d+\/(\d+)/) || [])[1] || 0)))));
       await pg.click('#restart'); await sleep(1500); for (let i = 0; i <= n; i++) { await pg.click('#end'); await sleep(800); }
       const fc = await footCost(), st = Object.fromEntries(await pg.$$eval('#cols .col', cs => cs.map(c => [c.dataset.kind, (c.querySelector('.strip .s-usd') || {}).textContent || ''])));
       const ks = Object.keys(st).filter(k => st[k]);
@@ -425,12 +425,12 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     // a pick where a method has no run: that column says so in one line
     const lack = so.find(([, t]) => !/No memory/.test(t.split(' · ')[2] || ''));
     if (lack) { await gear(true); await pg.selectOption('#cid', lack[0]); await sleep(2500); await ready();
-      check('saved: a method without a run says so in one line', /^No run without memory (with \S+|of this model) on this chain yet\.$/.test(await T('#tr-none .msg1')) && /No run yet: .*No memory/.test(await T('#chainnote')), `${await T('#tr-none .msg1')} | ${await T('#chainnote')}`);
+      check('saved: a method without a run says so in one line', /^No run without memory (with \S+|of this model) on this task yet\.$/.test(await T('#tr-none .msg1')) && /No run yet: .*No memory/.test(await T('#chainnote')), `${await T('#tr-none .msg1')} | ${await T('#chainnote')}`);
       if (LIVE_OK) check('saved: … with ▶ Run live when its model can run here', !!(await pg.$('#tr-none [data-runcol="none"]')) || /can't|isn't|didn't/.test(await T('#tr-none .why')), await T('#tr-none'));
       await gear(false); }
     // back to Example chains: the recorded runs again
     await gear(true); await pg.click('#srcseg button[data-src="example"]'); await sleep(2500); await ready();
-    check('saved → Example chains: recorded runs again, URL without saved=', (await src()) === 'example' && !new URL(pg.url()).searchParams.has('saved') && (await pg.$$eval('#cols select[id^="api-"]', e => e.every(s => s.value === 'rec'))) && (await T('#hero')) === HERO0, `${pg.url()} ${await T('#hero')}`);
+    check('saved → Example tasks: recorded runs again, URL without saved=', (await src()) === 'example' && !new URL(pg.url()).searchParams.has('saved') && (await pg.$$eval('#cols select[id^="api-"]', e => e.every(s => s.value === 'rec'))) && (await T('#hero')) === HERO0, `${pg.url()} ${await T('#hero')}`);
     await gear(false);
   }
   // ---------------------------------------------------------------- ⚙ What to compare › Sandbox projects (and ?cid=<project> from the Agent page)
@@ -438,11 +438,11 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
   else {
     await gear(true); await pg.click('#srcseg button[data-src="project"]'); await sleep(3500);
     const po = await pg.$$eval('#cid option', e => e.map(o => [o.value, o.textContent]));
-    check('projects: "<project> · <label> · N tasks", newest first', po.every(([v, t]) => { const p = projs.find(x => x.name === v); return p && t === [p.name, p.label, `${p.tasks.length} task${p.tasks.length === 1 ? '' : 's'}`].filter(Boolean).join(' · '); }) && po.map(([v]) => v).join() === projRan.slice().sort((a, b) => (b.created > a.created) - (b.created < a.created)).map(p => p.name).join(), JSON.stringify(po));
+    check('projects: "<project> · <label> · N turns", newest first', po.every(([v, t]) => { const p = projs.find(x => x.name === v); return p && t === [p.name, p.label, `${p.tasks.length} turn${p.tasks.length === 1 ? '' : 's'}`].filter(Boolean).join(' · '); }) && po.map(([v]) => v).join() === projRan.slice().sort((a, b) => (b.created > a.created) - (b.created < a.created)).map(p => p.name).join(), JSON.stringify(po));
     const pname = await cidNow();
     check('projects: static "as run in your sandbox" instead of selects', /as run in your sandbox/.test(await T('#hsel-kv')) && !(await pg.$('#cols select')));
     check('projects: the URL is ?cid=<project>, the Agent link opens it', new URL(pg.url()).searchParams.get('cid') === pname && (await pg.$eval('#nav-agent', e => e.getAttribute('href'))) === `./?cid=${encodeURIComponent(pname)}`, pg.url());
-    check('projects: the ⚙ line says what the columns show', new RegExp(`Each column shows the tasks you ran in ${pname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(await T('#chainnote')), await T('#chainnote'));
+    check('projects: the ⚙ line says what the columns show', new RegExp(`Each column shows the turns you ran in ${pname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(await T('#chainnote')), await T('#chainnote'));
     await pg.screenshot({ path: `${OUT}/cmp_gear_project.png` });
     await gear(false);
     await pg.goto(BASE + '/compare?cid=' + encodeURIComponent(pname)); await sleep(4000);
@@ -465,9 +465,9 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
       const ks2 = await kinds(), last = Object.fromEntries(ks2.map(k => [k, Math.max(0, ...(((p.arms || {})[k] || {}).orders || []))])), seen = [];
       for (let i = 0; i <= (p.tasks || []).length; i++) { await pg.click('#end'); await sleep(900); seen.push((await pg.$$eval('#cols .strip .stat', e => e.map(x => x.innerText))).join(' | ').replace(/\s+/g, ' ')); }
       check(`projects (${p.name}): ⇥ through it, the strips never say "resolved"`, seen.every(t => !/resolved/.test(t)) && seen.some(t => /so far/.test(t)), seen.join(' || '));
-      if (!gap) console.log('SKIP projects: a column whose tasks skip one (no such project on this server)');
+      if (!gap) console.log('SKIP projects: a column whose turns skip one (no such project on this server)');
       else { const rows = await Promise.all(ks2.map(k => T(`#task-${k}`)));
-        check(`projects (${p.name}): a column whose tasks skip one reaches its last task with ⇥ (${ks2.map(k => `${k} → ${last[k]}`).join(', ')})`, ks2.every((k, i) => !last[k] || new RegExp(`^Task ${last[k]}/`).test(rows[i])), rows.join(' | ')); } }
+        check(`projects (${p.name}): a column whose turns skip one reaches its last turn with ⇥ (${ks2.map(k => `${k} → ${last[k]}`).join(', ')})`, ks2.every((k, i) => !last[k] || new RegExp(`^Turn ${last[k]}/`).test(rows[i])), rows.join(' | ')); } }
   }
 
   // ---------------------------------------------------------------- live runs (replay server only)
@@ -486,40 +486,40 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     const byLen = (lo, hi, not = []) => free.filter(c => !not.includes(c) && (steps[c] ?? 0) >= lo && (steps[c] ?? 0) <= hi).sort((a, b) => steps[a] - steps[b])[0];
     const cid = byLen(90, 1e9) || free[0], cid2 = byLen(40, 130, [cid]) || free.find(c => c !== cid), cid3 = free.find(c => c !== cid && c !== cid2);
     const nT = c => (meta2.chains.find(x => x.cid === c) || {}).n_tasks || 3, n1 = nT(cid);
-    console.log(`INFO live chains: ${cid} (${steps[cid]} steps), ${cid2} (${steps[cid2]}), ${cid3}`);
-    if (!p || free.length < 3) check('live: three chains without runs of the model', false, `provider ${p && p.name}; ${free.length} chains free of ${run}`);
+    console.log(`INFO live tasks: ${cid} (${steps[cid]} steps), ${cid2} (${steps[cid2]}), ${cid3}`);
+    if (!p || free.length < 3) check('live: three tasks without runs of the model', false, `provider ${p && p.name}; ${free.length} tasks free of ${run}`);
     else {
       const leak = async k => { const t = await pg.$eval(`#col-${k}`, e => e.innerText); const nm = { kv: 'Knowledge Vault', mem0: 'Mem0', none: 'No memory', memop: 'MemOp' }[k];
-        return [(t.match(new RegExp(nm, 'g')) || []).length, (t.match(/task \d\/\d/gi) || []).length, /pyccel_pyccel_|_20\d{6}|ledger calls|Apptainer|task –/.test(t), /graded/.test(t)]; };
+        return [(t.match(new RegExp(nm, 'g')) || []).length, (t.match(/turn \d\/\d/gi) || []).length, /pyccel_pyccel_|_20\d{6}|ledger calls|Apptainer|turn –/.test(t), /graded/.test(t)]; };
       await pg.goto(BASE + `/compare?cols=kv,mem0,none&cid=${cid}&api=${encodeURIComponent(p.name)}&model=${encodeURIComponent(LIVE_MODEL)}`); await ready();
       await until(async () => !!(await pg.$('#tr-kv [data-runcol="kv"]')), 15000);
       check('live: empty columns explain + offer Run live', /No Knowledge Vault run with/.test(await T('#tr-kv')) && !!(await pg.$('#tr-kv [data-runcol="kv"]')), await T('#tr-kv'));
       check('live: bar Run live shows now, tooltip mentions the cost', !(await pg.$eval('#runlive', e => e.hidden || e.disabled)) && /\$1–5/.test(await pg.$eval('#runlive', e => e.title)));
       await pg.screenshot({ path: `${OUT}/cmp_live_empty.png` });
       await pg.click('#tr-kv [data-runcol="kv"]'); await sleep(6000);
-      check(`live: KV column streams "● live · task 1/${n1} · step N"`, new RegExp(`^live · task 1/${n1} · step \\d+$`).test(await T('#task-kv')) && !!(await pg.$('#task-kv .live-dot.on')), await T('#task-kv'));
+      check(`live: KV column streams "● live · turn 1/${n1} · step N"`, new RegExp(`^live · turn 1/${n1} · step \\d+$`).test(await T('#task-kv')) && !!(await pg.$('#task-kv .live-dot.on')), await T('#task-kv'));
       check('live: the running column shows its own Stop, the bar its ■ Stop', !(await pg.$eval('#stop-kv', e => e.hidden)) && !(await pg.$eval('#stoplive', e => e.hidden)));
       check('live: no bar Run live next to ■ Stop', await pg.$eval('#runlive', e => e.hidden));
       check('live: playback is off while the live run is all there is to watch', await pg.$$eval('#play, #step, #restart, #end', (bs, tip) => bs.every(b => b.disabled && b.title === tip), LIVE_TIP));
       await pg.click('#tr-mem0 [data-runcol="mem0"]'); await sleep(800); await pg.click('#tr-none [data-runcol="none"]'); await sleep(5000);
-      check('live: all three columns stream', /live · task/.test(await T('#task-mem0')) && /live · task/.test(await T('#task-none')), `${await T('#task-mem0')} | ${await T('#task-none')}`);
+      check('live: all three columns stream', /live · turn/.test(await T('#task-mem0')) && /live · turn/.test(await T('#task-none')), `${await T('#task-mem0')} | ${await T('#task-none')}`);
       let lk = await Promise.all(['kv', 'mem0', 'none'].map(leak));
-      check('live (~5 s): each fact once — method name only in the header, "task k/3" once, no ids, no "graded" yet', lk.every(([nm, tk, bad, gr]) => nm === 1 && tk === 1 && !bad && !gr), JSON.stringify(lk));
+      check('live (~5 s): each fact once — method name only in the header, "turn k/3" once, no ids, no "graded" yet', lk.every(([nm, tk, bad, gr]) => nm === 1 && tk === 1 && !bad && !gr), JSON.stringify(lk));
       const lrows = await pg.$$eval('#cols .col .taskpin', ps => ps.map(p => { const h = p.querySelector('.tp-head'); return [Math.round(p.getBoundingClientRect().height), parseFloat(getComputedStyle(h).lineHeight) || 18, p.innerText]; }));
-      check('live: the task rows are at most two lines, all the same height, no "served by" on them', lrows.every(([h, lh, t]) => h <= 2 * lh + 14 && h === lrows[0][0] && !/served b/.test(t)), JSON.stringify(lrows));
+      check('live: the turn rows are at most two lines, all the same height, no "served by" on them', lrows.every(([h, lh, t]) => h <= 2 * lh + 14 && h === lrows[0][0] && !/served b/.test(t)), JSON.stringify(lrows));
       await pg.screenshot({ path: `${OUT}/cmp_live_5s.png` });
       await sleep(24000);
       lk = await Promise.all(['kv', 'mem0', 'none'].map(leak));
       check('live (~30 s): still each fact once, no ids', lk.every(([nm, tk, bad]) => nm === 1 && tk === 1 && !bad), JSON.stringify(lk));
       await pg.screenshot({ path: `${OUT}/cmp_live_30s.png` });
       await pg.click('#stop-mem0'); await sleep(200); await pg.click('#stop-mem0');
-      check('live: a column Stop stops that column only', await until(async () => /^Stopped · \d of \d tasks? graded$/.test(await T('#task-mem0')), 20000) && /live · task/.test(await T('#task-kv')), `${await T('#task-mem0')} | ${await T('#task-kv')}`);
+      check('live: a column Stop stops that column only', await until(async () => /^Stopped · \d of \d turns? graded$/.test(await T('#task-mem0')), 20000) && /live · turn/.test(await T('#task-kv')), `${await T('#task-mem0')} | ${await T('#task-kv')}`);
       await sleep(3000);
       await pg.click('#stoplive'); await sleep(200); await pg.click('#stoplive');
       check('live: bar Stop stops all, status says so', await until(async () => /Live runs (stopped|finished)/.test(await T('#livest')), 60000), await T('#livest'));
       await sleep(2000);
       check('live: Stop buttons hidden afterwards', (await pg.$eval('#stoplive', e => e.hidden)) && (await pg.$eval('#stop-kv', e => e.hidden)));
-      check(`live: the task rows say "Stopped · N of ${n1} tasks graded"`, (await Promise.all(['kv', 'mem0', 'none'].map(k => T(`#task-${k}`)))).every(t => new RegExp(`^Stopped · \\d of ${n1} tasks? graded$`).test(t)), (await Promise.all(['kv', 'mem0', 'none'].map(k => T(`#task-${k}`)))).join(' | '));
+      check(`live: the turn rows say "Stopped · N of ${n1} turns graded"`, (await Promise.all(['kv', 'mem0', 'none'].map(k => T(`#task-${k}`)))).every(t => new RegExp(`^Stopped · \\d of ${n1} turns? graded$`).test(t)), (await Promise.all(['kv', 'mem0', 'none'].map(k => T(`#task-${k}`)))).join(' | '));
       check('live: playback is on again', await pg.$$eval('#play, #step, #restart, #end', bs => bs.every(b => !b.disabled)));
       // each stopped column: its saved totals (never "nothing was saved" once a task is graded), "only N of M tasks ran · run again" on
       // its own line (the link wholly visible), and the task row names a task that ran, not one that never started
@@ -527,12 +527,12 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
         const st = await pg.$$eval('#cols .col', cs => cs.map(c => { const a = c.querySelector('.strip [data-again]'), r = a && a.getBoundingClientRect(), cr = c.getBoundingClientRect();
           return [c.dataset.kind, c.querySelector('.tp-n').textContent, c.querySelector('.strip').innerText.replace(/\s+/g, ' '), c.querySelector('.tp-title').textContent, !!a && r.width > 0 && r.left >= cr.left && r.right <= cr.right + 0.5 && !a.closest('.stat')]; }));
         const ok = st.map(([k, row, strip, name, again]) => { const g = +((row.match(/· (\d+) of/) || [])[1] || 0);
-          return [k, g ? !/nothing was saved/.test(strip) && /tokens/.test(strip) && (g >= n1 || (new RegExp(`only ${g} of ${n1} tasks ran · run again`).test(strip) && again)) && [...Array(g)].some((_, i) => nameOf(i + 1) === name) : /nothing was saved/.test(strip)]; });
-        check('live: after the stop each column shows its saved totals, "run again" wholly visible, the task row on a task that ran', ok.every(([, v]) => v), JSON.stringify(st)); }
+          return [k, g ? !/nothing was saved/.test(strip) && /tokens/.test(strip) && (g >= n1 || (new RegExp(`only ${g} of ${n1} turns ran · run again`).test(strip) && again)) && [...Array(g)].some((_, i) => nameOf(i + 1) === name) : /nothing was saved/.test(strip)]; });
+        check('live: after the stop each column shows its saved totals, "run again" wholly visible, the turn row on a turn that ran', ok.every(([, v]) => v), JSON.stringify(st)); }
       const f = await footer();
-      check('live: footer table has the graded tasks', Number.isFinite(f.kv) && f.kv > 0, JSON.stringify(f));
+      check('live: footer table has the graded turns', Number.isFinite(f.kv) && f.kv > 0, JSON.stringify(f));
       check('live: footer hero compares the live runs', /^Knowledge Vault used [\d.]+[MK]? tokens/.test(await T('#hero')), await T('#hero'));
-      { const ht = await heroVsTable(); check('live: after the stops (columns that ran different tasks) the table\'s "tokens vs KV" agrees with the sentence, over the tasks both ran', !ht.length, `${ht.join('; ')} | ${await T('#hero')}`); }
+      { const ht = await heroVsTable(); check('live: after the stops (columns that ran different turns) the table\'s "tokens vs KV" agrees with the sentence, over the turns both ran', !ht.length, `${ht.join('; ')} | ${await T('#hero')}`); }
       const sCost = Object.fromEntries(await Promise.all(['kv', 'mem0', 'none'].map(async k => [k, ((await T(`#ctr-${k} .s-usd`)) || '').trim()]))), fc = await footCost();
       check('live: after the run each strip shows the footer\'s cost', ['kv', 'mem0', 'none'].every(k => !sCost[k] || sCost[k] === fc[k]), `${JSON.stringify(sCost)} vs ${JSON.stringify(fc)}`);
       await pg.screenshot({ path: `${OUT}/cmp_live_after.png` });
@@ -542,18 +542,18 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
       await pg.selectOption('#cid', `${cid}|${LIVE_MODEL}`).catch(() => {}); await sleep(2500); await gear(false);
       check('live: picked there, every column shows its run of the model', (await pg.$$eval('#cols .hsel', e => e.map(x => x.innerText))).every(t => new RegExp(`^${LIVE_MODEL} · live run`).test(t)), JSON.stringify(await pg.$$eval('#cols .hsel', e => e.map(x => x.innerText))));
       await pg.click('#play'); await sleep(2500); await pg.click('#play');
-      check('live: Play all replays the saved live sessions', /Task \d\/\d · step/.test(await T('#task-kv')), await T('#task-kv'));
+      check('live: Play all replays the saved live sessions', /Turn \d\/\d · step/.test(await T('#task-kv')), await T('#task-kv'));
 
       // a 2-column live run to the end: the footer follows the graded tasks; at the end strip and footer show the same cost
       await pg.goto(BASE + `/compare?cols=kv,mem0&cid=${cid2}&api=${encodeURIComponent(p.name)}&model=${encodeURIComponent(LIVE_MODEL)}`); await ready();
       await until(async () => !(await pg.$eval('#runlive', e => e.hidden || e.disabled)), 15000);
       await pg.click('#runlive');
-      check('2 columns: both stream', await until(async () => /live · task/.test(await T('#task-kv')) && /live · task/.test(await T('#task-mem0')), 15000));
-      const n2 = nT(cid2), graded1 = await until(async () => new RegExp(`task [2-9]/${n2}`).test(await T('#task-kv')), 180000, 1000);
-      check('2 columns: after task 1 the footer names the graded task', graded1 && await until(async () => new RegExp(`^Knowledge Vault used [\\d.]+[MK]? tokens on [1-9] of ${n2} tasks`).test(await T('#hero')), 20000), await T('#hero'));
+      check('2 columns: both stream', await until(async () => /live · turn/.test(await T('#task-kv')) && /live · turn/.test(await T('#task-mem0')), 15000));
+      const n2 = nT(cid2), graded1 = await until(async () => new RegExp(`turn [2-9]/${n2}`).test(await T('#task-kv')), 180000, 1000);
+      check('2 columns: after turn 1 the footer names the graded turn', graded1 && await until(async () => new RegExp(`^Knowledge Vault used [\\d.]+[MK]? tokens on [1-9] of ${n2} turns`).test(await T('#hero')), 20000), await T('#hero'));
       const ended = await until(async () => /Live runs (finished|stopped|ended)/.test(await T('#livest')), 420000, 2000);
       const nf = Math.min(n2, +(process.env.FAKE_TASKS || 3));        // the replay server replays FAKE_TASKS tasks (servers.sh: 3)
-      check(`2 columns: the runs end, the rows say "Finished · ${nf} of ${n2} tasks graded"`, ended && new RegExp(`^Finished · ${nf} of ${n2} tasks? graded$`).test(await T('#task-kv')), `${await T('#livest')} | ${await T('#task-kv')}`);
+      check(`2 columns: the runs end, the rows say "Finished · ${nf} of ${n2} turns graded"`, ended && new RegExp(`^Finished · ${nf} of ${n2} turns? graded$`).test(await T('#task-kv')), `${await T('#livest')} | ${await T('#task-kv')}`);
       await sleep(1500);
       const sc2 = Object.fromEntries(await Promise.all(['kv', 'mem0'].map(async k => [k, ((await T(`#ctr-${k} .s-usd`)) || '').trim()]))), fc2 = await footCost();
       check('2 columns: strip cost = footer cost', ['kv', 'mem0'].every(k => sc2[k] && sc2[k] === fc2[k]), `${JSON.stringify(sc2)} vs ${JSON.stringify(fc2)}`);
@@ -580,12 +580,12 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
         check('MemOp live: API + Model selects, no "recorded run" chip, no "not available" tooltip', (await pg.$eval('#api-memop', e => e.value)) === p.name && (await pg.$eval('#model-memop', e => e.value)) === LIVE_MODEL && (await pg.$eval('#rec-memop', e => e.hidden)) && !/aren't available/.test(await pg.$eval('#hsel-memop', e => e.innerHTML)));
         check('MemOp live: its empty column offers ▶ Run live', /No MemOp run with/.test(await T('#tr-memop')) && !!(await pg.$('#tr-memop [data-runcol="memop"]')), await T('#tr-memop'));
         await pg.click('#tr-memop [data-runcol="memop"]');
-        check('MemOp live: the column streams', await until(async () => new RegExp(`^live · task \\d+/${nT(cid3)} · step \\d+$`).test(await T('#task-memop')), 20000), await T('#task-memop'));
+        check('MemOp live: the column streams', await until(async () => new RegExp(`^live · turn \\d+/${nT(cid3)} · step \\d+$`).test(await T('#task-memop')), 20000), await T('#task-memop'));
         const lm = await leak('memop'); check('MemOp live: each fact once', lm[0] === 1 && lm[1] === 1 && !lm[2], JSON.stringify(lm));
-        await until(async () => /Written to memory|Memory injected/.test(await T('#tr-memop')) || /task [2-9]\//.test(await T('#task-memop')), 120000, 1000);
+        await until(async () => /Written to memory|Memory injected/.test(await T('#tr-memop')) || /turn [2-9]\//.test(await T('#task-memop')), 120000, 1000);
         await pg.screenshot({ path: `${OUT}/cmp_live_memop.png` });
         await pg.click('#stop-memop'); await sleep(200); await pg.click('#stop-memop');
-        check('MemOp live: stops', await until(async () => /^Stopped · \d of \d tasks? graded$/.test(await T('#task-memop')), 30000), await T('#task-memop'));
+        check('MemOp live: stops', await until(async () => /^Stopped · \d of \d turns? graded$/.test(await T('#task-memop')), 30000), await T('#task-memop'));
         await until(async () => /Live runs/.test(await T('#livest')), 20000);
       }
 
@@ -596,16 +596,16 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
         const eHas = new Set((erc.chains || []).filter(c => Object.values(c.arms || {}).some(a => a.sessions.length)).map(c => c.cid));
         const kvSteps = c => ((recRc.chains || []).find(x => x.cid === c)?.arms.kv?.sessions || []).slice(0, +(process.env.FAKE_TASKS || 3)).reduce((a, x) => a + (x.n_steps || 0), 0);
         const cid4 = [...new Set([...sc.chains.filter(c => c.sif), ...meta2.chains.filter(c => c.sif && !c.custom)].map(c => c.cid))].filter(c => !eHas.has(c) && kvSteps(c) > 0).sort((a, b) => kvSteps(a) - kvSteps(b))[0];
-        if (!cid4) check('two tabs: a chain without runs of the model', false, EM);
+        if (!cid4) check('two tabs: a task without runs of the model', false, EM);
         else {
           console.log(`INFO two tabs + ↺ at the end: ${cid4} (${kvSteps(cid4)} Knowledge Vault steps)`);
           const url = `/compare?cols=kv,none&cid=${cid4}&api=${encodeURIComponent(p.name)}&model=${encodeURIComponent(EM)}`;
           const p2 = await ctx.newPage(); watch(p2, 'tab2'); const T2 = async sel => ((await p2.textContent(sel).catch(() => '')) || '').replace(/\s+/g, ' ').trim();
           await pg.goto(BASE + url); await p2.goto(BASE + url);
           await until(async () => !!(await pg.$('#tr-kv [data-runcol="kv"]')) && !!(await p2.$('#tr-kv [data-runcol="kv"]')), 20000);
-          await pg.click('#tr-kv [data-runcol="kv"]'); await until(async () => /^live · task/.test(await T('#task-kv')), 15000);
+          await pg.click('#tr-kv [data-runcol="kv"]'); await until(async () => /^live · turn/.test(await T('#task-kv')), 15000);
           await p2.click('#tr-kv [data-runcol="kv"]');          // the second tab still offers ▶ Run live; the server refuses a second run
-          const adopted = await until(async () => /^live · task/.test(await T2('#task-kv')) && !(await p2.$eval('#stop-kv', e => e.hidden)), 10000, 250);
+          const adopted = await until(async () => /^live · turn/.test(await T2('#task-kv')) && !(await p2.$eval('#stop-kv', e => e.hidden)), 10000, 250);
           check('two tabs: the second tab\'s ▶ Run live of a column already running streams that run, with its ■ Stop, and says so (no error)', adopted && !(await p2.$eval('#livest', e => e.classList.contains('err'))) && /already running — showing it live/.test(await T2('#livest')), `${await T2('#task-kv')} | ${await T2('#livest')}`);
           await p2.close();
           // the run ends (FAKE_TASKS tasks): ↺ as soon as the playback buttons are back
@@ -613,7 +613,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
           if (back) await pg.click('#restart');
           await sleep(6000);
           const kvRow = await T('#task-kv');
-          check('a live run that just ended: ↺ the moment playback is back rewinds the saved run (no "no run yet", no ▶ Run live over it)', back && !(await pg.$('#tr-kv .colempty')) && !(await pg.$('#tr-kv [data-runcol]')) && /^Task 1\/\d+ · step 0\/\d+$/.test(kvRow), `${back ? '' : 'playback never came back · '}${kvRow} | ${(await T('#tr-kv')).slice(0, 90)}`);
+          check('a live run that just ended: ↺ the moment playback is back rewinds the saved run (no "no run yet", no ▶ Run live over it)', back && !(await pg.$('#tr-kv .colempty')) && !(await pg.$('#tr-kv [data-runcol]')) && /^Turn 1\/\d+ · step 0\/\d+$/.test(kvRow), `${back ? '' : 'playback never came back · '}${kvRow} | ${(await T('#tr-kv')).slice(0, 90)}`);
           await pg.screenshot({ path: `${OUT}/cmp_live_end_restart.png` });
         }
       }
@@ -648,7 +648,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
     // prefer an entry whose runs cover the columns differently (one run has more of them), then the one with the most runs
     const cover = r => C.filter(k => k in r).length, newest = r => Math.max(...Object.values(r));
     multi.sort(([, a], [, b]) => (new Set([...b.values()].map(cover)).size - new Set([...a.values()].map(cover)).size) || b.size - a.size);
-    if (!multi.length) console.log('SKIP saved runs: no chain × model with two saved runs on this server');
+    if (!multi.length) console.log('SKIP saved runs: no task × model with two saved runs on this server');
     else {
       const [key, g] = multi[0], cid = key.slice(0, key.indexOf('|')), model = key.slice(key.indexOf('|') + 1), runs = [...g.entries()];
       const base = runs.slice().sort(([, a], [, b]) => cover(b) - cover(a) || newest(b) - newest(a))[0][0];
@@ -674,7 +674,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
       // the footer sentence says when Knowledge Vault resolved fewer of the compared tasks
       const res = Object.fromEntries(await pg.$$eval('#sum table tbody tr', trs => trs.map(tr => [tr.dataset.kind, tr.children[2].textContent.trim()])));
       const [kr, kn] = String(res.kv || '').split('/').map(Number), more = Object.entries(res).filter(([k, v]) => k !== 'kv' && /^\d+\/\d+$/.test(v) && +v.split('/')[1] === kn && +v.split('/')[0] > kr);
-      if (Number.isFinite(kr) && more.length) check(`saved runs: the footer says Knowledge Vault resolved fewer tasks ("resolved ${kr} of ${kn}")`, (await T('#hero')).includes(`it resolved ${kr} of ${kn} task`), await T('#hero'));
+      if (Number.isFinite(kr) && more.length) check(`saved runs: the footer says Knowledge Vault resolved fewer turns ("resolved ${kr} of ${kn}")`, (await T('#hero')).includes(`it resolved ${kr} of ${kn} turn`), await T('#hero'));
       await pg.screenshot({ path: `${OUT}/cmp_saved_pinned.png` });
       await pg.reload(); await ready();
       check('saved runs: a reload keeps the pinned run', new URL(pg.url()).searchParams.get('run') === pin && agree(await heads(), want(pin)), pg.url());
@@ -698,7 +698,7 @@ const NM = { kv: 'Knowledge Vault', mem0: 'Mem0', memop: 'MemOp', rawcat: 'Full 
       // narrow columns: the task's name gets its own line (or at least 25 characters of it show); hovering the row gives the whole name
       const tn = await pg.$$eval('#cols .col', cs => cs.map(c => { const t = c.querySelector('.tp-title'), n = c.querySelector('.tp-n'), cut = t.scrollWidth > t.clientWidth + 1;
         return [c.dataset.kind, t.getBoundingClientRect().top >= n.getBoundingClientRect().bottom - 2, cut ? Math.floor(t.textContent.length * t.clientWidth / t.scrollWidth) : t.textContent.length, c.querySelector('.tp-head').title === t.textContent]; }));
-      check(`${w}px: every task name has its own line or shows ≥ 25 characters, and its tooltip is the name`, tn.every(([, own, vis, tip]) => (own || vis >= 25) && tip), JSON.stringify(tn));
+      check(`${w}px: every turn name has its own line or shows ≥ 25 characters, and its tooltip is the name`, tn.every(([, own, vis, tip]) => (own || vis >= 25) && tip), JSON.stringify(tn));
     }
     if (w < 600) {
       const wl = await pg.$eval('#cols .col .transcript .turn .who', e => [e.getBoundingClientRect().height, parseFloat(getComputedStyle(e).lineHeight) || 17]).catch(() => null);

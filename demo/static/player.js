@@ -110,7 +110,7 @@ export function memNoteHtml(text, kind) {
 // ---------------------------------------------------------------- transcript markup shared by the replay player and the live feed
 export function memoryHtml(s, kind) {
   if (s.memory) return `<div class="card memory" style="--arm:${COLOR[kind]}"><div class="hd"><span class="dot" style="background:${COLOR[kind]}"></span>Memory injected from earlier sessions <span class="meta">· ${s.memory.length} chars</span></div>${memNoteHtml(s.memory, kind)}</div>`;
-  return `<div class="card nomem" style="color:var(--muted);font-size:13px">No cross-session memory injected${s.order === 1 ? " — first task of the chain" : kind === "none" ? " — no-memory baseline" : " — the store was empty"}.</div>`;
+  return `<div class="card nomem" style="color:var(--muted);font-size:13px">No cross-session memory injected${s.order === 1 ? " — first turn of the task" : kind === "none" ? " — no-memory baseline" : " — the store was empty"}.</div>`;
 }
 /** Light markdown for issue text and model answers: headings, **bold**, `code`, fenced blocks, bullets (input is escaped first). */
 export function md(text) {
@@ -163,8 +163,8 @@ export function tailHtml(s, kind) {
     h += `<div class="card tail" data-tail="grade"><div class="hd">${r.resolved ? `<span class="ok">✓ Resolved</span>` : `<span class="no">✗ Not resolved</span>`} <span class="meta">· checked with the issue's tests</span></div>${n > 5 ? `<details class="tlist"><summary>${n} tests · ${pass} pass, ${n - pass} fail</summary>${ul}</details>` : n ? ul : ""}</div>`;
   }
   const w = writeTok(s);
-  if (s.note_written) h += `<div class="card memory tail" data-tail="note" style="--arm:${COLOR[kind]}"><div class="hd"><span class="dot" style="background:${COLOR[kind]}"></span>Written to memory for the next task <span class="meta">${w ? `· ${w}` : ""}<span class="dt"> · ${s.note_written.length.toLocaleString()} chars${r.mem_write_secs ? ` · ${r.mem_write_secs}s` : ""}</span></span></div>${memNoteHtml(s.note_written, kind)}</div>`;
-  else if (kind !== "none" && r.mem_nodes === 0) h += `<div class="card tail" data-tail="note" style="color:var(--muted);font-size:13px">Nothing was written to memory for the next task (the writer stored 0 items)${w ? ` — it still used ${w.replace(/ to write$/, "")}` : ""}.</div>`;
+  if (s.note_written) h += `<div class="card memory tail" data-tail="note" style="--arm:${COLOR[kind]}"><div class="hd"><span class="dot" style="background:${COLOR[kind]}"></span>Written to memory for the next turn <span class="meta">${w ? `· ${w}` : ""}<span class="dt"> · ${s.note_written.length.toLocaleString()} chars${r.mem_write_secs ? ` · ${r.mem_write_secs}s` : ""}</span></span></div>${memNoteHtml(s.note_written, kind)}</div>`;
+  else if (kind !== "none" && r.mem_nodes === 0) h += `<div class="card tail" data-tail="note" style="color:var(--muted);font-size:13px">Nothing was written to memory for the next turn (the writer stored 0 items)${w ? ` — it still used ${w.replace(/ to write$/, "")}` : ""}.</div>`;
   return h;
 }
 /** A task's name: the server's short summary (4-10 plain words), else the first line of its text without markdown. */
@@ -174,8 +174,8 @@ export function taskName(summary, text) {
 }
 /** The pinned task header: {order, n, instance, repo, text, summary}. Returns {title, html} for a .taskpin element. */
 export function taskPinHtml(t) {
-  const text = (t.text || "").trim(), name = taskName(t.summary, text) || "(no task text)";
-  return `<button class="tp-head" type="button" aria-expanded="false"><span class="tp-chev">▸</span>${t.noLabel ? "" : `<span class="tp-n">Task ${t.order}${t.n ? ` of ${t.n}` : ""}</span>`}<span class="tp-title">${esc(name)}</span><span class="tp-inst mono">${esc(t.instance || "")}</span></button>
+  const text = (t.text || "").trim(), name = taskName(t.summary, text) || "(no turn text)";
+  return `<button class="tp-head" type="button" aria-expanded="false"><span class="tp-chev">▸</span>${t.noLabel ? "" : `<span class="tp-n">Turn ${t.order}${t.n ? ` of ${t.n}` : ""}</span>`}<span class="tp-title">${esc(name)}</span><span class="tp-inst mono">${esc(t.instance || "")}</span></button>
     <div class="tp-body" hidden><div class="tp-meta">${esc(t.repo || "")}${t.instance ? ` · <span class="mono">${esc(t.instance)}</span>` : ""} · ${text.length.toLocaleString()} chars</div><div class="tp-text md">${md(text)}</div></div>`;
 }
 /** Fill a .taskpin element and wire the expand toggle (idempotent). Pass null to hide it. */
@@ -302,7 +302,7 @@ export class SessionPlayer {
     const t = s.tok || {}, wp = t.writer_prompt || 0, wc = t.writer_completion || 0;
     if (!this.wrote && (box.querySelector('.tail[data-tail="note"]') || wp)) {       // the writer runs after every session, incl. the last one
       const w = s.result.mem_write_secs || 4;
-      if (!await phase("writing memory for the next task", w)) return false;
+      if (!await phase("writing memory for the next turn", w)) return false;
       this.elapsed += w; this.cum.elapsed += w; show('.tail[data-tail="note"]');
       this.cum.writer += wp + wc; this.cum.usd += (this.opts.priceFn && t.usd_model_writer != null) ? t.usd_model_writer : this.price(wp, wc); this.wrote = true;
     }
@@ -424,9 +424,9 @@ export class LiveFeed {
   /** The phase as one plain sentence (the status card; info().phaseText). */
   phaseText() {
     const ph = this.phase(), st = this.state, mem = this.job.kind !== "none", o = this.order;
-    if (ph === "finished") return st.status === "done" ? "Run finished" : st.status === "stopped" ? (this.job.custom ? "Run stopped" : "Run stopped — finished tasks are kept") : "Run ended with an error";
-    if (ph === "grading" && this.job.custom) return mem ? "Writing memory for the next task" : "Wrapping up";     // sandbox tasks have no tests
-    return { connecting: "Connecting…", starting: "Starting: preparing the sandbox", preparing: mem ? `Task ${o}: loading memory from earlier tasks` : `Preparing task ${o}`,
+    if (ph === "finished") return st.status === "done" ? "Run finished" : st.status === "stopped" ? (this.job.custom ? "Run stopped" : "Run stopped — finished turns are kept") : "Run ended with an error";
+    if (ph === "grading" && this.job.custom) return mem ? "Writing memory for the next turn" : "Wrapping up";     // sandbox tasks have no tests
+    return { connecting: "Connecting…", starting: "Starting: preparing the sandbox", preparing: mem ? `Turn ${o}: loading memory from earlier turns` : `Preparing turn ${o}`,
       loading: "Loading the steps…", thinking: "The model is thinking", running: "Running the command in the sandbox",
       grading: "Checking the result with the issue's tests" + (mem ? ", then writing memory" : ""), finishing: "Wrapping up" }[ph] || "";
   }
@@ -458,7 +458,7 @@ export class LiveFeed {
     const head = this.el("head"); if (!head) return;
     if (this.order == null) { head.innerHTML = ""; return; }
     const t = this.task(this.order);
-    head.innerHTML = (this.sess ? memoryHtml(this.sess, this.job.kind) : "") + (t.text ? issueHtml({ repo: t.repo, problem_statement: t.text }) : `<div class="card" style="color:var(--muted);font-size:13px">Task ${this.order}${this.n ? ` of ${this.n}` : ""} — starting…</div>`);
+    head.innerHTML = (this.sess ? memoryHtml(this.sess, this.job.kind) : "") + (t.text ? issueHtml({ repo: t.repo, problem_statement: t.text }) : `<div class="card" style="color:var(--muted);font-size:13px">Turn ${this.order}${this.n ? ` of ${this.n}` : ""} — starting…</div>`);
   }
   renderTurns() {
     const s = this.sess; if (!s || !this.root) return;
@@ -472,7 +472,7 @@ export class LiveFeed {
     if (done > this.complete) { this.complete = done; this.autoScroll(); }
     pending.innerHTML = n > done ? s.turns.slice(done).map(t => turnHtml(t, { pending: true, main })).join("") : "";
     const ph = this.phase();
-    const mem = this.job.kind !== "none", after = this.job.custom ? (mem ? "writing memory for the next task" : "") : `checking the result with the issue's tests${mem ? ", then writing memory for the next task" : ""}`;
+    const mem = this.job.kind !== "none", after = this.job.custom ? (mem ? "writing memory for the next turn" : "") : `checking the result with the issue's tests${mem ? ", then writing memory for the next turn" : ""}`;
     flight.innerHTML = ph === "thinking" ? `<div class="msg assistant"><div class="who">agent · step ${n + 1}</div><div class="bubble th"><span class="thinking">thinking</span></div></div>`
       : ph === "grading" ? exitCardHtml(s) + (after ? `<div class="card tail phase"><span class="running">${after}</span></div>` : "") : "";
     if (n > done || ph === "grading") this.autoScroll();
@@ -490,7 +490,7 @@ export class LiveFeed {
     const end = endText(sess.exit_status), meta = [end, `${sess.turns.length} step${sess.turns.length === 1 ? "" : "s"}`, r.secs ? fmtClock(r.secs) : "", sess.tok ? usd(costOf(sess.tok)) : ""].filter(Boolean).join(" · ");
     const main = mainModel(sess.turns);
     const html = memoryHtml(sess, this.job.kind) + issueHtml(sess) + sess.turns.map(t => turnHtml(t, { main }).replace(`data-obs="${t.step}"`, `data-obs="${t.step}" data-okey="${sess.order}:${t.step}"`).replace(`data-more="${t.step}"`, `data-more="${t.step}" data-key="${sess.order}:${t.step}"`)).join("") + tailHtml(sess, this.job.kind);
-    return `<details class="lf-done" ${open ? "open" : ""}><summary><span class="tp-n">Task ${sess.order}${this.n ? ` of ${this.n}` : ""}</span> ${res} <span class="meta">· ${esc(meta)}</span><span class="tp-title">${esc(taskName(sess.summary, sess.problem_statement))}</span></summary><div class="lf-done-body">${html}</div></details>`;
+    return `<details class="lf-done" ${open ? "open" : ""}><summary><span class="tp-n">Turn ${sess.order}${this.n ? ` of ${this.n}` : ""}</span> ${res} <span class="meta">· ${esc(meta)}</span><span class="tp-title">${esc(taskName(sess.summary, sess.problem_statement))}</span></summary><div class="lf-done-body">${html}</div></details>`;
   }
   async finishTask(order) {
     let sess = null; try { sess = await api(this.sessionUrl(order)); } catch {}
@@ -515,21 +515,21 @@ export class LiveFeed {
  *  The page says once what a row shows; ids and how the store was read back show only with "Show details". */
 export function memoryCompareHtml(cols, mode = "written", cur = null, opts = {}) {
   const n = Math.max(0, ...cols.map(c => c.data ? Math.max(c.data.n_tasks || 0, ...c.data.tasks.map(t => t.order)) : 0));
-  const titles = opts.titles || {}, unit = opts.unit === "project" ? "project" : "chain";
+  const titles = opts.titles || {}, unit = opts.unit === "project" ? "project" : "task";
   const head = cols.map(c => {
     const d = c.data, T = d && d.totals;
     const stats = !d ? `<div class="mc-stats muted">${esc(c.note || "no sessions")}</div>` : `<div class="mc-stats">
         <span><b>${T.written_items}</b> item${T.written_items === 1 ? "" : "s"} written</span>
         ${T.empty_writes ? `<span class="mc-warn"><b>${T.empty_writes}</b> of ${d.tasks.length} writes stored nothing</span>` : ""}
         <span>writer <b>${T.writer_src === "estimate" ? "≈" : ""}${tok(T.writer_tokens)}</b> tokens · <b>${usd(T.writer_usd)}</b></span>
-        <span>store <b>${T.store_items}</b> item${T.store_items === 1 ? "" : "s"} · <b>${tok(T.store_chars)}</b> chars${T.store_after_order ? ` <span class="muted">after task ${T.store_after_order}</span>` : ""}</span>
-        <span>injected into later tasks <b>${tok(T.injected_chars)}</b> chars</span></div>`;
-    return `<div class="mc-head" data-kind="${esc(c.kind || "")}" style="--arm:${c.color}"><div class="mc-title"${c.tip ? ` title="${esc(c.tip)}"` : ""}><span class="dot" style="background:${c.color}"></span>${esc(c.label)}${d && d.exact ? ` <span class="badge dt" title="the harness saved the store after every write">saved store</span>` : d ? ` <span class="badge dt" title="store after task k is read back from what task k+1 was shown">reconstructed</span>` : ""}</div>${stats}</div>`;
+        <span>store <b>${T.store_items}</b> item${T.store_items === 1 ? "" : "s"} · <b>${tok(T.store_chars)}</b> chars${T.store_after_order ? ` <span class="muted">after turn ${T.store_after_order}</span>` : ""}</span>
+        <span>injected into later turns <b>${tok(T.injected_chars)}</b> chars</span></div>`;
+    return `<div class="mc-head" data-kind="${esc(c.kind || "")}" style="--arm:${c.color}"><div class="mc-title"${c.tip ? ` title="${esc(c.tip)}"` : ""}><span class="dot" style="background:${c.color}"></span>${esc(c.label)}${d && d.exact ? ` <span class="badge dt" title="the harness saved the store after every write">saved store</span>` : d ? ` <span class="badge dt" title="store after turn k is read back from what turn k+1 was shown">reconstructed</span>` : ""}</div>${stats}</div>`;
   }).join("");
   let rows = "";
   for (let k = 1; k <= n; k++) {
     const inst = cols.map(c => c.data?.tasks.find(t => t.order === k)?.instance).find(Boolean) || "";
-    rows += `<button class="mc-row ${k === cur ? "cur" : ""}" type="button" data-order="${k}" title="open task ${k}"><b>Task ${k}${titles[k] ? ` — ${esc(titles[k])}` : ""}</b>${inst ? ` <span class="mono dt">${esc(inst)}</span>` : ""}</button>`;
+    rows += `<button class="mc-row ${k === cur ? "cur" : ""}" type="button" data-order="${k}" title="open turn ${k}"><b>Turn ${k}${titles[k] ? ` — ${esc(titles[k])}` : ""}</b>${inst ? ` <span class="mono dt">${esc(inst)}</span>` : ""}</button>`;
     // a column without data (No memory): empty, borderless cells keep the rows aligned
     rows += cols.map(c => c.data ? `<div class="mc-cell ${k === cur ? "cur" : ""}" data-kind="${esc(c.kind || "")}" style="--arm:${c.color}">${cellHtml(c, c.data.tasks.find(t => t.order === k), mode, k, n, c.data.tasks.find(t => t.order === k - 1), unit)}</div>`
       : `<div class="mc-cell mc-nodata" data-kind="${esc(c.kind || "")}" style="border:0;background:none;box-shadow:none;padding:0" aria-hidden="true"></div>`).join("");
@@ -537,36 +537,36 @@ export function memoryCompareHtml(cols, mode = "written", cur = null, opts = {})
   return `<div class="mc" style="--mcn:${cols.length}"><div class="mc-grid">${head}${rows || `<div class="empty" style="grid-column:1/-1">No sessions.</div>`}</div></div>`;
 }
 function itemHtml(it, cls = "", from = false, kind = undefined) {
-  const src = from ? `<span class="mc-from">${it.order ? `from task ${it.order}` : "from an earlier write"}</span>` : "";
+  const src = from ? `<span class="mc-from">${it.order ? `from turn ${it.order}` : "from an earlier write"}</span>` : "";
   return `<div class="mc-item ${cls}" title="${esc(it.name)}">${it.updated ? `<span class="badge">updated</span> ` : ""}${src}${memNoteHtml(it.text, kind)}</div>`;
 }
 /** What the agent of task k was shown before it started (the memory system's retrieval/injection for that task). */
-function retrievedHtml(t, k, prev, kind = undefined, unit = "chain") {
+function retrievedHtml(t, k, prev, kind = undefined, unit = "task") {
   // servers before the `retrieved` field: the store left by task k-1 is what task k was shown (whole-store injection)
   const r = t.retrieved || (k === 1 ? { items: [], chars: 0 } : prev?.store?.known ? { items: prev.store.items, chars: prev.store.chars, truncated: prev.store.truncated } : null);
-  if (!r) return `<div class="mc-sec"><span class="mc-sec-t">Retrieved before task ${k}</span><span><b>${t.injected_chars ? tok(t.injected_chars) : 0}</b> chars</span></div><div class="mc-empty">Item list not available.</div>`;
-  const head = `<div class="mc-sec"><span class="mc-sec-t">Retrieved before task ${k}</span><span><b>${r.items.length}</b> item${r.items.length === 1 ? "" : "s"} · <b>${tok(r.chars)}</b> chars</span>${r.truncated ? `<span class="mc-warn" title="the injected block is capped at the most recent characters; older items fell off">capped</span>` : ""}</div>`;
-  if (!r.items.length) return head + `<div class="mc-empty">${k === 1 ? `Nothing — first task of the ${unit}.` : "Nothing — the store was empty when this task started."}</div>`;
+  if (!r) return `<div class="mc-sec"><span class="mc-sec-t">Retrieved before turn ${k}</span><span><b>${t.injected_chars ? tok(t.injected_chars) : 0}</b> chars</span></div><div class="mc-empty">Item list not available.</div>`;
+  const head = `<div class="mc-sec"><span class="mc-sec-t">Retrieved before turn ${k}</span><span><b>${r.items.length}</b> item${r.items.length === 1 ? "" : "s"} · <b>${tok(r.chars)}</b> chars</span>${r.truncated ? `<span class="mc-warn" title="the injected block is capped at the most recent characters; older items fell off">capped</span>` : ""}</div>`;
+  if (!r.items.length) return head + `<div class="mc-empty">${k === 1 ? `Nothing — first turn of the ${unit}.` : "Nothing — the store was empty when this turn started."}</div>`;
   return head + `<div class="mc-items mc-retrieved">${r.items.map(i => itemHtml(i, "old", true, kind)).join("")}</div>`;
 }
-function cellHtml(c, t, mode, k, n, prev, unit = "chain") {
+function cellHtml(c, t, mode, k, n, prev, unit = "task") {
   if (!t) return `<div class="muted">not run</div>`;
   const res = t.resolved === true ? `<span class="ok" title="resolved">✓</span>` : t.resolved === false ? `<span class="no" title="not resolved">✗</span>` : `<span class="na">·</span>`;
   const w = t.written, s = t.store;
   if (mode === "store") {
-    if (!s.known) return `<div class="mc-meta">${res} <span>store after this task not logged</span></div><div class="mc-empty">This run did not save the store, and no later task shows it${w.nodes ? ` (${w.nodes} item${w.nodes === 1 ? "" : "s"} were added)` : ""}. Live runs save it after every write.</div>`;
+    if (!s.known) return `<div class="mc-meta">${res} <span>store after this turn not logged</span></div><div class="mc-empty">This run did not save the store, and no later turn shows it${w.nodes ? ` (${w.nodes} item${w.nodes === 1 ? "" : "s"} were added)` : ""}. Live runs save it after every write.</div>`;
     const nw = s.items.filter(i => i.order === k).length;
-    return `<div class="mc-meta">${res} <span><b>${s.items.length}</b> item${s.items.length === 1 ? "" : "s"} · <b>${tok(s.chars)}</b> chars</span>${nw ? `<span class="mc-new">+${nw} new</span>` : ""}${s.truncated ? `<span class="mc-warn" title="the injected block is capped at the most recent characters; older items fell off">capped</span>` : ""}${k < n ? `<span class="muted">→ task ${k + 1}</span>` : ""}</div>` +
+    return `<div class="mc-meta">${res} <span><b>${s.items.length}</b> item${s.items.length === 1 ? "" : "s"} · <b>${tok(s.chars)}</b> chars</span>${nw ? `<span class="mc-new">+${nw} new</span>` : ""}${s.truncated ? `<span class="mc-warn" title="the injected block is capped at the most recent characters; older items fell off">capped</span>` : ""}${k < n ? `<span class="muted">→ turn ${k + 1}</span>` : ""}</div>` +
       (s.items.length ? s.items.map(i => itemHtml(i, i.order === k ? "new" : "old", false, c.kind)).join("") : `<div class="mc-empty">Empty store.</div>`);
   }
   const cost = w.tokens ? `writer <b>${w.src === "estimate" ? "≈" : ""}${tok(w.tokens)}</b> tokens · ${usd(w.usd)}${w.secs ? `<span class="dt"> · ${w.secs}s</span>` : ""}` : "";
-  const wHead = (count) => `<div class="mc-sec"><span class="mc-sec-t">Written after task ${k}</span>${count}<span>${cost}</span></div>`;
+  const wHead = (count) => `<div class="mc-sec"><span class="mc-sec-t">Written after turn ${k}</span>${count}<span>${cost}</span></div>`;
   let written;
   if (w.error) written = wHead("") + `<div class="mc-empty mc-warn">Writer error: ${esc(w.error)}</div>`;
-  else if (!w.known) written = wHead(`<span><b>${w.nodes ?? "?"}</b> item${w.nodes === 1 ? "" : "s"}</span>`) + `<div class="mc-empty">Text not in the recorded logs: no later task shows what the last write stored. Live runs save it.</div>`;
+  else if (!w.known) written = wHead(`<span><b>${w.nodes ?? "?"}</b> item${w.nodes === 1 ? "" : "s"}</span>`) + `<div class="mc-empty">Text not in the recorded logs: no later turn shows what the last write stored. Live runs save it.</div>`;
   else if (!w.items.length) written = wHead(`<span><b>0</b> items</span>`) + `<div class="mc-empty mc-warn">Nothing stored${w.tokens ? `, though the writer still used ${tok(w.tokens)} tokens` : ""}.</div>`;
   else written = wHead(`<span><b>${w.items.length}</b> item${w.items.length === 1 ? "" : "s"} · <b>${tok(w.chars)}</b> chars</span>`) + `<div class="mc-items">${w.items.map(i => itemHtml(i, "new", false, c.kind)).join("")}</div>`;
-  return `<div class="mc-meta">${res} <span>task ${k} ${t.resolved === true ? "resolved" : t.resolved === false ? "not resolved" : "not graded"}</span></div>` + retrievedHtml(t, k, prev, c.kind, unit) + written;
+  return `<div class="mc-meta">${res} <span>turn ${k} ${t.resolved === true ? "resolved" : t.resolved === false ? "not resolved" : "not graded"}</span></div>` + retrievedHtml(t, k, prev, c.kind, unit) + written;
 }
 export function memorySegHtml(mode) {
   return `<div class="seg mc-seg" role="group" aria-label="Memory view"><button type="button" data-mcmode="written" aria-pressed="${mode !== "store"}">Retrieved + written</button><button type="button" data-mcmode="store" aria-pressed="${mode === "store"}">Saved store</button></div>`;

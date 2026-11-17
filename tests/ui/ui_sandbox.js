@@ -18,7 +18,7 @@
 // project, named after its repo, is renamed as soon as its task is done (also when the run stops early).
 const { chromium } = require('playwright'); const fs = require('fs'), path = require('path');
 const BASE = process.env.BASE || 'http://127.0.0.1:8799'; const OUT = process.env.SHOTS || path.join(__dirname, 'shots'); fs.mkdirSync(OUT, { recursive: true });
-if (/:8765\b|:8766\b/.test(BASE)) { console.error('ui_sandbox.js runs agent tasks — use the replay server (8799), not', BASE); process.exit(2); }
+if (/:8765\b|:8766\b/.test(BASE)) { console.error('ui_sandbox.js runs agent turns — use the replay server (8799), not', BASE); process.exit(2); }
 const sleep = ms => new Promise(r => setTimeout(r, ms)); const results = []; const check = (name, ok, info = '') => { results.push([ok ? 'PASS' : 'FAIL', name, info]); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${info ? ' — ' + info : ''}`); };
 const PFX = process.env.PREFIX || '';
 // a project named after its task gets the server's slug of the task text (demo/server.py _hint_slug): its first five words, lowercased,
@@ -89,71 +89,71 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
   const pE = PFX + 'empty-' + ts, tE = 'Add a NOTES.md file with a short description of this workspace.'; await pg.fill('#sc-name', pE); await pg.fill('#q', tE); await arms(['kv', 'mem0']);
   check('draft: no memory switcher at any width; Run with = KV + Mem0', !(await noSwitcher()).length && (await pg.$$eval('#taskarms input:checked', e => e.map(x => x.dataset.k).join(','))) === 'kv,mem0');
   await pg.fill('#tasksteps', '8').catch(() => {}); await pg.click('#send'); await sleep(1500);
-  check('empty: task started, live view; the toast in plain words', await live() && /^Task 1 started — Knowledge Vault \+ Mem0$/.test(await T('#toast')), await T('#toast'));
+  check('empty: turn started, live view; the toast in plain words', await live() && /^Turn 1 started — Knowledge Vault \+ Mem0$/.test(await T('#toast')), await T('#toast'));
   check('empty: the new project is first in Your projects, selected', (await openProj()) === pE && (await pg.$eval('#chains .chain[data-proj]', e => e.dataset.proj)) === pE, `${await openProj()} · first ${await pg.$eval('#chains .chain[data-proj]', e => e.dataset.proj)}`);
-  await head(/Task 1/); await sleep(300);                         // (the live feed names the task on its first tick)
+  await head(/Turn 1/); await sleep(300);                         // (the live feed names the task on its first tick)
   const devW = ((await pg.evaluate(() => document.body.innerText)).match(DEV) || []).join(', ');
   check('live: no banner and no developer words (arm ids, runner, paths, "ledger calls", "graded")', !(await pg.$('#livebanner')) && !devW, devW);
-  check('live: the header names the watched method (Knowledge Vault) and says live', /Knowledge Vault/.test(await chip()) && (await pg.$$eval('#chathead .chip', e => e.map(x => x.innerText.trim()))).includes('live') && /^Task 1 of 1/.test(await T('#chathead')), await T('#chathead'));
-  check('live: both methods live on the task row, no ▶ offered for them', (await pg.$$eval('#chains .live-chip', e => e.map(x => x.textContent.trim()))).join(',') === 'live · KV,live · Mem0' && !(await pg.$('#chains [data-rerun="kv:1"], #chains [data-rerun="mem0:1"]')), await T('#chains .chain.open[data-proj] ~ .sessions'));
+  check('live: the header names the watched method (Knowledge Vault) and says live', /Knowledge Vault/.test(await chip()) && (await pg.$$eval('#chathead .chip', e => e.map(x => x.innerText.trim()))).includes('live') && /^Turn 1 of 1/.test(await T('#chathead')), await T('#chathead'));
+  check('live: both methods live on the turn row, no ▶ offered for them', (await pg.$$eval('#chains .live-chip', e => e.map(x => x.textContent.trim()))).join(',') === 'live · KV,live · Mem0' && !(await pg.$('#chains [data-rerun="kv:1"], #chains [data-rerun="mem0:1"]')), await T('#chains .chain.open[data-proj] ~ .sessions'));
   { await pg.click('#tabs button[data-t="changes"]'); await pg.waitForFunction(() => !!(S.sess && !S.sess.exit_status && S.live && S.liveFocus), null, { timeout: 8000 }).catch(() => {});
     const ch = await T('#pane'), still = await pg.evaluate(() => !!(S.sess && !S.sess.exit_status && S.live && S.liveFocus));
     if (still) check('live: Changes says the agent is still working (not "No patch was submitted")', ch === 'No changes yet — the agent is still working.', ch);
     else check('live: Changes before the first step says the agent is starting', /The agent is starting|No changes yet — the agent is still working|NOTES\.md/.test(ch), ch); }
   // the next task waits for a ticked method that is still busy here (the server would refuse it); without them it may start
-  await pg.fill('#q', 'Next task');
+  await pg.fill('#q', 'Next turn');
   const busy1 = await T('#cstatus'), dis1 = await pg.$eval('#send', e => e.disabled);
   await arms(['none']); const busy0 = await T('#cstatus'), dis0 = await pg.$eval('#send', e => e.disabled); await arms(['kv', 'mem0']); await pg.fill('#q', '');
-  check('busy: Run ▶ waits while a ticked method still works on task 1, and says why; only No memory ticked → Run ▶ again', !(await live()) || (dis1 && /^Knowledge Vault and Mem0 are still working on task 1 — wait for them or stop them$|^(Knowledge Vault|Mem0) is still working on task 1 — wait for it or stop it$/.test(busy1) && !dis0 && !busy0), `"${busy1}" ${dis1} · "${busy0}" ${dis0}`);
+  check('busy: Run ▶ waits while a ticked method still works on turn 1, and says why; only No memory ticked → Run ▶ again', !(await live()) || (dis1 && /^Knowledge Vault and Mem0 are still working on turn 1 — wait for them or stop them$|^(Knowledge Vault|Mem0) is still working on turn 1 — wait for it or stop it$/.test(busy1) && !dis0 && !busy0), `"${busy1}" ${dis1} · "${busy0}" ${dis0}`);
   await pg.screenshot({ path: OUT + '/30_sandbox_live.png' });
   const hiddenLive = await noSwitcher();
   // a reload while it runs keeps the place (the URL) and re-attaches to the live view
   if (await live()) { const u = pg.url(); await pg.reload(); await pg.waitForFunction(() => document.querySelector('#chains .chain.open[data-proj]'), null, { timeout: 30000 }).catch(() => {}); await sleep(2000);
     const run = (await jobsOf(pE)).filter(j => j.status === 'running').length;
-    check('reload while it runs: same project and task (the URL keeps them), the live view re-attaches, the rows show the running methods', /[?&]cid=/.test(u) && (await openProj()) === pE && (!run || (await live() && (await pg.$$('#chains .live-chip')).length === run)), `${u} · running ${run} · live ${await live()} · chips ${(await pg.$$('#chains .live-chip')).length}`); }
+    check('reload while it runs: same project and turn (the URL keeps them), the live view re-attaches, the rows show the running methods', /[?&]cid=/.test(u) && (await openProj()) === pE && (!run || (await live() && (await pg.$$('#chains .live-chip')).length === run)), `${u} · running ${run} · live ${await live()} · chips ${(await pg.$$('#chains .live-chip')).length}`); }
   await waitRun(); const toastDone = await T('#toast');
-  check('no switcher at any width while the task ran and once it finished', !hiddenLive.length && !(await noSwitcher()).length, hiddenLive.join(','));
-  check('empty: finished, session open', /Task 1 of 1/.test(await T('#chathead')) && /Knowledge Vault/.test(await chip()), await T('#chathead'));
-  check('empty: the toast says the task is done, in plain words', /^Task 1 done — Knowledge Vault$/.test(toastDone) || !toastDone, toastDone);
+  check('no switcher at any width while the turn ran and once it finished', !hiddenLive.length && !(await noSwitcher()).length, hiddenLive.join(','));
+  check('empty: finished, session open', /Turn 1 of 1/.test(await T('#chathead')) && /Knowledge Vault/.test(await chip()), await T('#chathead'));
+  check('empty: the toast says the turn is done, in plain words', /^Turn 1 done — Knowledge Vault$/.test(toastDone) || !toastDone, toastDone);
   check('empty: 3 canned steps + Submitted', (await pg.$$('#transcript .turn')).length === 3 && /Submitted/.test(await T('#transcript')));
   check('empty: agent saw an empty workspace', /sandbox: empty workspace/.test(await firstObs()));
   await pg.click('#tabs button[data-t="changes"]'); await sleep(300); check('empty: Changes has NOTES.md', /NOTES\.md/.test(await T('#pane')));
   await pg.waitForFunction(() => document.querySelectorAll('#chains .chip.tiny[data-open]').length >= 2, null, { timeout: 120000 }).catch(() => {});
-  check('empty: KV and Mem0 chips on the task row, MemOp ▶ and No memory ▶ to run the others', (await pg.$$eval('#chains .chip.tiny[data-open]', e => e.map(x => x.dataset.open))).sort().join(',') === 'kv:1,mem0:1' && !!(await pg.$('#chains [data-rerun="memop:1"]')) && !!(await pg.$('#chains [data-rerun="none:1"]')) && (await pg.$$eval('#chains .chips [data-rerun]', e => e.map(x => x.innerText.trim()).join(' | '))) === 'MemOp ▶ | No memory ▶', (await T('#chains .chain.open + .pmenu, #chains .chain.open ~ .sessions')).slice(0, 120));
+  check('empty: KV and Mem0 chips on the turn row, MemOp ▶ and No memory ▶ to run the others', (await pg.$$eval('#chains .chip.tiny[data-open]', e => e.map(x => x.dataset.open))).sort().join(',') === 'kv:1,mem0:1' && !!(await pg.$('#chains [data-rerun="memop:1"]')) && !!(await pg.$('#chains [data-rerun="none:1"]')) && (await pg.$$eval('#chains .chips [data-rerun]', e => e.map(x => x.innerText.trim()).join(' | '))) === 'MemOp ▶ | No memory ▶', (await T('#chains .chain.open + .pmenu, #chains .chain.open ~ .sessions')).slice(0, 120));
   { const t1 = (await projects()).find(p => p.name === pE)?.tasks?.[0] || {}, want = t1.summary || t1.title, got = await pg.$eval('#chains .chain.open[data-proj] ~ .sessions .task-row .tt', e => [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim());
-    check(`empty: the task row names the task (${t1.summary ? "the server's summary" : 'no summary from the server yet: the title'})`, !!want && got === want, `"${got}" vs "${want}"`);
-    check('empty: the pinned task names it too', (await T('#taskpin .tp-title')) === want, await T('#taskpin .tp-title')); }
-  check('empty: the Task tab (not "Issue")', (await T('#tabs button[data-t="issue"]')) === 'Task');
+    check(`empty: the turn row names the turn (${t1.summary ? "the server's summary" : 'no summary from the server yet: the title'})`, !!want && got === want, `"${got}" vs "${want}"`);
+    check('empty: the pinned turn names it too', (await T('#taskpin .tp-title')) === want, await T('#taskpin .tp-title')); }
+  check('empty: the Turn tab (not "Issue")', (await T('#tabs button[data-t="issue"]')) === 'Turn');
   const w1 = writes.length; await pg.click('#chains [data-open="mem0:1"]'); await head(/Mem0/); await sleep(500);
-  check('empty: the Mem0 chip on the task row opens the Mem0 session (no switcher), starts nothing', /Mem0/.test(await chip()) && /Task 1 of 1/.test(await T('#chathead')) && writes.length === w1 && !(await swShown()), await T('#chathead'));
+  check('empty: the Mem0 chip on the turn row opens the Mem0 session (no switcher), starts nothing', /Mem0/.test(await chip()) && /Turn 1 of 1/.test(await T('#chathead')) && writes.length === w1 && !(await swShown()), await T('#chathead'));
   await pg.click('#chains [data-open="kv:1"]'); await head(/Knowledge Vault/); await sleep(500);
   await pg.screenshot({ path: OUT + '/31_sandbox_done.png' });
   // second task: KV memory from task 1 is injected
   await pg.fill('#q', 'Append a second line to NOTES.md.'); await arms(['kv']); await pg.click('#send'); await waitRun();
-  check('empty: task 2 runs with the memory from task 1', /Task 2 of 2/.test(await T('#chathead')) && /Memory injected/.test(await T('#transcript')), await T('#chathead'));
-  check('empty: the project\'s two tasks are listed by name', (await pg.$$('#chains .chain.open[data-proj] ~ .sessions .task-row')).length === 2);
+  check('empty: turn 2 runs with the memory from turn 1', /Turn 2 of 2/.test(await T('#chathead')) && /Memory injected/.test(await T('#transcript')), await T('#chathead'));
+  check('empty: the project\'s two turns are listed by name', (await pg.$$('#chains .chain.open[data-proj] ~ .sessions .task-row')).length === 2);
 
   // ---------------------------------------------------------------- 1b. ■ Stop: the task stops for every method; the view stays put
   await newDraft(); const pS = PFX + 'stop-' + ts; await pg.fill('#sc-name', pS); await pg.fill('#q', 'Add a NOTES.md file.'); await arms(['kv', 'mem0']); await pg.click('#send');
-  await pg.waitForFunction(() => document.querySelector('#playbar').classList.contains('live'), null, { timeout: 120000 }).catch(() => {}); await head(/Task 1/);
-  check('stop: one ■ Stop for the task, its tooltip says it stops every method', await pg.isVisible('#pb-stop') && (await pg.getAttribute('#pb-stop', 'title')) === 'Stop this task for every memory system running it (click twice)', await pg.getAttribute('#pb-stop', 'title'));
+  await pg.waitForFunction(() => document.querySelector('#playbar').classList.contains('live'), null, { timeout: 120000 }).catch(() => {}); await head(/Turn 1/);
+  check('stop: one ■ Stop for the turn, its tooltip says it stops every method', await pg.isVisible('#pb-stop') && (await pg.getAttribute('#pb-stop', 'title')) === 'Stop this turn for every memory system running it (click twice)', await pg.getAttribute('#pb-stop', 'title'));
   const runS = (await jobsOf(pS)).filter(j => j.status === 'running').map(j => j.kind).sort().join(',');
   await pg.click('#pb-stop'); await sleep(200); await pg.click('#pb-stop');
   for (let i = 0; i < 80 && (await jobsOf(pS)).some(j => j.status === 'running'); i++) await sleep(500);
   await sleep(4000); const stS = (await jobsOf(pS)).map(j => `${j.kind}:${j.status}`).sort().join(',');
-  check(`stop: two clicks stop the task for every method running it (${runS || 'none still running'}); the view stays on Knowledge Vault`, (await jobsOf(pS)).every(j => j.status !== 'running') && (!runS.includes(',') || (await jobsOf(pS)).filter(j => runS.includes(j.kind)).every(j => j.status === 'stopped' || j.status === 'done')) && /Knowledge Vault/.test(await chip()) && !(await live()), `${stS} · ${await T('#chathead')} · ${(await T('#transcript')).slice(0, 90)}`);
+  check(`stop: two clicks stop the turn for every method running it (${runS || 'none still running'}); the view stays on Knowledge Vault`, (await jobsOf(pS)).every(j => j.status !== 'running') && (!runS.includes(',') || (await jobsOf(pS)).filter(j => runS.includes(j.kind)).every(j => j.status === 'stopped' || j.status === 'done')) && /Knowledge Vault/.test(await chip()) && !(await live()), `${stS} · ${await T('#chathead')} · ${(await T('#transcript')).slice(0, 90)}`);
   { const jk = (await jobsOf(pS)).find(j => j.kind === 'kv'), hasSess = await pg.evaluate(() => !!S.sess);
     if (jk && jk.status === 'stopped' && !hasSess) {
-      check('stop: the transcript says the task was stopped and that its changes stay in the workspace', (await T('#transcript')) === 'Task 1 was stopped. The changes it made so far stay in the workspace.', await T('#transcript'));
+      check('stop: the transcript says the turn was stopped and that its changes stay in the workspace', (await T('#transcript')) === 'Turn 1 was stopped. The changes it made so far stay in the workspace.', await T('#transcript'));
       const panes = []; for (const t of ['changes', 'ledger']) { await pg.click(`#tabs button[data-t="${t}"]`); await sleep(150); panes.push(await T('#pane')); }
-      check('stop: the right panel says there is nothing to show (not the first-visit text), on every tab', panes.every(x => x === 'Task 1 was stopped before it finished, so there is nothing to show here.'), panes.join(' | '));
+      check('stop: the right panel says there is nothing to show (not the first-visit text), on every tab', panes.every(x => x === 'Turn 1 was stopped before it finished, so there is nothing to show here.'), panes.join(' | '));
       const row = await pg.$eval('#chains .chain.open[data-proj] ~ .sessions .task-row .chips', e => e.innerText.replace(/\s+/g, ' ').trim()).catch(() => '');
       const ranAny = Object.values((await projects()).find(p => p.name === pS)?.arms || {}).some(a => (a.orders || []).includes(1));   // another method finished it
-      check(`stop: the task row ${ranAny ? 'shows the method that finished (no "stopped")' : 'says "stopped" before its ▶ chips'}`, ranAny ? !/stopped/.test(row) : /^stopped KV ▶ Mem0 ▶ MemOp ▶ No memory ▶$/.test(row), row);
+      check(`stop: the turn row ${ranAny ? 'shows the method that finished (no "stopped")' : 'says "stopped" before its ▶ chips'}`, ranAny ? !/stopped/.test(row) : /^stopped KV ▶ Mem0 ▶ MemOp ▶ No memory ▶$/.test(row), row);
       await pg.reload(); await pg.waitForFunction(() => document.querySelector('#chains .chain.open[data-proj]'), null, { timeout: 30000 }).catch(() => {}); await sleep(2000);
       const row2 = await pg.$eval('#chains .chain.open[data-proj] ~ .sessions .task-row .chips', e => e.innerText.replace(/\s+/g, ' ').trim()).catch(() => '');
       if (!ranAny) check('stop: after a reload the row still says "stopped"', /^stopped /.test(row2), row2); }
-    else console.log(`   (the task finished before the stop took effect — ${jk ? jk.status : 'no job'}, session ${hasSess}: the stopped-task texts are not exercised)`); }
+    else console.log(`   (the turn finished before the stop took effect — ${jk ? jk.status : 'no job'}, session ${hasSess}: the stopped-task texts are not exercised)`); }
   await pg.screenshot({ path: OUT + '/37_sandbox_stopped.png' });
   if ((await pg.request.delete(BASE + '/api/custom/project/' + encodeURIComponent(pS))).ok()) mine.delete(pS);
 
@@ -163,23 +163,23 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
   await newDraft(); const pM = PFX + 'memop-' + ts; await pg.fill('#sc-name', pM); await pg.fill('#q', 'Add a NOTES.md file with a short description of this workspace.');
   check('Run with: MemOp offered, unticked by default (KV + Mem0 ticked)', (await pg.$$eval('#taskarms input[data-k]', e => e.map(x => x.dataset.k + ':' + x.checked).join(','))) === 'kv:true,mem0:true,memop:false,none:false' && /^MemOp: /.test(await pg.$eval('#taskarms input[data-k="memop"]', e => e.closest('label').title)), await pg.$$eval('#taskarms input[data-k]', e => e.map(x => x.dataset.k + ':' + x.checked).join(',')));
   await arms(['kv', 'memop']); await pg.click('#send'); await sleep(1500);
-  check('memop: task started with Knowledge Vault + MemOp; the toast names both', await live() && /^Task 1 started — Knowledge Vault \+ MemOp$/.test(await T('#toast')), await T('#toast'));
+  check('memop: turn started with Knowledge Vault + MemOp; the toast names both', await live() && /^Turn 1 started — Knowledge Vault \+ MemOp$/.test(await T('#toast')), await T('#toast'));
   await pg.waitForFunction(() => document.querySelectorAll('#chains .live-chip').length >= 1, null, { timeout: 60000 }).catch(() => {});
   const mChip = await pg.$$('#chains .live-chip').then(async cs => { for (const c of cs) if (/MemOp/.test(await c.textContent())) return c; return null; });
   if (mChip) { const lc = await pg.$$eval('#chains .live-chip', e => e.map(x => x.textContent.trim()).join(','));
     await mChip.click(); await head(/MemOp/); await sleep(800);
-    check('memop: "live · MemOp" on the task row watches the MemOp run: the header names MemOp and says live, the status line runs', await live() && /MemOp/.test(await chip()) && /^Task 1 of 1/.test(await T('#chathead')) && (await pg.$$eval('#chathead .chip', e => e.map(x => x.innerText.trim()))).includes('live') && /\d\d:\d\d/.test(await T('#pb-livetxt')) && /live · KV|live · MemOp/.test(lc), `${await T('#chathead')} · ${await T('#pb-live')} · chips ${lc}`);
-    await pg.fill('#q', 'Next task'); await sleep(300); const bl = await T('#cstatus'), bd = await pg.$eval('#send', e => e.disabled); await pg.fill('#q', '');
-    check('memop: Run ▶ waits for the busy methods and names MemOp', !(await live()) || (bd && /^(Knowledge Vault and MemOp are still working on task 1 — wait for them or stop them|MemOp is still working on task 1 — wait for it or stop it|Knowledge Vault is still working on task 1 — wait for it or stop it)$/.test(bl) && (/MemOp/.test(bl) || !(await jobsOf(pM)).some(j => j.kind === 'memop' && j.status === 'running'))), `"${bl}" disabled ${bd}`);
+    check('memop: "live · MemOp" on the turn row watches the MemOp run: the header names MemOp and says live, the status line runs', await live() && /MemOp/.test(await chip()) && /^Turn 1 of 1/.test(await T('#chathead')) && (await pg.$$eval('#chathead .chip', e => e.map(x => x.innerText.trim()))).includes('live') && /\d\d:\d\d/.test(await T('#pb-livetxt')) && /live · KV|live · MemOp/.test(lc), `${await T('#chathead')} · ${await T('#pb-live')} · chips ${lc}`);
+    await pg.fill('#q', 'Next turn'); await sleep(300); const bl = await T('#cstatus'), bd = await pg.$eval('#send', e => e.disabled); await pg.fill('#q', '');
+    check('memop: Run ▶ waits for the busy methods and names MemOp', !(await live()) || (bd && /^(Knowledge Vault and MemOp are still working on turn 1 — wait for them or stop them|MemOp is still working on turn 1 — wait for it or stop it|Knowledge Vault is still working on turn 1 — wait for it or stop it)$/.test(bl) && (/MemOp/.test(bl) || !(await jobsOf(pM)).some(j => j.kind === 'memop' && j.status === 'running'))), `"${bl}" disabled ${bd}`);
     await pg.screenshot({ path: OUT + '/38_sandbox_memop_live.png' }); }
   else console.log('   (MemOp finished before its live chip could be clicked)');
   if (await live()) await waitRun(); else await sleep(2500);
   await pg.waitForFunction(() => document.querySelectorAll('#chains .chip.tiny[data-open]').length >= 2, null, { timeout: 120000 }).catch(() => {});
   if (!(/MemOp/.test(await chip()))) { await pg.click('#chains [data-open="memop:1"]').catch(() => {}); await head(/MemOp/); await sleep(800); }
-  check('memop: finished on the MemOp session (Task 1 of 1)', /Task 1 of 1/.test(await T('#chathead')) && /MemOp/.test(await chip()), await T('#chathead'));
-  check('memop: the task row has KV and MemOp sessions, "Mem0 ▶" and "No memory ▶" to run the others', (await pg.$$eval('#chains .chip.tiny[data-open]', e => e.map(x => x.dataset.open))).sort().join(',') === 'kv:1,memop:1' && (await pg.$$eval('#chains .chips [data-rerun]', e => e.map(x => x.innerText.trim()).join(' | '))) === 'Mem0 ▶ | No memory ▶', await T('#chains .chain.open[data-proj] ~ .sessions .chips'));
+  check('memop: finished on the MemOp session (Turn 1 of 1)', /Turn 1 of 1/.test(await T('#chathead')) && /MemOp/.test(await chip()), await T('#chathead'));
+  check('memop: the turn row has KV and MemOp sessions, "Mem0 ▶" and "No memory ▶" to run the others', (await pg.$$eval('#chains .chip.tiny[data-open]', e => e.map(x => x.dataset.open))).sort().join(',') === 'kv:1,memop:1' && (await pg.$$eval('#chains .chips [data-rerun]', e => e.map(x => x.innerText.trim()).join(' | '))) === 'Mem0 ▶ | No memory ▶', await T('#chains .chain.open[data-proj] ~ .sessions .chips'));
   { const nt = await T('#transcript .tail[data-tail="note"]'), mt = await (async () => { await pg.click('#tabs button[data-t="memory"]'); await sleep(250); return T('#pane'); })(), lg = await (async () => { await pg.click('#tabs button[data-t="ledger"]'); await sleep(250); return T('#pane'); })();
-    check('memop: the session speaks of MemOp\'s guidance document (transcript, Memory tab, Ledger), in plain words', /guidance document/.test(nt) && /across the project/.test(mt) && /guidance document|first task of the project/.test(mt) && /Rewriting the guidance document for the next task/.test(lg) && !((await pg.evaluate(() => document.body.innerText)).match(DEV)), `${nt.slice(0, 120)} · ${mt.slice(0, 120)}`); }
+    check('memop: the session speaks of MemOp\'s guidance document (transcript, Memory tab, Ledger), in plain words', /guidance document/i.test(nt) && /across the project/.test(mt) && /guidance document|first turn of the project/.test(mt) && /Rewriting the guidance document for the next turn/.test(lg) && !((await pg.evaluate(() => document.body.innerText)).match(DEV)), `${nt.slice(0, 120)} · ${mt.slice(0, 120)}`); }
   await pg.screenshot({ path: OUT + '/39_sandbox_memop_done.png' });
   await pg.click(`#chains [data-pmenu="${pM}"]`); await sleep(300);
   check('memop: ⋯ Download files offers Knowledge Vault and MemOp (no Mem0, no No memory)', (await pg.$$eval('#chains .pm-dl a[data-dl]', e => e.map(x => x.dataset.dl).join(','))) === 'kv,memop' && /Download files: Knowledge Vault MemOp/.test(await IT('#chains .pmenu')), await IT('#chains .pmenu'));
@@ -194,15 +194,15 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
     await pg.screenshot({ path: OUT + '/41_sandbox_memop_rerun.png' }); await pg.click('.rrpanel [data-rra="cancel"]'); await sleep(200); }
   // a second task with both, watched on MemOp; ■ Stop stops it for both methods and the view stays on MemOp
   await pg.fill('#q', 'Append a second line to NOTES.md.'); await arms(['kv', 'memop']); await pg.click('#send');
-  await pg.waitForFunction(() => document.querySelector('#playbar').classList.contains('live'), null, { timeout: 120000 }).catch(() => {}); await head(/Task 2/);
-  check('memop: task 2 opens on MemOp (the method on screen), live', await live() && /MemOp/.test(await chip()) && /^Task 2 of 2/.test(await T('#chathead')), await T('#chathead'));
+  await pg.waitForFunction(() => document.querySelector('#playbar').classList.contains('live'), null, { timeout: 120000 }).catch(() => {}); await head(/Turn 2/);
+  check('memop: turn 2 opens on MemOp (the method on screen), live', await live() && /MemOp/.test(await chip()) && /^Turn 2 of 2/.test(await T('#chathead')), await T('#chathead'));
   const runM = (await jobsOf(pM)).filter(j => j.status === 'running' && j.order === 2).map(j => j.kind).sort().join(',');
   await pg.click('#pb-stop'); await sleep(200); await pg.click('#pb-stop'); await sleep(600); const stT = await T('#toast');
   for (let i = 0; i < 80 && (await jobsOf(pM)).some(j => j.status === 'running'); i++) await sleep(500);
   await sleep(4500);
-  check(`memop: ■ Stop stops task 2 for every method running it (${runM || 'none still running'}), the toast names MemOp, the view stays on MemOp`, (await jobsOf(pM)).every(j => j.status !== 'running') && (!runM || /^Stopping task 2 — (MemOp \+ Knowledge Vault|Knowledge Vault \+ MemOp|MemOp|Knowledge Vault)$/.test(stT)) && /MemOp/.test(await chip()) && !(await live()), `${stT} · ${(await jobsOf(pM)).map(j => `${j.order}:${j.kind}:${j.status}`).join(',')} · ${await T('#chathead')}`);
+  check(`memop: ■ Stop stops turn 2 for every method running it (${runM || 'none still running'}), the toast names MemOp, the view stays on MemOp`, (await jobsOf(pM)).every(j => j.status !== 'running') && (!runM || /^Stopping turn 2 — (MemOp \+ Knowledge Vault|Knowledge Vault \+ MemOp|MemOp|Knowledge Vault)$/.test(stT)) && /MemOp/.test(await chip()) && !(await live()), `${stT} · ${(await jobsOf(pM)).map(j => `${j.order}:${j.kind}:${j.status}`).join(',')} · ${await T('#chathead')}`);
   { const row = await pg.$$eval('#chains .chain.open[data-proj] ~ .sessions .task-row .chips', e => (e[1] || {}).innerText || '').then(t => t.replace(/\s+/g, ' ').trim()), ranAny = Object.values((await projects()).find(p => p.name === pM)?.arms || {}).some(a => (a.orders || []).includes(2));
-    if (!ranAny) check('memop: the stopped task\'s row says "stopped" before its four ▶ chips', /^stopped KV ▶ Mem0 ▶ MemOp ▶ No memory ▶$/.test(row), row); }
+    if (!ranAny) check('memop: the stopped turn\'s row says "stopped" before its four ▶ chips', /^stopped KV ▶ Mem0 ▶ MemOp ▶ No memory ▶$/.test(row), row); }
   await pg.screenshot({ path: OUT + '/42_sandbox_memop_stopped.png' });
   if ((await pg.request.delete(BASE + '/api/custom/project/' + encodeURIComponent(pM))).ok()) mine.delete(pM);
 
@@ -216,7 +216,7 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
   await pg.screenshot({ path: OUT + '/32_sandbox_files_draft.png' });
   await pg.fill('#q', PT + 'Look at the files and write NOTES.md.'); await arms(['kv']); await pg.click('#send'); await waitRun();
   const fName = hintSlug(PT + 'Look at the files and write NOTES.md.'), pF = await openProj();
-  check(`files: project named after the task ("${fName}", the server's five-word rule)`, new RegExp('^' + reEsc(fName) + '(-\\d+)?$').test(pF), pF);
+  check(`files: project named after the turn ("${fName}", the server's five-word rule)`, new RegExp('^' + reEsc(fName) + '(-\\d+)?$').test(pF), pF);
   const oF = await firstObs(); check('files: agent sees both files and the folder', /a\.txt/.test(oF) && /calc\.py/.test(oF) && /folder/.test(oF), oF.slice(0, 200));
   check('files: label "Your files · Python 3.12"', /Your files · Python 3\.12/.test(await T('#chains .chain.open[data-proj]')), await T('#chains .chain.open[data-proj]'));
 
@@ -234,17 +234,17 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
   check('zip: No memory ticked under Run with while the project is being made', /creating the project/.test(mid) && midNone && !(await swShown()), `"${mid}" · none ticked ${midNone}`);
   await pg.waitForFunction(() => document.querySelector('#playbar').classList.contains('live'), null, { timeout: 180000 }).catch(() => {});
   await pg.unroute('**/api/custom/project'); pg.off('request', onStart);
-  check('zip: the task starts with what Run with showed by then (KV + No memory)', JSON.stringify(startKinds) === '["kv","none"]', JSON.stringify(startKinds) + ' · ' + writes.slice(w2).join(', '));
-  await head(/Task 1/); await sleep(300);
+  check('zip: the turn starts with what Run with showed by then (KV + No memory)', JSON.stringify(startKinds) === '["kv","none"]', JSON.stringify(startKinds) + ' · ' + writes.slice(w2).join(', '));
+  await head(/Turn 1/); await sleep(300);
   check('zip: the live view shows Knowledge Vault (the first method ticked)', /Knowledge Vault/.test(await chip()), await T('#chathead'));
   const nl = await pg.$('#chains [data-live]') && await pg.$$eval('#chains [data-live]', e => e.map(x => x.textContent.trim()));
   const noneLive = await pg.$$('#chains .live-chip').then(async cs => { for (const c of cs) if (/No memory/.test(await c.textContent())) return c; return null; });
   if (noneLive) { await noneLive.click(); await head(/No memory/); await sleep(500);
-    check('zip: the "live · No memory" chip on the task row watches the No memory run', await live() && /No memory/.test(await chip()) && /^Task 1 of 1/.test(await T('#chathead')), `${await T('#chathead')} · chips ${JSON.stringify(nl)}`); }
+    check('zip: the "live · No memory" chip on the turn row watches the No memory run', await live() && /No memory/.test(await chip()) && /^Turn 1 of 1/.test(await T('#chathead')), `${await T('#chathead')} · chips ${JSON.stringify(nl)}`); }
   else { await pg.click('#chains [data-open="none:1"]').catch(() => {}); await head(/No memory/); console.log('   (No memory finished before its live chip could be clicked: opened its session instead)'); }
   await pg.screenshot({ path: OUT + '/36_sandbox_watch_chosen.png' });
   if (await live()) await waitRun(); else await sleep(2500);
-  check('zip: finished on the No memory session (a stop or finish never flips the view to another method)', /Task 1 of 1/.test(await T('#chathead')) && /No memory/.test(await chip()), await T('#chathead'));
+  check('zip: finished on the No memory session (a stop or finish never flips the view to another method)', /Turn 1 of 1/.test(await T('#chathead')) && /No memory/.test(await chip()), await T('#chathead'));
   const oZ = await firstObs(); check('zip: unpacked, top folder stripped, zip not kept', /README\.md/.test(oZ) && /notes\.txt/.test(oZ) && /src/.test(oZ) && !/proj-main|bundle\.zip/.test(oZ), oZ.slice(0, 260));
 
   // ---------------------------------------------------------------- 4. Git: a bad URL keeps the draft; then Hello-World
@@ -255,7 +255,7 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
   await pg.click('#send');
   await pg.waitForFunction(() => !document.querySelector('#send').disabled, null, { timeout: 120000 }); await sleep(300);
   check('git error: message next to the composer', /⚠ git clone failed/.test(await T('#cstatus')) && /err/.test(await pg.getAttribute('#cstatus', 'class')), await T('#cstatus'));
-  check('git error: draft kept (task text, URL, Git repo selected)', (await pg.$eval('#q', e => e.value)) === gT && /does-not-exist/.test(await pg.$eval('#sc-git', e => e.value)) && (await pg.getAttribute('[data-from="git"]', 'aria-pressed')) === 'true' && !!(await pg.$('#startcard')));
+  check('git error: draft kept (turn text, URL, Git repo selected)', (await pg.$eval('#q', e => e.value)) === gT && /does-not-exist/.test(await pg.$eval('#sc-git', e => e.value)) && (await pg.getAttribute('[data-from="git"]', 'aria-pressed')) === 'true' && !!(await pg.$('#startcard')));
   check('git error: no project left behind', (await projects()).length === n0);
   await pg.screenshot({ path: OUT + '/33_sandbox_git_error.png' });
   await pg.fill('#sc-git', 'http://github.com/octocat/Hello-World'); await pg.click('#send'); await pg.waitForFunction(() => !document.querySelector('#send').disabled, null, { timeout: 60000 }); await sleep(300);
@@ -269,7 +269,7 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
     check('git: label shows the repo', /github\.com\/octocat\/Hello-World · Python 3\.12/.test(await T('#chains .chain.open[data-proj]')), await T('#chains .chain.open[data-proj]'));
     check('git: agent sees the cloned README', /README/.test(await firstObs()));
   } finally { if (PFX && gName && !gName.startsWith(PFX)) gTo = await prefix(gName); }
-  if (PFX && gName && !gName.startsWith(PFX)) check('git: renamed with the prefix as soon as its task is done', !!gTo && (await projects()).some(p => p.name === gTo), gTo || '(rename failed)');
+  if (PFX && gName && !gName.startsWith(PFX)) check('git: renamed with the prefix as soon as its turn is done', !!gTo && (await projects()).some(p => p.name === gTo), gTo || '(rename failed)');
 
   // ---------------------------------------------------------------- 5. Add files to an existing project, then the next task; download
   await pg.click(`#chains .chain[data-proj="${pF}"]`); await sleep(1200);
@@ -283,17 +283,17 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
   check('download: clicking the link downloads <project>-kv.zip', !!dl && dl.suggestedFilename() === `${pF}-kv.zip`, dl ? dl.suggestedFilename() : 'no download event');
   await pg.click('#chains [data-pm="files"]'); await sleep(200);
   fs.writeFileSync(path.join(FX, 'extra.txt'), 'added later\n'); await pickVia('#chains [data-pm="pickf"]', path.join(FX, 'extra.txt')); await sleep(1500);
-  check('add files: toast "Added 1 file — the next task sees them"', /^Added 1 file — the next task sees them$/.test(await T('#toast')), await T('#toast'));
+  check('add files: toast "Added 1 file — the next turn sees them"', /^Added 1 file — the next turn sees them$/.test(await T('#toast')), await T('#toast'));
   await pg.fill('#q', 'List the files again.'); await arms(['kv']); await pg.click('#send'); await waitRun();
-  check('add files: task 2 of the project', /Task 2 of 2/.test(await T('#chathead')), await T('#chathead'));
-  check('add files: the next task sees the added file', /extra\.txt/.test(await firstObs()));
+  check('add files: turn 2 of the project', /Turn 2 of 2/.test(await T('#chathead')), await T('#chathead'));
+  check('add files: the next turn sees the added file', /extra\.txt/.test(await firstObs()));
   await pg.screenshot({ path: OUT + '/35_sandbox_addfiles.png' });
 
   // ---------------------------------------------------------------- 6. rename + delete
   const pR = PFX + 'renamed-' + ts; await pg.click(`#chains [data-pmenu="${pE}"]`); await sleep(200); await pg.click('#chains [data-pm="rename"]'); await sleep(200);
   await pg.fill('#pm-name', pR); await pg.keyboard.press('Enter'); await sleep(1500);
   check('rename: the list shows the new name', !!(await pg.$(`#chains .chain[data-proj="${pR}"]`)) && !(await pg.$(`#chains .chain[data-proj="${pE}"]`)) && /^Renamed /.test(await T('#toast')), await T('#toast'));
-  await pg.click(`#chains .chain[data-proj="${pR}"]`); await sleep(1500); check('rename: the renamed project still opens its session', /Task 1 of 2/.test(await T('#chathead')), await T('#chathead'));
+  await pg.click(`#chains .chain[data-proj="${pR}"]`); await sleep(1500); check('rename: the renamed project still opens its session', /Turn 1 of 2/.test(await T('#chathead')), await T('#chathead'));
   await pg.click(`#chains [data-pmenu="${pR}"]`); await sleep(200); await pg.click('#chains [data-pm="confirm"]'); await sleep(200);
   check('delete asks first', /can't be undone/.test(await T('#chains .pmenu.danger')));
   await pg.click('#chains [data-pm="delete"]'); await sleep(1800);
@@ -314,11 +314,11 @@ fs.writeFileSync(path.join(FX, 'bundle.zip'), zip([['proj-main/README.md', '# zi
     await pg.click(`#chains [data-pmenu="${pF}"]`); await sleep(200); await pg.click('#chains [data-pm="files"]'); await sleep(200);
     gate.slow = true; fs.writeFileSync(path.join(FX, 'late.txt'), 'late\n'); await pickVia('#chains [data-pm="pickf"]', path.join(FX, 'late.txt'));
     await pg.click('#srcseg button[data-src="chains"]'); await sleep(6000);
-    let c = await inChains(); check('late answer: Add files… answered in ChainSWE chains leaves the chain card (no project list)', chainsOk(c) && /^Added 1 file/.test(await T('#toast')), `${JSON.stringify(c)} · ${await T('#toast')}`);
+    let c = await inChains(); check('late answer: Add files… answered in ChainSWE tasks leaves the task card (no project list)', chainsOk(c) && /^Added 1 file/.test(await T('#toast')), `${JSON.stringify(c)} · ${await T('#toast')}`);
     await pg.click('#srcseg button[data-src="custom"]'); await sleep(2500);
     const pF2 = pF + '-r'; await pg.click(`#chains [data-pmenu="${pF}"]`); await sleep(200); await pg.click('#chains [data-pm="rename"]'); await sleep(200);
     await pg.fill('#pm-name', pF2); await pg.keyboard.press('Enter'); await sleep(150); await pg.click('#srcseg button[data-src="chains"]'); await sleep(6000); gate.slow = false;
-    c = await inChains(); check('late answer: Rename answered in ChainSWE chains leaves the chain card (no project list)', chainsOk(c), JSON.stringify(c));
+    c = await inChains(); check('late answer: Rename answered in ChainSWE tasks leaves the task card (no project list)', chainsOk(c), JSON.stringify(c));
     await pg.click('#srcseg button[data-src="custom"]'); await sleep(2500);
     check('late answer: back in the sandbox, the renamed project opens', (await openProj()) === pF2, `open "${await openProj()}" · ${await T('#chathead')}`);
     // a failed poll: Knowledge Vault (watched) and No memory (not watched) on the next task, GET /api/live refused for 5 s from the start

@@ -77,11 +77,11 @@ const FORBIDDEN = [/\barms?\b/i, /\bactor\b/i, /\bwriter\b/i, /harness/i, /ledge
   const A = sm.arms.kv, B = sm.arms.mem0, usd = v => '$' + v.toFixed(2), save = (Math.abs((B.usd_chain - A.usd_chain) / B.usd_chain) * 100).toFixed(1) + '%';
   const above = await pg.evaluate(() => { const out = []; for (const el of document.querySelector('#main').children) { if (el.querySelector('table')) break; out.push(el.innerText); } return out.join('\n'); });
   const count = s => above.split(s).length - 1;
-  check('each number once above the table: cost per chain and the saving', count(usd(A.usd_chain)) === 1 && count(save) === 1 && count(usd(B.usd_chain)) === 1,
+  check('each number once above the table: cost per task and the saving', count(usd(A.usd_chain)) === 1 && count(save) === 1 && count(usd(B.usd_chain)) === 1,
     `${usd(A.usd_chain)}×${count(usd(A.usd_chain))} ${save}×${count(save)} ${usd(B.usd_chain)}×${count(usd(B.usd_chain))}`);
   const P = sm.price || {}, heroT = (await pg.textContent('#main .hero')).replace(/\s+/g, ' ');
   check('the headline says the price in plain words (no price-row name)', heroT.includes(`Priced at $${P.input} per million input tokens and $${P.output} per million output tokens.`) && !heroT.includes(sm.price_row + ' row'), heroT.slice(-90));
-  check('tiles: tokens and steps per task only', JSON.stringify(await pg.$$eval('.kpis .tile .label', ls => ls.map(l => l.textContent.trim()))) === JSON.stringify(['Tokens per task (agent + memory writing)', 'Agent steps per task']));
+  check('tiles: tokens and steps per turn only', JSON.stringify(await pg.$$eval('.kpis .tile .label', ls => ls.map(l => l.textContent.trim()))) === JSON.stringify(['Tokens per turn (agent + memory writing)', 'Agent steps per turn']));
   check('"How the numbers are made" is collapsed at the bottom', !!(await pg.$('footer details#how')) && !(await pg.$eval('#how', e => e.open)) && /How the numbers are made/.test(await pg.textContent('#how summary')));
   for (const w of [1280, 1500, 2000]) {
     await pg.setViewportSize({ width: w, height: 950 }); await sleep(300);
@@ -93,20 +93,20 @@ const FORBIDDEN = [/\barms?\b/i, /\bactor\b/i, /\bwriter\b/i, /harness/i, /ledge
   // ---------------------------------------------------------------- chain explorer
   const def = sc.default_cid || meta.default_cid, scc = (sc.chains || []).find(c => c.cid === def);
   const cur = await pg.$eval('#cid', e => ({ v: e.value, t: e.selectedOptions[0].textContent.trim() }));
-  check(`the explorer opens on the example chain (${def}, the server's default)`, cur.v === def && def === meta.default_cid && (!(sc.chains || []).length || !!scc) && (!scc || cur.t === `${scc.title} — ${scc.repo}`), `${cur.v} "${cur.t}"`);
+  check(`the explorer opens on the example task (${def}, the server's default)`, cur.v === def && def === meta.default_cid && (!(sc.chains || []).length || !!scc) && (!scc || cur.t === `${scc.title} — ${scc.repo}`), `${cur.v} "${cur.t}"`);
   check('its one-line description under the picker', !scc || (await pg.textContent('#cidnote')).trim() === scc.blurb, (await pg.textContent('#cidnote')).trim().slice(0, 80));
   const firsts = await pg.$$eval('#cid option', os => os.map(o => o.value)), inRun = new Set(sm.chains.map(c => c.cid));
   const want = (sc.chains || []).map(c => c.cid).filter(c => inRun.has(c));
-  check('the example chains come first, as on Compare', JSON.stringify(firsts.slice(0, want.length)) === JSON.stringify(want) && firsts.length === sm.chains.length, `${want.length} examples of ${firsts.length}`);
+  check('the example tasks come first, as on Compare', JSON.stringify(firsts.slice(0, want.length)) === JSON.stringify(want) && firsts.length === sm.chains.length, `${want.length} examples of ${firsts.length}`);
   const groups = await pg.$$eval('#cid optgroup', gs => gs.map(g => [g.label, g.children.length]));
-  check('… in their own group, then every other chain of the run', !want.length || want.length === firsts.length || (groups.length === 2 && groups[0][0] === 'Example chains — where Knowledge Vault saves tokens' && groups[0][1] === want.length
-    && groups[1][1] === firsts.length - want.length && groups[1][0] === `The other ${firsts.length - want.length} chains of the paper run`), JSON.stringify(groups));
+  check('… in their own group, then every other task of the run', !want.length || want.length === firsts.length || (groups.length === 2 && groups[0][0] === 'Example tasks — where Knowledge Vault saves tokens' && groups[0][1] === want.length
+    && groups[1][1] === firsts.length - want.length && groups[1][0] === `The other ${firsts.length - want.length} tasks of the paper run`), JSON.stringify(groups));
   const ch = await get(pg, `/api/chain/${def}?run=${run}&price=${price}`);
   const heads = await pg.$$eval('#chainview .task .sum', es => es.map(e => e.textContent.trim()));
   // a server from before task summaries (no "summary" field) gets the page's fallback, the issue's first line
   const hasSum = ch.chain.tasks.every(t => typeof t.summary === 'string');
   const sums = ch.arms.kv.sessions.map(s => { const t = ch.chain.tasks.find(x => x.order === s.order) || {}; return hasSum ? t.summary : t.title || ''; });
-  check('each task is headed by its summary', heads.length === sums.length && heads.length > 0 && heads.every((h, i) => h === sums[i] && h.length > 0) && (!hasSum || !heads.some(h => h.length > 81)),
+  check('each turn is headed by its summary', heads.length === sums.length && heads.length > 0 && heads.every((h, i) => h === sums[i] && h.length > 0) && (!hasSum || !heads.some(h => h.length > 81)),
     (hasSum ? '' : 'THIS SERVER SENDS NO SUMMARIES (restart it): titles shown · ') + JSON.stringify(heads));
   check('the raw first line of the issue only with Show details', !(await vis(pg, '#chainview .task .raw')), 'hidden');
   const t2 = (await pg.$$('#chainview .task'))[1];
@@ -125,18 +125,18 @@ const FORBIDDEN = [/\barms?\b/i, /\bactor\b/i, /\bwriter\b/i, /harness/i, /ledge
     await t2.screenshot({ path: OUT + '/report_task2_open.png' }).catch(e => errs.push('SHOT ' + e.message));
   }
   const keys = await pg.$$eval('#chainview .barkey', ks => ks.map(k => k.innerText.replace(/\s+/g, ' ').trim()));
-  check('one key for the task bars, above the tasks', keys.length === 1 && /agent tokens/.test(keys[0]) && /memory writing/.test(keys[0])
+  check('one key for the turn bars, above the turns', keys.length === 1 && /agent tokens/.test(keys[0]) && /memory writing/.test(keys[0])
     && await pg.$eval('#chainview .barkey', k => !!k.nextElementSibling && k.nextElementSibling.classList.contains('tasks')), JSON.stringify(keys));
   await pg.click('#gearbtn'); await pg.check('#details'); await pg.keyboard.press('Escape'); await sleep(200);
   const raw = await pg.$$eval('#chainview .task .raw', es => es.map(e => e.innerText));
-  if (t2) check('… Show details also shows the memory note\'s task ids', await t2.$$eval('.membox .note .nl-inst', es => es.some(e => e.offsetParent)).catch(() => false) || !ch.arms.kv.sessions[1].memory_text);
+  if (t2) check('… Show details also shows the memory note\'s turn ids', await t2.$$eval('.membox .note .nl-inst', es => es.some(e => e.offsetParent)).catch(() => false) || !ch.arms.kv.sessions[1].memory_text);
   check('… and Show details shows it, with the instance id', await vis(pg, '#chainview .task .raw') && raw.every((r, i) => r.includes(ch.chain.tasks[i].instance) && r.includes(ch.chain.tasks[i].title)), raw[0]);
   await (await pg.$('#explorer')).screenshot({ path: OUT + '/report_explorer_details.png' }).catch(e => errs.push('SHOT ' + e.message));
   await pg.click('#gearbtn'); await pg.uncheck('#details'); await pg.keyboard.press('Escape'); await sleep(150);
   const goes = await pg.$$eval('#chainview .task a.go', as => as.map(a => [a.textContent.trim(), a.getAttribute('href')]));
   const watchOk = run !== (sc.run || meta.default_run) ? goes.length === 0 : goes.length === heads.length && goes.every(([t, h], i) => t === 'Watch in the Agent view ▸' && h === `./?src=chains&cid=${def}&kind=kv&order=${ch.arms.kv.sessions[i].order}`);
-  check('each task links to the Agent view at that task', watchOk, JSON.stringify(goes[0] || null));
-  check('the chain links to Compare once', (await pg.$$('#explorer a#cmp-link')).length === 1 && (await pg.getAttribute('#cmp-link', 'href')) === `compare?cid=${def}` && (await pg.textContent('#cmp-link')).trim() === 'Compare side by side ▸',
+  check('each turn links to the Agent view at that turn', watchOk, JSON.stringify(goes[0] || null));
+  check('the task links to Compare once', (await pg.$$('#explorer a#cmp-link')).length === 1 && (await pg.getAttribute('#cmp-link', 'href')) === `compare?cid=${def}` && (await pg.textContent('#cmp-link')).trim() === 'Compare side by side ▸',
     await pg.getAttribute('#cmp-link', 'href'));
   await pg.screenshot({ path: OUT + '/report_1500.png', fullPage: true });
 
@@ -151,13 +151,13 @@ const FORBIDDEN = [/\barms?\b/i, /\bactor\b/i, /\bwriter\b/i, /harness/i, /ledge
   const scIds = new Set((sc.chains || []).map(c => c.cid)), PYC = 'pyccel_pyccel_20240307';
   const away = firsts.includes(PYC) && !scIds.has(PYC) ? PYC : [...firsts].reverse().find(c => !scIds.has(c)) || firsts[firsts.length - 1];
   await pg.goto(BASE + '/report?cid=' + away); await ready(pg);
-  check(`a link with ?cid= opens that chain, also one outside the example list (${away})`, (await pg.$eval('#cid', e => e.value)) === away && (await pg.getAttribute('#t-kv', 'aria-pressed')) === 'true' && new URL(pg.url()).searchParams.get('cid') === away
+  check(`a link with ?cid= opens that task, also one outside the example list (${away})`, (await pg.$eval('#cid', e => e.value)) === away && (await pg.getAttribute('#t-kv', 'aria-pressed')) === 'true' && new URL(pg.url()).searchParams.get('cid') === away
     && (await pg.$$('#chainview .task')).length > 0, away);
   await pg.goto(BASE + '/report?cid=nope&kind=bogus'); await ready(pg);
   const q = new URL(pg.url()).searchParams;
-  check('an unknown chain or method falls back to the defaults, and the URL says so', (await pg.$eval('#cid', e => e.value)) === def && q.get('cid') === def && q.get('kind') === 'kv', pg.url().replace(BASE, ''));
+  check('an unknown task or method falls back to the defaults, and the URL says so', (await pg.$eval('#cid', e => e.value)) === def && q.get('cid') === def && q.get('kind') === 'kv', pg.url().replace(BASE, ''));
   const bar = await pg.$('#svg-div rect[data-i]');
-  if (bar) { await bar.click(); await sleep(1500); const v = await pg.$eval('#cid', e => e.value); check('a bar of the per-chain chart opens its chain in the explorer', v !== def || new URL(pg.url()).searchParams.get('cid') === v, v); }
+  if (bar) { await bar.click(); await sleep(1500); const v = await pg.$eval('#cid', e => e.value); check('a bar of the per-task chart opens its task in the explorer', v !== def || new URL(pg.url()).searchParams.get('cid') === v, v); }
   if (runs.length > 1) {
     const h0 = await pg.textContent('#main .hero'); await pg.click('#gearbtn'); await pg.selectOption('#run', runs[1][0]); await pg.waitForFunction(h => document.querySelector('#main .hero') && document.querySelector('#main .hero').textContent !== h, h0, { timeout: 90000 }).catch(() => {});
     check('⚙ Recorded run switches the results', (await pg.textContent('#main .hero')) !== h0, runs[1][1]);
@@ -190,7 +190,7 @@ const FORBIDDEN = [/\barms?\b/i, /\bactor\b/i, /\bwriter\b/i, /harness/i, /ledge
   check('dark mode: the page background is the Agent page\'s', (await dk.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--plane').trim())) === '#0f0f0e');
   const seg = await dk.evaluate(() => { const w = [...document.querySelectorAll('#chainview .bar .w')].find(e => e.offsetWidth > 0); return w ? [getComputedStyle(w).backgroundColor, getComputedStyle(w.parentElement).backgroundColor] : null; });
   const segCr = seg ? await dk.evaluate(CONTRAST, seg) : 0;
-  check('dark mode: the memory-writing part of a task bar stands out from the track (≥ 1.5:1)', segCr >= 1.5, `${segCr.toFixed(2)} ${seg}`);
+  check('dark mode: the memory-writing part of a turn bar stands out from the track (≥ 1.5:1)', segCr >= 1.5, `${segCr.toFixed(2)} ${seg}`);
   await dk.screenshot({ path: OUT + '/report_dark_1500.png', fullPage: true });
   await dk.setViewportSize({ width: 420, height: 900 }); await sleep(400); await dk.screenshot({ path: OUT + '/report_dark_420.png' });
   await dk.context().close();
